@@ -1,0 +1,7 @@
+build-linux*/
+port/*.log
+*.o
+*.a
+# run directory: symlinks to your own game data + private config/saves, logs, screenshots
+run/
+__pycache__/
