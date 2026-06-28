@@ -29,6 +29,7 @@ struct RadicalAdpcmState
 };
 
 int RadicalAdpcmDecode( int deltaCode, int * pIndex, int * pPrev );
+void DecodeFrames( void* pBufferStart, void * pAdpcmStart, unsigned numAdpcmFrames, unsigned int numChannels );
 int RadicalAdpcmEncode( int sample, int * pIndex, int * pPrev );
 
 enum RadicalAdpcmDecodeState

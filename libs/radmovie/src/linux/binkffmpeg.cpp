@@ -190,6 +190,15 @@ HBINK BinkOpen( const char* name, U32 /*flags*/ )
         return NULL;
     }
 
+    // Real Bink only opens Bink files. Some copies replace the logo movies with tiny Ogg files to
+    // skip them; FFmpeg would play those (1280x720: more tiles than the render strategy holds).
+    if ( strcmp( fmt->iformat->name, "bink" ) != 0 )
+    {
+        snprintf( s_Error, sizeof( s_Error ), "not a Bink file (%s): %s", fmt->iformat->name, path );
+        avformat_close_input( &fmt );
+        return NULL;
+    }
+
     BinkFFmpegState* s = (BinkFFmpegState*) calloc( 1, sizeof( BinkFFmpegState ) );
     s->fmt = fmt;
     s->videoStream = av_find_best_stream( fmt, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0 );

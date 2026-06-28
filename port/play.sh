@@ -37,7 +37,7 @@ DATA=$(cd "$DATA" && pwd)   # absolute, for the symlinks
 
 # Run directory
 mkdir -p "$RUN"
-for f in ambience.rcf carsound.rcf dialog.rcf dialogf.rcf dialogg.rcf dialogs.rcf music.rcf nis.rcf \
+for f in ambience.rcf carsound.rcf dialog.rcf dialogf.rcf dialogg.rcf dialogs.rcf music00.rcf music01.rcf music02.rcf music03.rcf nis.rcf \
          scripts.rcf soundfx.rcf opening.bnr art movies scripts sound; do
     [ -e "$DATA/$f" ] && [ ! -e "$RUN/$f" ] && ln -s "$DATA/$f" "$RUN/$f"
 done

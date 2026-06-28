@@ -164,7 +164,7 @@ private:
 #ifdef RAD_XBOX
     static const unsigned int NUM_SOUND_CEMENT_FILES = 12;
 #else
-    static const unsigned int NUM_SOUND_CEMENT_FILES = 7;
+    static const unsigned int NUM_SOUND_CEMENT_FILES = 10;
 #endif
     unsigned int m_soundCementFileHandles[NUM_SOUND_CEMENT_FILES];
 

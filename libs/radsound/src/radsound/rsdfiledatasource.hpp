@@ -99,4 +99,21 @@ struct radSoundRsdFileDataSource
 		ref< IRadFile >                       m_refIRadFile;
 		
 		char fileName[ 64 ];
+
+        // RADP decoding (Linux port). The game passes a PCM format for every stream and clip, which
+        // skipped the header; retail PC dialog.rcf is Radical ADPCM, so such files are decoded here
+        // and served as PCM. A read ends mid-block: the rest of that block waits in m_Carry.
+
+        void DecodeReadBlocks( void );
+
+        bool           m_Decode;
+        unsigned int   m_Channels;
+        unsigned int   m_AdpcmBlockBytes;
+        void *         m_pAdpcm;
+        unsigned int   m_AdpcmCapacity;
+        short          m_Carry[ 32 * 2 ];
+        unsigned int   m_CarryOffset;
+        unsigned int   m_CarryFrames;
+        char *         m_pDecodeDest;
+        unsigned int   m_DecodeFrames;
 };

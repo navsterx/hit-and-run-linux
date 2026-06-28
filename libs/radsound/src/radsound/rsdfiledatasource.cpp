@@ -6,6 +6,7 @@
 #include "pch.hpp"
 #include <radsoundfile.hpp>
 #include "rsdfiledatasource.hpp"
+#include "radicaladpcm.hpp"
 
 RadSoundFilePerformanceCallback * gpFpc;
 
@@ -27,12 +28,26 @@ void RadSoundSetFilePerformanceCallback( RadSoundFilePerformanceCallback * pCall
 
 
 radSoundRsdFileDataSource::radSoundRsdFileDataSource( void )
+    :
+    m_Decode( false ),
+    m_Channels( 0 ),
+    m_AdpcmBlockBytes( 0 ),
+    m_pAdpcm( NULL ),
+    m_AdpcmCapacity( 0 ),
+    m_CarryOffset( 0 ),
+    m_CarryFrames( 0 ),
+    m_pDecodeDest( NULL ),
+    m_DecodeFrames( 0 )
 {
 	m_StateInfo.m_State = StateInfo::NONE;
 }
 
 radSoundRsdFileDataSource::~radSoundRsdFileDataSource( void )
 {
+    if ( m_pAdpcm != NULL )
+    {
+        ::radMemoryFreeAligned( GetThisAllocator( ), m_pAdpcm );
+    }
 }
 
 IRadSoundHalDataSource::State radSoundRsdFileDataSource::GetState( void )
@@ -169,6 +184,43 @@ void radSoundRsdFileDataSource::GetFramesAsync
 	m_StateInfo.m_ReadingDataInfo.m_ReadSizeInFrames = sizeInFrames;
 	m_refIRadSoundHalDataSourceCallback = pIRshdsc;
 
+    if ( m_Decode )
+    {
+        // Serve what is left of the last block first, then read whole blocks for the rest
+
+        unsigned int frameBytes = m_Channels * 2;
+        unsigned int fromCarry = ( m_CarryFrames < sizeInFrames ) ? m_CarryFrames : sizeInFrames;
+        memcpy( pFrameBuffer, m_Carry + m_CarryOffset * m_Channels, fromCarry * frameBytes );
+        m_CarryOffset += fromCarry;
+        m_CarryFrames -= fromCarry;
+
+        m_pDecodeDest = (char*) pFrameBuffer + fromCarry * frameBytes;
+        m_DecodeFrames = sizeInFrames - fromCarry;
+
+        unsigned int blocks = ( m_DecodeFrames + RADICAL_ADPCM_SAMPLES_PER_FRAME - 1 ) / RADICAL_ADPCM_SAMPLES_PER_FRAME;
+        unsigned int bytes = blocks * m_AdpcmBlockBytes;
+
+        if ( bytes > 0 )
+        {
+            if ( bytes > m_AdpcmCapacity )
+            {
+                if ( m_pAdpcm != NULL )
+                {
+                    ::radMemoryFreeAligned( GetThisAllocator( ), m_pAdpcm );
+                }
+                m_AdpcmCapacity = ::radMemoryRoundUp( bytes, 4096 );
+                m_pAdpcm = ::radMemoryAllocAligned( GetThisAllocator( ), m_AdpcmCapacity, radFileOptimalMemoryAlignment );
+            }
+
+            Log( true, this->fileName, bytes );
+            m_refIRadFile->ReadAsync( m_pAdpcm, bytes );
+        }
+
+        // Called back once the read (if any) is done, so the client is never called back re-entrantly
+        m_refIRadFile->AddCompletionCallback( this, NULL );
+        return;
+    }
+
 	// Figure out how many bytes we'll require
 	// (And verify that our conversion is happening correctly)
 
@@ -245,11 +297,14 @@ void radSoundRsdFileDataSource::_StateOpeningFile( void )
 	if( m_refIRadFile->IsOpen( ) == true )
 	{
         m_refIRadFile->SetBufferedRead( IRadFile::BufferedReadOn );
-        if ( m_refIRadSoundHalAudioFormat == NULL )
+        // Linux port: always read the header, even with a client format, to find RADP files
         {
-            rDebugPrintf(
-                "radSoundRsdFileDataSource: WARNING reading header for: [%s], extra seek incurred\n",
-                fileName );
+            if ( m_refIRadSoundHalAudioFormat == NULL )
+            {
+                rDebugPrintf(
+                    "radSoundRsdFileDataSource: WARNING reading header for: [%s], extra seek incurred\n",
+                    fileName );
+            }
                
 		    //
 		    // The file was opened correctly.  We can read in the
@@ -291,13 +346,6 @@ void radSoundRsdFileDataSource::_StateOpeningFile( void )
 		    
 		    m_refIRadFile->AddCompletionCallback( this, NULL );
         }
-        else
-        {
-            // We already know the format (was passed in from client), just
-            // go directly to setting things up
-
-            InitFile( );
-        }
 	}
 	else
 	{
@@ -325,10 +373,27 @@ void radSoundRsdFileDataSource::_StateReadingHeader( void )
 
 	// Create a new audio format object
 
-	m_refIRadSoundHalAudioFormat = ::radSoundHalAudioFormatCreate( GetThisAllocator( ) );
+	ref< IRadSoundHalAudioFormat > refFileFormat = ::radSoundHalAudioFormatCreate( GetThisAllocator( ) );
 
 	m_StateInfo.m_ReadingHeaderInfo.m_pRadSoundHalFileHeader->InitializeAudioFormat(
-		m_refIRadSoundHalAudioFormat, GetThisAllocator( ) );
+		refFileFormat, GetThisAllocator( ) );
+
+    if ( m_refIRadSoundHalAudioFormat == NULL )
+    {
+        m_refIRadSoundHalAudioFormat = refFileFormat;
+    }
+    else if ( refFileFormat->GetEncoding( ) == IRadSoundHalAudioFormat::RadicalAdpcm &&
+              m_refIRadSoundHalAudioFormat->GetEncoding( ) == IRadSoundHalAudioFormat::PCM &&
+              refFileFormat->GetNumberOfChannels( ) <= 2 )
+    {
+        // Decode to PCM with the file's own rate and channel count
+        m_Decode = true;
+        m_Channels = refFileFormat->GetNumberOfChannels( );
+        m_AdpcmBlockBytes = RADICAL_ADPCM_FRAME_SIZE * m_Channels;
+        m_refIRadSoundHalAudioFormat = ::radSoundHalAudioFormatCreate( GetThisAllocator( ) );
+        m_refIRadSoundHalAudioFormat->Initialize( IRadSoundHalAudioFormat::PCM, NULL,
+            refFileFormat->GetSampleRate( ), m_Channels, 16 );
+    }
 	
 	// Release the tempory memory
 
@@ -340,6 +405,35 @@ void radSoundRsdFileDataSource::_StateReadingHeader( void )
 
 void radSoundRsdFileDataSource::InitFile( void )
 {
+    if ( m_Decode )
+    {
+        // Positions are in PCM frames; start on the block holding the requested position
+
+        unsigned int fileBlocks = ( m_refIRadFile->GetSize( ) - RSD_FILE_DATA_OFFSET ) / m_AdpcmBlockBytes;
+        rAssertMsg( ( m_refIRadFile->GetSize( ) - RSD_FILE_DATA_OFFSET ) % m_AdpcmBlockBytes == 0,
+            "File Data is not block aligned (corrupted )" );
+
+        unsigned int startFrame = m_refIRadSoundHalAudioFormat->ConvertSizeType(
+            IRadSoundHalAudioFormat::Frames,
+            m_StateInfo.m_ReadingHeaderInfo.m_InitialPlaybackPos,
+            m_StateInfo.m_ReadingHeaderInfo.m_InitalPlaybackPosUnits );
+        unsigned int startBlock = startFrame / RADICAL_ADPCM_SAMPLES_PER_FRAME;
+        rAssert( startBlock < fileBlocks );
+        if ( startBlock > fileBlocks )
+        {
+            startBlock = fileBlocks;
+        }
+
+        m_FramesLeftInFile = ( fileBlocks - startBlock ) * RADICAL_ADPCM_SAMPLES_PER_FRAME;
+        m_CarryOffset = 0;
+        m_CarryFrames = 0;
+
+        m_StateInfo.m_State = StateInfo::IDLE;
+        m_refIRadFile->SetPositionAsync( RSD_FILE_DATA_OFFSET + startBlock * m_AdpcmBlockBytes );
+        ::radSoundHalSystemGet( )->Service( );
+        return;
+    }
+
 	// Figure out where to start reading in the file
 
 	unsigned int initialPlaybackOffsetInBytes =
@@ -386,8 +480,37 @@ void radSoundRsdFileDataSource::_StateIdle( void )
 {
 }
 
+void radSoundRsdFileDataSource::DecodeReadBlocks( void )
+{
+    // Whole blocks straight into the client's buffer, a final partial block via m_Carry
+
+    unsigned int frameBytes = m_Channels * 2;
+    unsigned int fullBlocks = m_DecodeFrames / RADICAL_ADPCM_SAMPLES_PER_FRAME;
+    unsigned int partial = m_DecodeFrames % RADICAL_ADPCM_SAMPLES_PER_FRAME;
+
+    if ( fullBlocks > 0 )
+    {
+        DecodeFrames( m_pDecodeDest, m_pAdpcm, fullBlocks, m_Channels );
+    }
+
+    if ( partial > 0 )
+    {
+        DecodeFrames( m_Carry, (char*) m_pAdpcm + fullBlocks * m_AdpcmBlockBytes, 1, m_Channels );
+        memcpy( m_pDecodeDest + fullBlocks * RADICAL_ADPCM_SAMPLES_PER_FRAME * frameBytes, m_Carry, partial * frameBytes );
+        m_CarryOffset = partial;
+        m_CarryFrames = RADICAL_ADPCM_SAMPLES_PER_FRAME - partial;
+    }
+
+    m_DecodeFrames = 0;
+}
+
 void radSoundRsdFileDataSource::_StateReadingData( void )
 {
+    if ( m_Decode )
+    {
+        DecodeReadBlocks( );
+    }
+
 	// Update our position info and callback the client
 
 	m_FramesLeftInFile -= m_StateInfo.m_ReadingDataInfo.m_ReadSizeInFrames;
