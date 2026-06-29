@@ -28,6 +28,12 @@ public:
     float GetFieldOfView(void) { return fov; }
     float GetAspectRatio(void) { return aspect; }
 
+    // Linux port: what is actually rendered. A camera set to the 4:3 design aspect is widened to the
+    // target aspect (Hor+); GetFOV still returns the values the game set. Target: the window, unless
+    // SetTargetAspect (e.g. a 3D object drawn into a 4:3 UI box); 0 = the window.
+    void GetEffectiveFOV(float* fov, float* aspect);
+    static void SetTargetAspect(float targetAspect) { sTargetAspect = targetAspect; }
+
     // near and far clipping planes
     virtual void SetNearPlane(float);
     virtual float GetNearPlane(void);
@@ -77,6 +83,11 @@ protected:
     float fov;
     float aspect;
     float nearPlane, farPlane;
+
+    void UpdateEffectiveFOV(void);
+    static float CurrentTargetAspect(void);
+    static float sTargetAspect;
+    float effFov, effAspect, effTarget;
 
     float fovScaleX,fovScaleY;
     float leftPlaneX, leftPlaneZ;

@@ -23,6 +23,7 @@
 #include <p3d/shader.hpp>
 #include <p3d/sprite.hpp>
 #include <p3d/utility.hpp>
+#include <p3d/displayaspect.hpp>
 #include "utility/debugMessages.h"
 
 #include <FeCharMap.h>
@@ -54,7 +55,8 @@ FeSprite::FeSprite( const tName& name, int x, int y )
     m_bitmapTextData( NULL ),
 #endif
     mIndex( -1 ),
-    mSprite( NULL )
+    mSprite( NULL ),
+    mStretchToWindow( false )
 {
     NormalizeCoord( x, y, mPosX, mPosY );
     Reset();
@@ -167,6 +169,26 @@ void FeSprite::Display()
             SetIndex( 0 );
         }
 
+        // Linux port: SetStretchToWindow - undo the page's 4:3 fit (FeScreen) in screen space, unclipped
+        float sx = p3d::GetDesignScaleX();
+        float sy = p3d::GetDesignScaleY();
+        bool stretch = mStretchToWindow && mSprite && ( sx < 1.0f || sy < 1.0f );
+        pddiRect pageScissor;
+        if( stretch )
+        {
+            p3d::stack->Push();
+            rmt::Matrix m = *p3d::stack->GetMatrix();
+            for( int i = 0; i < 4; i++ )
+            {
+                m.m[ i ][ 0 ] /= sx;
+                m.m[ i ][ 1 ] /= sy;
+            }
+            p3d::stack->Load( m );
+            p3d::pddi->GetScissor( &pageScissor );
+            pddiRect displayRect = p3d::GetDisplayRect();
+            p3d::pddi->SetScissor( &displayRect );
+        }
+
         if( mSprite )
         {
             mSprite->SetColour( GetColour() );
@@ -178,6 +200,12 @@ void FeSprite::Display()
                 DisplayBoundingBox();
             }
 #endif
+        }
+
+        if( stretch )
+        {
+            p3d::pddi->SetScissor( &pageScissor );
+            p3d::stack->Pop();
         }
     }
 }

@@ -11,6 +11,8 @@
 
 #include <SDL2/SDL.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <radcontroller.hpp>
 #include <p3d/platform.hpp>
@@ -60,7 +62,7 @@ bool Win32Platform::InitializeWindow( HINSTANCE hInstance )
     SDL_Window* window = SDL_CreateWindow( ApplicationName,
                                            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                            x, y,
-                                           SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN );
+                                           SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE );
     if( window == NULL )
     {
         fprintf( stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError() );
@@ -139,6 +141,23 @@ bool Win32Platform::PumpEvents()
 {
     bool quit = false;
     SDL_Event e;
+
+    // debug: SHAR_RESIZE_SCRIPT="WxH@ms,..." resizes the window at those times (tests window resizing)
+    static const char* s_resizeScript = getenv( "SHAR_RESIZE_SCRIPT" );
+    static unsigned int s_resizeDone = 0;
+    unsigned int resizeIndex = 0;
+    for( const char* c = s_resizeScript; c && *c; resizeIndex++ )
+    {
+        int w = 0, h = 0;
+        unsigned int at = 0;
+        if( sscanf( c, "%dx%d@%u", &w, &h, &at ) == 3 && resizeIndex == s_resizeDone && SDL_GetTicks() >= at )
+        {
+            SDL_SetWindowSize( (SDL_Window*) mhWnd, w, h );
+            s_resizeDone++;
+        }
+        c = strchr( c, ',' );
+        if( c ) c++;
+    }
     while( SDL_PollEvent( &e ) )
     {
         radControllerSDLHandleEvent( &e );                 // wheel + controller hot-plug for radcore input

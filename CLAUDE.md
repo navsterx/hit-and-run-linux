@@ -94,6 +94,14 @@ python3 port/syntax_survey.py; python3 port/check.py code/foo.cpp
   or bytes; `Path.read_text()` silently converts to LF and rewrites the whole file).
 - **Texture clamp**: D3D's CLAMP is GL_CLAMP_TO_EDGE; GL_CLAMP (what the GL pddi had) blends the black border in
   under bilinear filtering: dark seams between movie tiles, dark texture edges (`glmat.cpp` uvTable).
+- **Any aspect ratio / resizable window** (`p3d/displayaspect.hpp`): cameras set to 4:3 render Hor+ (wider, same
+  vertical view; Vert+ on narrower windows) through effective values inside `tCamera` (`GetFOV` still returns the
+  game's 4:3 values: cutscene animations and camera blends read them back). Culling/world-to-screen use
+  `GetEffectiveFOV`. The 640x480 Scrooby UI is drawn in the centred 4:3 area and clipped to it (letterbox bars wait
+  off-page); polygons spanning the page width/height (fades, letterbox) stretch to the window edge; a full-page
+  `FePure3dObject` (main-menu room) fills the window, smaller ones stay in their 4:3 box; the front end's TV frame
+  sprite opts in to stretching over the window (`Scrooby::Sprite::SetStretchToWindow`). The GL display follows the
+  window size each swap. Test resizing with `SHAR_RESIZE_SCRIPT="WxH@ms,..."`.
 - Boot movies only play in release builds (`SHOW_MOVIES` needs `RAD_RELEASE`, `bootupcontext.cpp`): test them with
   `build-linux`, not the debug build.
 - radcore's `radoptions.hpp` enables debug comm / watcher / memory monitor in debug builds: off on Linux.

@@ -28,6 +28,7 @@
 #include "FeScreen.h"
 #include <radmath/radmath.hpp>
 #include "ResourceManager/FeResourceManager.h"
+#include <p3d/displayaspect.hpp>
 
 // TC [HACK]: Override camera settings.
 //
@@ -464,6 +465,22 @@ void FePure3dObject::Render()
     float b = 1.0f - (posY - mViewTranslateY);
     float t = b - height;  //Bottom and top are in reversed P3D coordinates
 
+    // Linux port: the page is drawn in the centred 4:3 area of the window (FeScreen). A 3D object covering
+    // the whole page fills the window instead, its camera widened as in gameplay; a smaller one keeps its
+    // place on the page and its camera as authored.
+    const float EDGE = 0.002f;
+    bool fullPage = ( l <= EDGE ) && ( t <= EDGE ) && ( r >= 1.0f - EDGE ) && ( b >= 1.0f - EDGE );
+    if( !fullPage )
+    {
+        float sx = p3d::GetDesignScaleX();
+        float sy = p3d::GetDesignScaleY();
+        l = 0.5f + ( l - 0.5f ) * sx;
+        r = 0.5f + ( r - 0.5f ) * sx;
+        t = 0.5f + ( t - 0.5f ) * sy;
+        b = 0.5f + ( b - 0.5f ) * sy;
+        tCamera::SetTargetAspect( p3d::DESIGN_ASPECT );
+    }
+
     // put the new camera on the stack
     
     p3d::stack->LoadIdentity();
@@ -509,6 +526,7 @@ void FePure3dObject::Render()
 
     // restore everything we changed
     //
+    tCamera::SetTargetAspect( 0.0f );
     originalCamera->SetState();
     currentView->SetCamera( originalCamera );
     originalCamera->Release();

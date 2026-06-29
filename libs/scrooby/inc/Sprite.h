@@ -63,6 +63,10 @@ class Sprite
         virtual const tSprite* GetRawSprite() = 0;
         virtual void ResizeToBoundingBox() = 0;
         virtual void SetRawSprite( tSprite* sprite, bool updateDrawable = false ) = 0;
+
+        // Linux port: draw across the whole window instead of the centred 4:3 page area (e.g. the
+        // front end's TV frame over the full-window 3D room)
+        virtual void SetStretchToWindow( bool stretch ) = 0;
     
 #ifdef BITMAP_TEXT_SUPPORT
         // set current sprite mode

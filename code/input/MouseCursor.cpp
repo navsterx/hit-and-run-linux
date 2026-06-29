@@ -1,4 +1,5 @@
 #include <input/MouseCursor.h>
+#include <p3d/displayaspect.hpp>
 
 // THIS CURSOR STUFF IS JUST FOR TESTING!.
 static void StreamLine(pddiPrimStream* pstream, rmt::Vector a, rmt::Vector b, tColour colora, tColour colorb)
@@ -116,6 +117,13 @@ void MouseCursor::Render()
     pddiProjectionMode pMode = p3d::pddi->GetProjectionMode();
     p3d::pddi->SetProjectionMode(PDDI_PROJECTION_ORTHOGRAPHIC);
 
+    // Linux port: the position is in window coordinates (FEMouse::Move), so draw with the window's aspect
+    // rather than whatever camera is set
+    p3d::pddi->PushState(PDDI_STATE_VIEW);
+    float camNear, camFar, camFov, camAspect;
+    p3d::pddi->GetCamera(&camNear, &camFar, &camFov, &camAspect);
+    p3d::pddi->SetCamera(camNear, camFar, camFov, p3d::GetDisplayAspect());
+
     p3d::stack->Push();
     p3d::stack->LoadIdentity();
 
@@ -145,5 +153,6 @@ void MouseCursor::Render()
     p3d::stack->Pop();
 
     //Restore things we've messed with
+    p3d::pddi->PopState(PDDI_STATE_VIEW);
     p3d::pddi->SetProjectionMode(pMode);
 }

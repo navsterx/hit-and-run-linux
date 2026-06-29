@@ -330,6 +330,15 @@ void pglDisplay ::SwapBuffers()
     SDL_GL_SwapWindow( window );
     reset = false;      // as the Win32 display: otherwise every BeginFrame treats the device as reset and
                         // re-uploads (and leaks) every texture
+
+    // the window is resizable: follow its size (viewports and aspect ratios are worked out from it each frame)
+    int w, h;
+    SDL_GL_GetDrawableSize( window, &w, &h );
+    if( w > 0 && h > 0 )
+    {
+        winWidth = w;
+        winHeight = h;
+    }
 }
 
 unsigned pglDisplay::Screenshot(pddiColour* buffer, int nBytes)

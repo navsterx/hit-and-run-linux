@@ -196,7 +196,7 @@ void tView::ViewToScreen(const rmt::Vector& view, rmt::Vector* screen)
     if (camera)
     {
         float fov;
-        camera->GetFOV(&fov, &aspect_ratio);
+        camera->GetEffectiveFOV(&fov, &aspect_ratio);   // Linux port: as rendered
     }
     else
     {
@@ -214,7 +214,7 @@ void tView::ScreenToView(const rmt::Vector& screen, rmt::Vector* view)
     if (camera)
     {
         float fov;
-        camera->GetFOV(&fov, &aspect_ratio);
+        camera->GetEffectiveFOV(&fov, &aspect_ratio);   // Linux port: as rendered
     }
     else
     {

@@ -160,23 +160,7 @@ void radMovieRenderStrategyBink::ChangeParameters( unsigned int width, unsigned 
         m_MovieWidth = width;
         m_MovieHeight = height;
 
-        // Assume that we'll fill the screen
-        if ( (unsigned int) p3d::display->GetWidth( ) >= m_MovieWidth )
-        {
-            #ifdef RAD_WIN32
-            m_DisplayMultiplier = (float) p3d::display->GetWidth( ) / ( float ) m_MovieWidth;
-            #else
-            m_DisplayMultiplier = (float)width / (float)p3d::display->GetWidth();
-            m_DisplayMultiplier *= m_DisplayMultiplier;
-            #endif
-        }
-        else
-        {
-            m_DisplayMultiplier = (float) p3d::display->GetWidth( ) / ( float ) m_MovieWidth;
-        }
-
-        m_MoviePosX = (int) ( ( p3d::display->GetWidth( ) - m_MovieWidth * m_DisplayMultiplier ) / 2.0f );
-        m_MoviePosY = (int) ( ( p3d::display->GetHeight( ) - m_MovieHeight * m_DisplayMultiplier ) / 2.0f );
+        UpdateLayout( );
 
         // How many tiles will this movie require?
 
@@ -245,11 +229,46 @@ void radMovieRenderStrategyBink::ChangeParameters( unsigned int width, unsigned 
 }
 
 //=============================================================================
+// radMovieRenderStrategyBink::UpdateLayout
+//=============================================================================
+
+void radMovieRenderStrategyBink::UpdateLayout( void )
+{
+    // Assume that we'll fill the screen
+    if ( (unsigned int) p3d::display->GetWidth( ) >= m_MovieWidth )
+    {
+        #ifdef RAD_WIN32
+        // Linux port: fit the whole movie in a window of any shape (black bars), not just its width
+        m_DisplayMultiplier = (float) p3d::display->GetWidth( ) / ( float ) m_MovieWidth;
+        float fitHeight = (float) p3d::display->GetHeight( ) / ( float ) m_MovieHeight;
+        if ( fitHeight < m_DisplayMultiplier )
+        {
+            m_DisplayMultiplier = fitHeight;
+        }
+        #else
+        m_DisplayMultiplier = (float)m_MovieWidth / (float)p3d::display->GetWidth();
+        m_DisplayMultiplier *= m_DisplayMultiplier;
+        #endif
+    }
+    else
+    {
+        m_DisplayMultiplier = (float) p3d::display->GetWidth( ) / ( float ) m_MovieWidth;
+    }
+
+    m_MoviePosX = (int) ( ( p3d::display->GetWidth( ) - m_MovieWidth * m_DisplayMultiplier ) / 2.0f );
+    m_MoviePosY = (int) ( ( p3d::display->GetHeight( ) - m_MovieHeight * m_DisplayMultiplier ) / 2.0f );
+}
+
+//=============================================================================
 // radMovieRenderStrategyBink::Render
 //=============================================================================
 
 bool radMovieRenderStrategyBink::Render( void )
 {
+    #ifdef RAD_WIN32
+    UpdateLayout( );    // Linux port: the window can be resized during a movie
+    #endif
+
     // some camera settings
     p3d::pddi->PushState(PDDI_STATE_ALL);
     p3d::pddi->PushIdentityMatrix(PDDI_MATRIX_MODELVIEW);

@@ -91,6 +91,8 @@ class radMovieRenderStrategyBink
 
     private:
 
+        void UpdateLayout( void );
+
         struct Tile
         {
             tTexture * m_pTexture;

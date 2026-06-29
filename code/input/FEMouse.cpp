@@ -6,6 +6,7 @@
 #include <contexts/contextenum.h>
 #include <contexts/gameplay/gameplaycontext.h>
 #include <main/win32platform.h>
+#include <p3d/displayaspect.hpp>
 #ifdef RAD_LINUX
 #include <SDL2/SDL.h>
 #include <radcontroller.hpp>
@@ -126,8 +127,11 @@ void FEMouse::Update()
         //if( m_bMoved ) //Only update the hotspot checking if the mouse moved!
         //{
         //
-        m_hotSpotType = pCurrentWindow->CheckCursorAgainstHotspots( m_pCursor->XPos()*WIN_TO_P3D_POINT_SCALE_FACTOR, 
-                                                                    m_pCursor->YPos()*WIN_TO_P3D_POINT_SCALE_FACTOR);
+        // Linux port: the cursor is in window coordinates, the hotspots on the 4:3 page drawn in the centre
+        float pageX = m_pCursor->XPos() / p3d::GetDesignScaleX();
+        float pageY = m_pCursor->YPos() * p3d::GetDisplayAspect() / ( p3d::GetDesignScaleY() * p3d::DESIGN_ASPECT );
+        m_hotSpotType = pCurrentWindow->CheckCursorAgainstHotspots( pageX*WIN_TO_P3D_POINT_SCALE_FACTOR, 
+                                                                    pageY*WIN_TO_P3D_POINT_SCALE_FACTOR);
         if( m_hotSpotType == HOTSPOT_NONE )
         {
             // if the user is still holding onto the button, don't tamper with its state.

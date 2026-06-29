@@ -16,6 +16,7 @@
 #include "FePolygon.h"
 #include <p3d/shader.hpp>
 #include <p3d/utility.hpp>
+#include <p3d/displayaspect.hpp>
 #include <raddebug.hpp>
 #include "utility/debugMessages.h"
 
@@ -367,18 +368,63 @@ void FePolygon::Display()
     p3d::pddi->SetCullMode( PDDI_CULL_NONE );
 #endif
 
+    // Linux port: the page is drawn in the centred 4:3 area of the window, clipped to it (FeScreen). A
+    // polygon spanning the page's full width or height (letterbox bars, fades, dimmed backgrounds) is
+    // stretched to the window's edges on that axis and drawn unclipped. Page units: x 0-1, y 0-0.75.
+    pddiVector vertex[ MAX_POLYVERTEX ];
+    float minX = 1.0f, maxX = 0.0f, minY = 1.0f, maxY = 0.0f;
+    int i;
+    for( i = 0; i < mNumVertex; i++ )
+    {
+        vertex[ i ] = mVertex[ i ];
+        float pageX = mVertex[ i ].x + FeDrawable::mPosX;
+        float pageY = mVertex[ i ].y + FeDrawable::mPosY;
+        minX = ( pageX < minX ) ? pageX : minX;
+        maxX = ( pageX > maxX ) ? pageX : maxX;
+        minY = ( pageY < minY ) ? pageY : minY;
+        maxY = ( pageY > maxY ) ? pageY : maxY;
+    }
+    float stretchX = 1.0f / p3d::GetDesignScaleX();
+    float stretchY = 1.0f / p3d::GetDesignScaleY();
+    bool wide = ( stretchX > 1.0f ) && ( minX <= 0.01f ) && ( maxX >= 0.99f );
+    bool tall = ( stretchY > 1.0f ) && ( minY <= 0.01f ) && ( maxY >= 0.74f );
+    for( i = 0; i < mNumVertex; i++ )
+    {
+        if( wide )
+        {
+            float centre = 0.5f - FeDrawable::mPosX;    // the page centre in vertex coordinates
+            vertex[ i ].x = centre + ( vertex[ i ].x - centre ) * stretchX;
+        }
+        if( tall )
+        {
+            float centre = 0.375f - FeDrawable::mPosY;
+            vertex[ i ].y = centre + ( vertex[ i ].y - centre ) * stretchY;
+        }
+    }
+    pddiRect pageScissor;
+    if( wide || tall )
+    {
+        p3d::pddi->GetScissor( &pageScissor );
+        pddiRect displayRect = p3d::GetDisplayRect();
+        p3d::pddi->SetScissor( &displayRect );
+    }
+
     pddiPrimStream* stream = p3d::pddi->BeginPrims( mShader->GetShader(), PDDI_PRIM_TRIANGLES, PDDI_V_C, mNumVertex > 3 ? mNumVertex+2 : mNumVertex );   
 
     // MIKE IMPROVE : this should be reorganized to allow for Tri-Stripping.  Currently does a manual tri-fan.
-    int i;
     for( i = 2; i < this->mNumVertex; i++ )
     {
-        stream->Vertex( &mVertex[ 0 ], mDisplayVertexColour[ 0 ] );
-        stream->Vertex( &mVertex[ i - 1 ], mDisplayVertexColour[ i - 1 ] );
-        stream->Vertex( &mVertex[ i ], mDisplayVertexColour[ i ] );
+        stream->Vertex( &vertex[ 0 ], mDisplayVertexColour[ 0 ] );
+        stream->Vertex( &vertex[ i - 1 ], mDisplayVertexColour[ i - 1 ] );
+        stream->Vertex( &vertex[ i ], mDisplayVertexColour[ i ] );
     }
 
     p3d::pddi->EndPrims(stream);
+
+    if( wide || tall )
+    {
+        p3d::pddi->SetScissor( &pageScissor );
+    }
 
     // TC [HACK]: Restore default polygon alpha.
     //

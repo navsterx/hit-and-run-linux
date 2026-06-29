@@ -156,6 +156,11 @@ MEMTRACK_PUSH_GROUP( "GUIScreenPrompt" );
 	if( pPage != NULL )
     {
         m_tvFrame = pPage->GetLayer( "TVFrame" );
+        Scrooby::Sprite* tvFrame = pPage->GetSprite( "TVFrame" );
+        if( tvFrame != NULL )
+        {
+            tvFrame->SetStretchToWindow( true );    // Linux port: cover a widescreen window
+        }
     }
 MEMTRACK_POP_GROUP( "GUIScreenPrompt" );
 }

@@ -6,6 +6,9 @@
 #include <p3d/camera.hpp>
 #include <p3d/context.hpp>
 #include <p3d/utility.hpp>
+#include <p3d/displayaspect.hpp>
+
+float tCamera::sTargetAspect = 0.0f;
 
 tCamera::tCamera()
 {
@@ -45,6 +48,32 @@ void tCamera::SetFOV(float newFov, float newAspect)
 {
     fov = newFov;
     aspect = newAspect;
+    UpdateEffectiveFOV();
+}
+
+float tCamera::CurrentTargetAspect(void)
+{
+    return (sTargetAspect > 0.0f) ? sTargetAspect : p3d::GetDisplayAspect();
+}
+
+void tCamera::UpdateEffectiveFOV(void)
+{
+    effTarget = CurrentTargetAspect();
+    effFov = fov;
+    effAspect = aspect;
+
+    // Hor+ for cameras made for 4:3: same vertical view, wider horizontally. On a narrower screen the
+    // horizontal view stays and the vertical one grows.
+    if(rmt::Abs(aspect - p3d::DESIGN_ASPECT) < 0.01f)
+    {
+        if(effTarget > aspect)
+            effFov = 2.0f * rmt::ATan(rmt::Tan(fov * 0.5f) * effTarget / aspect);
+        effAspect = effTarget;
+    }
+
+    // the scale and plane maths below works on the effective values
+    float fov = effFov;
+    float aspect = effAspect;
 
     fovScaleX = 1.0f / rmt::Tan(fov * 0.5f);
     fovScaleY = fovScaleX;
@@ -79,6 +108,15 @@ void tCamera::GetFOV(float* fovOut, float* aspectOut)
 {
     *fovOut = fov;
     *aspectOut = aspect;
+}
+
+void tCamera::GetEffectiveFOV(float* fovOut, float* aspectOut)
+{
+    if(effTarget != CurrentTargetAspect())
+        UpdateEffectiveFOV();
+
+    *fovOut = effFov;
+    *aspectOut = effAspect;
 }
 
 void tCamera::SetNearPlane(float newNear)
@@ -264,8 +302,8 @@ unsigned tCamera::PointClipCode(const rmt::Vector& cameraSpacePoint)
     if(z > farPlane) clip |= CLIP_FAR;
     else if(z < nearPlane) clip |= CLIP_NEAR;
     
-    if((y * aspect) > z) clip |= CLIP_TOP;
-    else if((-y * aspect) > z) clip |= CLIP_BOTTOM;
+    if((y * effAspect) > z) clip |= CLIP_TOP;
+    else if((-y * effAspect) > z) clip |= CLIP_BOTTOM;
 
     if(x > z) clip |= CLIP_RIGHT;
     else if(-x > z) clip |= CLIP_LEFT;
@@ -303,7 +341,10 @@ void tCamera::SetState(void)
     if(!updated)
         Update();
 
-    p3d::pddi->SetCamera(nearPlane,farPlane,fov,aspect);
+    if(effTarget != CurrentTargetAspect())
+        UpdateEffectiveFOV();
+
+    p3d::pddi->SetCamera(nearPlane,farPlane,effFov,effAspect);
 }
 
 void tCamera::Update()

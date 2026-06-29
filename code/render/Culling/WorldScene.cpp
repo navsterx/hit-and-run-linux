@@ -2238,7 +2238,8 @@ void WorldScene::MarkCameraVisible( tPointCamera* pCam, unsigned int iFilter )
    pCam->GetPosition(&CamPosn);
    pCam->GetTarget(&ViewVector); ViewVector.Sub( CamPosn ); ViewVector.Normalize(); 
 
-   SetVisCone( ViewVector, CamPosn, pCam->GetFieldOfView()/1.87f );//this tweak was done to account for the pop-in along the diagonal, especially evident in the interiors//0.8726645f ); // 50 degrees 1.745329f ); //100 degrees
+   float effFov, effAspect; pCam->GetEffectiveFOV( &effFov, &effAspect );   // Linux port: the rendered (widened) view
+   SetVisCone( ViewVector, CamPosn, effFov/1.87f );//this tweak was done to account for the pop-in along the diagonal, especially evident in the interiors//0.8726645f ); // 50 degrees 1.745329f ); //100 degrees
 
    ViewVector.Mult( mDrawDist / 2.0f );
    ViewVector.Add( CamPosn );
@@ -2330,7 +2331,7 @@ void WorldScene::BuildFrustumPlanes( tPointCamera* pCam, FixedArray<rmt::Vector4
 //    Plane cameraPlanes[6];
 
     // camera parameters
-    float fov, aspect; pCam->GetFOV( &fov, &aspect ); //fov = fov/1.5f;
+    float fov, aspect; pCam->GetEffectiveFOV( &fov, &aspect ); //fov = fov/1.5f;   // Linux port: as rendered
     //float aspect = 1.333f; // TODO : shouldn't be hardcoded
 
     float nearPlane = pCam->GetNearPlane();

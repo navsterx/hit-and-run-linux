@@ -39,6 +39,7 @@
 #include <data/PersistentWorldManager.h>
 #include <mission/gameplaymanager.h>
 #include <mission/charactersheet/charactersheetmanager.h>
+#include <p3d/displayaspect.hpp>
 
 /* Watcher stuff */
 #ifndef RAD_RELEASE
@@ -945,7 +946,9 @@ void CoinManager::Render( void )
                 if( c.State == CS_Collected )
                 {
                     camera->WorldToView( c.Position, &c.Position );
-                    c.Velocity.Sub( rmt::Vector( COUNTER_X, COUNTER_Y, 0.0f ), c.Position );
+                    // Linux port: the HUD sits in the centred 4:3 area of the window
+                    float hudScale = p3d::GetDesignScaleX();
+                    c.Velocity.Sub( rmt::Vector( COUNTER_X * hudScale, COUNTER_Y * hudScale, 0.0f ), c.Position );
                     c.State = CS_FlyingToHUD;
                     ++mNumHUDFlying;
                     continue;
@@ -1059,11 +1062,14 @@ void CoinManager::HUDRender( void )
         pddiColour oldAmbient = p3d::pddi->GetAmbientLight();
         p3d::pddi->SetAmbientLight( pddiColour( 255, 255, 255 ) );
 
+        // Linux port: these units follow the window width; the HUD sits in the centred 4:3 area
+        float hudScale = p3d::GetDesignScaleX();
+
         rmt::Vector pos;
         if( renderHUDCoin )
         {
     	    p3d::stack->LoadIdentity();
-            p3d::stack->Scale( 0.1f, 0.1f, 1.0f );
+            p3d::stack->Scale( 0.1f * hudScale, 0.1f * hudScale, 1.0f );
             float coinSin, coinCos;
             rmt::SinCos( ( mHUDCoinAngle * SPIN_MULTIPLIER ), &coinSin, &coinCos );
             rmt::Matrix transform( coinCos, 0.0f, -coinSin, 0.0f,
@@ -1076,7 +1082,7 @@ void CoinManager::HUDRender( void )
             if( mHUDSparkle <= 0 )
             {
                 rmt::Vector pos;
-                pos.ScaleAdd( rmt::Vector( mHUDCoinX, mHUDCoinY, 5.0f ), 0.2f, mCoinBounding.centre );
+                pos.ScaleAdd( rmt::Vector( mHUDCoinX * hudScale, mHUDCoinY * hudScale, 5.0f ), 0.2f, mCoinBounding.centre );
                 float radius = 0.2f * ( ( coinCos < 0.0f ) ? mCoinBounding.radius : -mCoinBounding.radius );
                 pos.Add( rmt::Vector( coinCos * radius, 0.0f, coinSin * radius ) );
                 GetSparkleManager()->AddSparkle( pos, 1.0f, 0.25f, rmt::Vector( 0.0f, 0.0f, 0.0f ), Sparkle::SE_HUDGlint );
@@ -1088,7 +1094,7 @@ void CoinManager::HUDRender( void )
             p3d::pddi->PopMatrix( PDDI_MATRIX_MODELVIEW );
         }
 	    p3d::stack->LoadIdentity();
-        p3d::stack->Scale( 0.05f, 0.05f, 1.0f);
+        p3d::stack->Scale( 0.05f * hudScale, 0.05f * hudScale, 1.0f);
 
         for( int i = 0; i < NUM_COINS; ++i )
         {
@@ -1108,7 +1114,7 @@ void CoinManager::HUDRender( void )
                 rmt::Matrix transform( 1.0f, 0.0f, 0.0f, 0.0f,
                                     0.0f, 1.0f, 0.0f, 0.0f,
                                     0.0f, 0.0f, 1.0f, 0.0f,
-                                    pos.x * 10.0f, pos.y * 10.0f, 5.0f, 1.0f );
+                                    pos.x * 10.0f / hudScale, pos.y * 10.0f / hudScale, 5.0f, 1.0f );
     #ifndef RAD_RELEASE
                 ++dbg_CoinsDrawn;
     #endif

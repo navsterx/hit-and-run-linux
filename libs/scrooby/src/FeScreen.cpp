@@ -24,6 +24,7 @@
 #include "tLinearTable.h"
 #include "xml/XMLTree.h"
 #include <raddebug.hpp>
+#include <p3d/displayaspect.hpp>
 
 //===========================================================================
 // Global Data, Local Data, Local Classes
@@ -176,6 +177,10 @@ void FeScreen::Display()
     p3d::pddi->PushState( PDDI_STATE_VIEW );
     p3d::pddi->EnableZBuffer( false );
 
+    // Linux port: only the page is visible, as on a 4:3 screen (some elements wait just off the page)
+    pddiRect pageRect = p3d::GetDesignRect();
+    p3d::pddi->SetScissor( &pageRect );
+
     float aspect = static_cast<float>( FeApp::GetInstance()->GetScreenWidth() ) /
                    static_cast<float>( FeApp::GetInstance()->GetScreenHeight() );
 
@@ -185,6 +190,9 @@ void FeScreen::Display()
     //p3d::pddi->SetAlphaRef( 1 / 127.0f );
     p3d::stack->Push();
     p3d::stack->LoadIdentity();
+
+    // Linux port: the 640x480 page goes in the largest centred 4:3 area of the window
+    p3d::stack->Scale( p3d::GetDesignScaleX(), p3d::GetDesignScaleY(), 1.0f );
 
 // MIKE IMPROVE : This will make the display look good, but this is ridiculous
 #ifdef SCREEN_SCALING_HACK
@@ -219,6 +227,10 @@ void FeScreen::DisplayBackground()
     p3d::pddi->PushState( PDDI_STATE_VIEW );
     p3d::pddi->EnableZBuffer( false );
 
+    // Linux port: only the page is visible, as on a 4:3 screen (some elements wait just off the page)
+    pddiRect pageRect = p3d::GetDesignRect();
+    p3d::pddi->SetScissor( &pageRect );
+
     float aspect = static_cast<float>( FeApp::GetInstance()->GetScreenWidth() ) /
                    static_cast<float>( FeApp::GetInstance()->GetScreenHeight() );
 
@@ -228,6 +240,9 @@ void FeScreen::DisplayBackground()
     //p3d::pddi->SetAlphaRef( 1 / 127.0f );
     p3d::stack->Push();
     p3d::stack->LoadIdentity();
+
+    // Linux port: the 640x480 page goes in the largest centred 4:3 area of the window
+    p3d::stack->Scale( p3d::GetDesignScaleX(), p3d::GetDesignScaleY(), 1.0f );
 
 // MIKE IMPROVE : This will make the display look good, but this is ridiculous
 #ifdef SCREEN_SCALING_HACK
@@ -275,6 +290,10 @@ void FeScreen::DisplayForeground()
     p3d::pddi->PushState( PDDI_STATE_VIEW );
     p3d::pddi->EnableZBuffer( false );
 
+    // Linux port: only the page is visible, as on a 4:3 screen (some elements wait just off the page)
+    pddiRect pageRect = p3d::GetDesignRect();
+    p3d::pddi->SetScissor( &pageRect );
+
     float aspect = static_cast<float>( FeApp::GetInstance()->GetScreenWidth() ) /
                    static_cast<float>( FeApp::GetInstance()->GetScreenHeight() );
 
@@ -284,6 +303,9 @@ void FeScreen::DisplayForeground()
     //p3d::pddi->SetAlphaRef( 1 / 127.0f );
     p3d::stack->Push();
     p3d::stack->LoadIdentity();
+
+    // Linux port: the 640x480 page goes in the largest centred 4:3 area of the window
+    p3d::stack->Scale( p3d::GetDesignScaleX(), p3d::GetDesignScaleY(), 1.0f );
 
 // MIKE IMPROVE : This will make the display look good, but this is ridiculous
 #ifdef SCREEN_SCALING_HACK

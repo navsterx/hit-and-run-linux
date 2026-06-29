@@ -335,6 +335,7 @@ MEMTRACK_PUSH_GROUP( "CGUIScreenMainMenu" );
 #ifdef RAD_WIN32
         tvFrame->ScaleAboutCenter( 1.03f );
 #endif
+        tvFrame->SetStretchToWindow( true );    // Linux port: cover a widescreen window (3D room behind is full width)
     }
 MEMTRACK_POP_GROUP( "CGUIScreenMainMenu" );
 }
@@ -1427,6 +1428,11 @@ CGuiScreenIntroTransition::CGuiScreenIntroTransition
     pPage = m_pScroobyScreen->GetPage( "TVFrame" );
     rAssert( pPage );
     m_tvFrame = pPage->GetLayer( "TVFrame" );
+    Scrooby::Sprite* tvFrame = pPage->GetSprite( "TVFrame" );
+    if( tvFrame != NULL )
+    {
+        tvFrame->SetStretchToWindow( true );    // Linux port: cover a widescreen window
+    }
 
     // 3D FE Gags
     //

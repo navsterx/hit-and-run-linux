@@ -66,6 +66,7 @@ public:
     virtual void Reset();
     virtual void Display();
     virtual void ResizeToBoundingBox();
+    virtual void SetStretchToWindow( bool stretch ) { mStretchToWindow = stretch; }
 
 #ifdef BITMAP_TEXT_SUPPORT
     // display/render bitmap text
@@ -128,6 +129,7 @@ protected:
     int mIndex;
     rVector<PascalCString*> mAliases;
     tSprite* mSprite;
+    bool mStretchToWindow;
 };
 
 #endif
