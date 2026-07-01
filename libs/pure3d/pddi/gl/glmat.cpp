@@ -46,6 +46,7 @@ pddiShadeIntTable pglMat::intTable[] =
 pddiShadeFloatTable pglMat::floatTable[] = 
 {
     {PDDI_SP_SHININESS , SHADE_FLOAT(&pglMat::SetShininess)},
+    {PDDI_SP_ALPHACOMPARE_THRESHOLD , SHADE_FLOAT(&pglMat::SetAlphaRef)},   // Linux port: as the D3D8 pddi
     {PDDI_SP_NULL , NULL}
 };
 
@@ -144,6 +145,9 @@ pglMat::pglMat(pglContext* c)
         texEnv[i].alphaTest = false;
         texEnv[i].alphaCompareMode = PDDI_COMPARE_GREATER;
         texEnv[i].alphaBlendMode = PDDI_BLEND_NONE;
+        // uninit fix (Linux port): glAlphaFunc got leftover memory as the cut-off, so alpha-tested objects
+        // (fences, grated ramps) vanished when it was >= 1 or NaN. 0.5 is the D3D8 pddi's default.
+        texEnv[i].alphaRef = 0.5f;
     }
     texEnv[0].enabled = true;
     pass = 0;
@@ -249,7 +253,7 @@ void pglMat::SetAlphaCompare(int compare)
 
 void pglMat::SetAlphaRef(float ref) 
 {
-    texEnv[pass].alphaRef = ref;
+    texEnv[pass].alphaRef = ref > 0.0f ? (ref < 1.0f ? ref : 1.0f) : 0.0f;  // clamped as in the D3D8 pddi
 }
 
 int pglMat::CountDevPasses(void) 

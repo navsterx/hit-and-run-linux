@@ -3,8 +3,10 @@
 Port of the original 2003 source to 32-bit Linux with SDL2 + OpenGL. The untouched original dump is at
 `~/Documents/Decomp/hitnrun_source/game` (never modify it). This repo holds only the files the build uses
 (sources, included headers, the VS project files `gen_cmake.py` reads, and the Win32 originals it swaps for Linux ones).
-Status (2026-10-12): builds, links, boots, loads Level 1 and renders gameplay with correct colours.
-Sound plays through an SDL2 software mixer (no reverb); Bink movies play via FFmpeg; force feedback is absent.
+Status (2026-10-14): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
+dialogue and movies, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
+Missing: EAX reverb, force feedback. `README.md` has the user-facing status checklist; `RUST.md` holds notes for a
+possible future Rust/Bevy reimplementation (not started).
 
 The source is leaked/proprietary: keep everything private and use game data from your own copy.
 
@@ -20,6 +22,8 @@ port/                      everything added for the port
   syntax_survey.py         g++ -fsyntax-only over every source, groups first errors
   check.py FILE...         syntax-check files with their target's exact flags
   run.sh [secs] [args]     rebuild + run under gdb from the run dir, print backtrace on crash
+  play.sh --data DIR       build if needed, set up the run dir from DIR (game data), start the game normally
+                           (--debug, --no-build; extra args go to the game)
   compat/                  force-included msvc_compat.h, types-only windows.h, crtdbg.h, dinput.h,
                            win32_threads.* (threads/sync/fibers/timers on POSIX), win32_misc.* (MessageBox),
                            pddi_heap.cpp (renderer's private heap)
@@ -27,8 +31,13 @@ build-linux/               release build (RAD_RELEASE)     cmake -B build-linux 
 build-linux-debug/         debug build (RAD_DEBUG: asserts + Radical's debug output)   -DSHAR_RAD_DEBUG=ON
 build-linux-audit/         -DSHAR_UNINIT_AUDIT=ON -DCMAKE_BUILD_TYPE=Release: all warnings on; grep -Wuninitialized /
                            -Wmaybe-uninitialized (2 left 2026-10-13, both false positives: actordsg.cpp, opticlensflare.cpp)
-run/                      run dir (git-ignored): symlinks to hitnrun_source/game/cd/PC data, private simpsons.ini/Save1-4
+run/                      run dir (git-ignored): symlinks to game data, private simpsons.ini/Save1-4 (play.sh sets it
+                           up; currently the user's retail copy). For experiments use a separate run dir in the
+                           scratchpad (SHAR_RUN=...) with its own ini, e.g. display=window, resolution=1280x720
 ```
+
+Remote: `origin` = github.com/zeropaulsy/simpsons-hit-and-run-recomp (private; must stay private). Commit as
+`zeropaulsy <13328895+zeropaulsy@users.noreply.github.com>`. Pushing needs the user's credentials (they push themselves).
 
 ## Commands
 
@@ -40,6 +49,11 @@ SHAR_SHOT_EVERY=10 ...                    # renderer saves shot_NNN.png every 10
 SHAR_ASSERT_ABORT=1 ...                   # make failed asserts abort instead of log-and-ignore
 __GLX_VENDOR_LIBRARY_NAME=mesa LIBGL_ALWAYS_SOFTWARE=1 MESA_DEBUG=1 ...   # Mesa reports GL errors
 python3 port/syntax_survey.py; python3 port/check.py code/foo.cpp
+srr2 skipfe                               # straight into Level 1; `skipfe l7 m3` = level 7 mission 3 (index from
+                                          # MISSION_TITLE_L<l>_M<m> in art/frontend/scrooby2/resource/txtbible/srr2.txt;
+                                          # races can't be started this way). l7 m3 (Pocket Protector) starts outdoors.
+SHAR_KEY_SCRIPT="17@30000-60000,..."      # scripted input; the retail ini binds Action to E (18), menus take Enter (28)
+SHAR_FILL_ALLOC=0xFF / SHAR_FILL_PDDI=0xFF  # fill new game / renderer allocations to expose uninitialised reads
 ```
 
 ## Platform model
@@ -102,6 +116,20 @@ python3 port/syntax_survey.py; python3 port/check.py code/foo.cpp
   `FePure3dObject` (main-menu room) fills the window, smaller ones stay in their 4:3 box; the front end's TV frame
   sprite opts in to stretching over the window (`Scrooby::Sprite::SetStretchToWindow`). The GL display follows the
   window size each swap. Test resizing with `SHAR_RESIZE_SCRIPT="WxH@ms,..."`.
+- **The GL pddi had never been finished against D3D8 behaviour** (the shipped game used pddidx8). Fixed so far:
+  `SetColourWrite` was missing (masks drawn with colour off, e.g. the HUD map's round "hole", showed black);
+  `glClear` honours write masks while D3D's Clear does not (`pglContext::Clear` opens them); `alphaRef` was never
+  initialised and `PDDI_SP_ALPHACOMPARE_THRESHOLD` not handled, so alpha-tested objects (chain-link fences, grated
+  ramps) vanished per session while their collision stayed (default 0.5, clamped, as `dx8/shaders/shader.cpp`).
+  When something renders wrong, compare with the D3D8 pddi in the original dump (`libs/pure3d/pddi/dx8`).
+- **Retail PC data differs from the dump's**: music split into `music00-03.rcf` (registered on PC, slot count 10 =
+  loading manager's max); dialogue is Radical ADPCM ("RADP"), which the game never decoded outside radmusic because
+  it passes a PCM format for every stream: `radSoundRsdFileDataSource` now always reads the header and decodes RADP
+  to PCM; some copies replace logo movies with tiny Ogg files, so `BinkOpen` rejects non-Bink files (FFmpeg played
+  them at 1280x720 and overflowed the 9-tile movie renderer).
+- **Render tree (DSG) arrays**: `SwapArray::Add` wrote past the end when full in release builds; it now refuses,
+  and `WorldScene` prints `DSG: ...` lines for objects it cannot place/remove/move (an object missing from the tree
+  is invisible but keeps its collision). None seen so far.
 - Boot movies only play in release builds (`SHOW_MOVIES` needs `RAD_RELEASE`, `bootupcontext.cpp`): test them with
   `build-linux`, not the debug build.
 - radcore's `radoptions.hpp` enables debug comm / watcher / memory monitor in debug builds: off on Linux.
@@ -115,4 +143,11 @@ python3 port/syntax_survey.py; python3 port/check.py code/foo.cpp
 3. (done 2026-10-13) Movies: Bink via FFmpeg, see platform model. Clock is wall time; audio decoded ~0.5 s ahead.
 4. Force feedback via SDL haptics/rumble (controller output points).
 5. Verify input in play (keyboard DIK mapping, mouse look via relative mode, gamepads).
-6. Release build (`build-linux`) should be re-tested; 64-bit later; modern GL later.
+6. (done 2026-10-14) Release build used throughout testing. 64-bit later (a -m64 syntax survey found ~80
+   pointer-to-int casts, ~35 int-to-pointer casts; fixed-size game heaps would need enlarging); modern GL later.
+7. (2026-10-14) Missing fences/ramps in Level 7: alphaRef fix above; confirmed HUD fix in play, fences/ramps not
+   yet confirmed by the user.
+8. `SHAR_FILL_ALLOC=0xFF` changes game behaviour (Level 1 started in a different state): more uninitialised reads
+   in game code remain. Worth a hunt (fill 0x00 vs 0xFF, compare).
+9. Widescreen not yet verified: mouse hotspots in non-4:3 windows, coins flying to the HUD, fullscreen at
+   widescreen resolutions.

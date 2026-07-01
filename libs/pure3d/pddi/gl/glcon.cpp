@@ -155,7 +155,17 @@ void pglContext::Clear(unsigned bufferMask)
                      float(state.viewState->clearColour.Blue())/255.0f,
                      float(state.viewState->clearColour.Alpha())/255.0f);
     glClearStencil(state.viewState->clearStencil);
+
+    // Linux port: Direct3D's Clear ignores the write masks; glClear honours them, so a clear while colour,
+    // depth or stencil writes are off silently did nothing. Open the masks for the clear, then restore them.
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDepthMask(GL_TRUE);
+    glStencilMask(~0u);
     glClear(myClearMask);
+    glColorMask(state.renderState->redWrite, state.renderState->greenWrite,
+                state.renderState->blueWrite, state.renderState->alphaWrite);
+    glDepthMask(state.renderState->zWrite);
+    glStencilMask(state.stencilState->writeMask);
 }
 
 void pglContext::SetupHardwareProjection(void)
@@ -769,6 +779,13 @@ void pglContext::SetZWrite(bool b)
 {
     pddiBaseContext::SetZWrite(b);
     glDepthMask(b);
+}
+
+// Linux port: was missing, so masks drawn with colour writes off (e.g. the HUD map's round "hole") appeared
+void pglContext::SetColourWrite(bool red, bool green, bool blue, bool alpha)
+{
+    pddiBaseContext::SetColourWrite(red, green, blue, alpha);
+    glColorMask(red, green, blue, alpha);
 }
 
 void pglContext::SetZBias(float bias)

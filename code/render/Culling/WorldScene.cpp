@@ -31,6 +31,11 @@
 #include <worldsim/character/character.h>
 #include <pddi/pdditype.hpp>
 
+// Linux port: report DSG (render tree) failures that release builds hid: an object that is not in the tree is
+// never drawn, though its collision still works
+#include <stdio.h>
+#define DSG_REPORT( ... ) fprintf( stderr, "DSG: " __VA_ARGS__ )
+
 #ifdef DEBUGWATCH
 #include <simcollision/collisiondisplay.hpp>
 #include <simcollision/collisionmanager.hpp>
@@ -613,6 +618,7 @@ void WorldScene::Move( rmt::Box3D& irOldBBox, IEntityDSG* ipEDSG )
             return;
     }
 
+   DSG_REPORT("Move: can't find %s\n", ipEDSG->GetName());
    rTunePrintf("Move: Can't find ipEDSG: %s, which needs to be moved in the DSG\n", ipEDSG->GetName());
 //   rAssert(false);
 }
@@ -761,6 +767,7 @@ void WorldScene::Remove( IEntityDSG* ipEDSG )
          return;
       }
    }
+   DSG_REPORT("Remove: can't find %s\n", ipEDSG->GetName());
    rTunePrintf("Remove: Can't find ipEDSG: %s, which needs to be removed in the DSG\n", ipEDSG->GetName());
    rAssert(false);
 }
@@ -1939,7 +1946,10 @@ void WorldScene::Place( IntersectDSG* ipIntersectDSG )
    //mStaticTreeWalker.Place( (ISpatialProxyAA&)DrawableSP, mStaticEntities[i] );
    //mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP).mIntersectElems.Add(ipIntersectDSG);
    SpatialNode* pSpatialNode = &(mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP));
-   pSpatialNode->mIntersectElems.Add(ipIntersectDSG);
+   if( !pSpatialNode->mIntersectElems.Add(ipIntersectDSG) )
+   {
+       DSG_REPORT( "no room for intersect %s (node full: %d)\n", ipIntersectDSG->GetName(), pSpatialNode->mIntersectElems.mSize );
+   }
    ipIntersectDSG->mpSpatialNode = pSpatialNode;
 }
 //////////////////////////////////////////////////////////////////////////
@@ -1968,6 +1978,7 @@ void WorldScene::Place(    StaticEntityDSG*  ipStaticEntity )
        pSpatialNode = &(mStaticTreeWalker.rIthNode(0));
        if( ! pSpatialNode->mSEntityElems.Add(ipStaticEntity) )
        {
+           DSG_REPORT( "no room for static entity %s, even in the root node\n", ipStaticEntity->GetName() );
            rTuneAssert(false);
        }
        else
@@ -2000,7 +2011,10 @@ void WorldScene::Place(      StaticPhysDSG*    ipStaticPhys )
    //mStaticTreeWalker.Place( (ISpatialProxyAA&)DrawableSP, mStaticEntities[i] );
    //mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP).mSPhysElems.Add(ipStaticPhys);
    SpatialNode* pSpatialNode = &(mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP));
-   pSpatialNode->mSPhysElems.Add(ipStaticPhys);
+   if( !pSpatialNode->mSPhysElems.Add(ipStaticPhys) )
+   {
+       DSG_REPORT( "no room for static phys %s (node full: %d)\n", ipStaticPhys->GetName(), pSpatialNode->mSPhysElems.mSize );
+   }
    ipStaticPhys->mpSpatialNode = pSpatialNode;
 
 }
@@ -2029,6 +2043,7 @@ void WorldScene::Place( DynaPhysDSG*      ipDynaPhys )
        pSpatialNode = &(mStaticTreeWalker.rIthNode(0));
        if( ! pSpatialNode->mDPhysElems.Add(ipDynaPhys) )
        {
+           DSG_REPORT( "no room for dyna phys %s, even in the root node\n", ipDynaPhys->GetName() );
            rTuneAssert(false);
        }
        else
@@ -2060,7 +2075,10 @@ void WorldScene::Place( FenceEntityDSG*      ipFence )
    
    //mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP).mFenceElems.Add(ipFence);
    SpatialNode* pSpatialNode = &(mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP));
-   pSpatialNode->mFenceElems.Add(ipFence);
+   if( !pSpatialNode->mFenceElems.Add(ipFence) )
+   {
+       DSG_REPORT( "no room for fence %s (node full: %d)\n", ipFence->GetName(), pSpatialNode->mFenceElems.mSize );
+   }
    ipFence->mpSpatialNode = pSpatialNode;
 }
 //////////////////////////////////////////////////////////////////////////
@@ -2088,6 +2106,7 @@ void WorldScene::Place( AnimCollisionEntityDSG* ipAnimColl )
        pSpatialNode = &(mStaticTreeWalker.rIthNode(0));
        if( ! pSpatialNode->mAnimCollElems.Add(ipAnimColl) )
        {
+           DSG_REPORT( "no room for anim collision %s, even in the root node\n", ipAnimColl->GetName() );
            rTuneAssert(false);
        }
        else
@@ -2128,6 +2147,7 @@ void WorldScene::Place( AnimEntityDSG* ipAnim )
        pSpatialNode = &(mStaticTreeWalker.rIthNode(0));
        if( ! pSpatialNode->mAnimElems.Add(ipAnim) )
        {
+           DSG_REPORT( "no room for anim %s, even in the root node\n", ipAnim->GetName() );
            rTuneAssert(false);
        }
        else
@@ -2156,7 +2176,10 @@ void WorldScene::Place( TriggerVolume*           ipTriggerVolume )
    
    //mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP).mTrigVolElems.Add(ipTriggerVolume);
    SpatialNode* pSpatialNode = &(mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP));
-   pSpatialNode->mTrigVolElems.Add(ipTriggerVolume);
+   if( !pSpatialNode->mTrigVolElems.Add(ipTriggerVolume) )
+   {
+       DSG_REPORT( "no room for trigger volume (node full: %d)\n", pSpatialNode->mTrigVolElems.mSize );
+   }
    ipTriggerVolume->mpSpatialNode = pSpatialNode;
 }
 
@@ -2176,7 +2199,10 @@ void WorldScene::Place( RoadSegment*           ipRoadSegment )
    
    //mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP).mRoadSegmentElems.Add(ipRoadSegment);
    SpatialNode* pSpatialNode = &(mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP));
-   pSpatialNode->mRoadSegmentElems.Add(ipRoadSegment);
+   if( !pSpatialNode->mRoadSegmentElems.Add(ipRoadSegment) )
+   {
+       DSG_REPORT( "no room for road segment (node full: %d)\n", pSpatialNode->mRoadSegmentElems.mSize );
+   }
    ipRoadSegment->mpSpatialNode = pSpatialNode;
 }
 
@@ -2196,7 +2222,10 @@ void WorldScene::Place( PathSegment*           ipPathSegment )
    
    //mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP).mPathSegmentElems.Add(ipPathSegment);
    SpatialNode* pSpatialNode = &(mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP));
-   pSpatialNode->mPathSegmentElems.Add(ipPathSegment);
+   if( !pSpatialNode->mPathSegmentElems.Add(ipPathSegment) )
+   {
+       DSG_REPORT( "no room for path segment (node full: %d)\n", pSpatialNode->mPathSegmentElems.mSize );
+   }
    ipPathSegment->mpSpatialNode = pSpatialNode;
 }
 
@@ -2220,6 +2249,7 @@ bool WorldScene::IsPostTreeGen()
 }
 #include <render/Culling/SphereSP.h>
 #include <p3d/debugdraw.hpp>
+
 ////////////////////////////////////////////////////////////////////
 // TODO: Move this type of functionality elsewhere
 //       I think WorldScene Should just maintain the data interfaces

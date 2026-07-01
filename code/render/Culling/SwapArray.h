@@ -94,18 +94,25 @@ public:
       mUseSize += iCountSize;
    }
 
-   void Add( T& irVal )
+   // Linux port: refuse when full (as NodeSwapArray does) instead of writing past the end in release builds
+   bool Add( T& irVal )
    {
       ASSSERT(mUseSize<mSize);
+      if( mUseSize >= mSize )
+         return false;
       mpData[mUseSize] = irVal;
       mUseSize++;
+      return true;
    }
 
-   void Add( const T& irVal )
+   bool Add( const T& irVal )
    {
       ASSSERT(mUseSize<mSize);
+      if( mUseSize >= mSize )
+         return false;
       mpData[mUseSize] = irVal;
       mUseSize++;
+      return true;
    }
 
    T& operator[]( int iIndex )

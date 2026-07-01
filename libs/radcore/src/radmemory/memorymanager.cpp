@@ -477,6 +477,24 @@ inline void * radMemoryAllocSearch( unsigned int numberOfBytes, unsigned int ali
     return pMemory;
 }
 
+#ifdef RAD_LINUX
+// debug (Linux port): SHAR_FILL_ALLOC=<byte> fills every new allocation with that byte, to expose reads of
+// uninitialised memory (MSVC builds often happened to see zeros)
+static void FillNewAllocation( void* pMem, unsigned int numberOfBytes )
+{
+    static int fill = -2;
+    if( fill == -2 )
+    {
+        const char* e = getenv( "SHAR_FILL_ALLOC" );
+        fill = e ? (int) ( strtol( e, NULL, 0 ) & 0xff ) : -1;
+    }
+    if( fill >= 0 && pMem != NULL )
+    {
+        memset( pMem, fill, numberOfBytes );
+    }
+}
+#endif
+
 //============================================================================
 // ::radMemoryAlloc
 //============================================================================
@@ -553,6 +571,9 @@ void * radMemoryAlloc( radMemoryAllocator allocator, unsigned int numberOfBytes 
 
     CheckForOutOfMemory( pMem, numberOfBytes, allocator );
     LEAK_DETECTION_ADD_ALLOCATION( pMem, numberOfBytes, allocator );
+#ifdef RAD_LINUX
+    FillNewAllocation( pMem, numberOfBytes );
+#endif
     return pMem;
 }
 
@@ -608,6 +629,9 @@ void * radMemoryAllocAligned
 
     CheckForOutOfMemory( pMem, numberOfBytes, allocator );
     LEAK_DETECTION_ADD_ALLOCATION( pMem, numberOfBytes, allocator );
+#ifdef RAD_LINUX
+    FillNewAllocation( pMem, numberOfBytes );
+#endif
     return pMem;
 }
 

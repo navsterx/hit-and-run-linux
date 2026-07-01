@@ -52,6 +52,7 @@ public :
     void EnableZBuffer(bool enable);
     void SetZCompare(pddiCompareMode compareMode);
     void SetZWrite(bool);
+    void SetColourWrite(bool red, bool green, bool blue, bool alpha);   // Linux port: was not implemented
     void SetZBias(float bias);
     void SetZRange(float n, float f);
 
