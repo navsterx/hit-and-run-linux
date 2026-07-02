@@ -24,14 +24,17 @@ movies. It works with the retail PC release's data as well as the data from the 
   - [x] multithreaded loading via shared GL contexts (Direct3D 8 was multithreaded, GL is not)
   - [x] texture clamping matching Direct3D (no dark seams)
   - [x] vsync plus a 60 fps cap (physics and AI break at thousands of fps)
+  - [x] colour-write masks and alpha testing matching Direct3D (HUD map, see-through fences and ramps)
 - [x] **Gameplay** — loads levels and plays; uninitialised reads that were zero by luck under MSVC fixed
-- [x] **Input** — keyboard and mouse (mouse look via relative mode), gamepads through SDL
+- [x] **Input** — keyboard and mouse (mouse look via relative mode), wired and wireless gamepads through SDL;
+  verified in play
 - [x] **Audio** — software mixer on SDL audio with 3D positioning: sound effects, music, dialogue
 - [x] **Movies** — Bink movies decoded with FFmpeg, audio through the game's mixer
 - [x] **Retail PC data** — split music archives (`music00`–`03.rcf`), Radical ADPCM dialogue,
   logo movies replaced by stubs in some copies
 - [x] **Any aspect ratio** — 16:9, 16:10, ultrawide and narrower windows; the 3D view widens (Hor+) while
-  the 4:3 UI stays centred; letterbox bars, fades and the front-end TV frame span the window
+  the 4:3 UI stays centred; letterbox bars, fades and the front-end TV frame span the window; verified in play,
+  including extreme ratios
 - [x] **Resizable window** — the game adapts live to any window size
 - [x] **Launcher** — `port/play.sh` builds if needed, sets up the run directory and starts the game
 
@@ -39,9 +42,6 @@ movies. It works with the retail PC release's data as well as the data from the 
 
 - [ ] **EAX reverb** — environmental effects are ignored (aux sends are not mixed)
 - [ ] **Force feedback** — controller rumble through SDL haptics
-- [ ] **Input verification** — check every keyboard binding, the controls menu and a range of gamepads in play
-- [ ] **Widescreen checks** — clicking menu items with the mouse in a non-4:3 window, coins flying to the
-  HUD counter, fullscreen at widescreen resolutions
 - [ ] **Fullscreen** — borderless fullscreen at the desktop's native resolution
 - [ ] **Resolution menu** — list arbitrary/native resolutions, not just the fixed set
 - [ ] **Full playthrough** — all seven levels, missions, races, bonus game, cutscenes, saving and loading

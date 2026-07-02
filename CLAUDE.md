@@ -142,12 +142,12 @@ SHAR_FILL_ALLOC=0xFF / SHAR_FILL_PDDI=0xFF  # fill new game / renderer allocatio
    Test without speakers: `SDL_AUDIODRIVER=disk SDL_DISKAUDIOFILE=out.raw` (float32 stereo, 48 kHz).
 3. (done 2026-10-13) Movies: Bink via FFmpeg, see platform model. Clock is wall time; audio decoded ~0.5 s ahead.
 4. Force feedback via SDL haptics/rumble (controller output points).
-5. Verify input in play (keyboard DIK mapping, mouse look via relative mode, gamepads).
+5. (done 2026-10-14) Input verified in play by the user: keyboard, mouse, wired and wireless controllers.
 6. (done 2026-10-14) Release build used throughout testing. 64-bit later (a -m64 syntax survey found ~80
    pointer-to-int casts, ~35 int-to-pointer casts; fixed-size game heaps would need enlarging); modern GL later.
-7. (2026-10-14) Missing fences/ramps in Level 7: alphaRef fix above; confirmed HUD fix in play, fences/ramps not
-   yet confirmed by the user.
+7. (done 2026-10-14) Missing fences/ramps in Level 7: alphaRef fix above; HUD and level transparency confirmed
+   in play by the user.
 8. `SHAR_FILL_ALLOC=0xFF` changes game behaviour (Level 1 started in a different state): more uninitialised reads
    in game code remain. Worth a hunt (fill 0x00 vs 0xFF, compare).
-9. Widescreen not yet verified: mouse hotspots in non-4:3 windows, coins flying to the HUD, fullscreen at
-   widescreen resolutions.
+9. (done 2026-10-14) Widescreen verified by the user: scales correctly at all ratios, including extreme ones.
+   Still open: borderless fullscreen at native resolution, a resolution menu listing native/arbitrary sizes.
