@@ -479,9 +479,15 @@ inline void * radMemoryAllocSearch( unsigned int numberOfBytes, unsigned int ali
 
 #ifdef RAD_LINUX
 // debug (Linux port): SHAR_FILL_ALLOC=<byte> fills every new allocation with that byte, to expose reads of
-// uninitialised memory (MSVC builds often happened to see zeros)
+// uninitialised memory (MSVC builds often happened to see zeros). Under valgrind every new allocation is also
+// marked undefined, so memcheck reports uninitialised reads even when the heap hands out reused memory.
+#include <valgrind/memcheck.h>
 static void FillNewAllocation( void* pMem, unsigned int numberOfBytes )
 {
+    if( pMem != NULL )
+    {
+        VALGRIND_MAKE_MEM_UNDEFINED( pMem, numberOfBytes );
+    }
     static int fill = -2;
     if( fill == -2 )
     {

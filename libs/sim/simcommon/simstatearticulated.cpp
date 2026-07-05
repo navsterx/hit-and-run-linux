@@ -799,6 +799,10 @@ void SimStateArticulated::DebugDisplay(int debugIndex)
 SimStateArticulated::JointState::JointState()
 {
     mVelocityUpdated = true;
+    // uninit fix (Linux port): UpdateHasMoved() reads the previous transform before the first StoreJointState()
+    mJoint = NULL;
+    memset( &mPreviousTransform, 0, sizeof( mPreviousTransform ) );
+    mPreviousDt = 0.0f;
 }
 
 SimStateArticulated::JointState::~JointState()

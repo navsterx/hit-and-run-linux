@@ -45,6 +45,7 @@
 StaticEntityDSG::StaticEntityDSG()
 {
    mpDrawstuff = NULL;
+   mIsGeo = NOT_GEO; // uninit fix (Linux port): objects not built by the loaders (e.g. animated icons) never set it
 }
 //========================================================================
 // StaticEntityDSG::

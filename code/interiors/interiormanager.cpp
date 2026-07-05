@@ -2026,12 +2026,17 @@ void InteriorManager::LoadLevelGags(const rmt::Vector& startPos, bool initial)
 //============================================================================== 
 InteriorManager::InteriorManager()
 :
+mState( NONE ),                 // uninit fix (Linux port): these were zero by luck under MSVC
 mEntryRequested( false ),
 mInteriorLoaded( false ),
+mLoadedGags( false ),           // uninit fix (Linux port): garbage skipped loading the gag NISes
 mLoadedInteriorUID( 0 ),
 mCurrentInteriorUID( 0 ),
+mSection( 0 ),
 mCollectionEffect(0),
 mIn (false),
+mExitPos( 0.0f, 0.0f, 0.0f ),
+mExitFacing( 0.0f ),
 mBindingCount( 0 ),
 mGagCount(0),
 mBuildingGag(false),

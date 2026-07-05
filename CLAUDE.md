@@ -24,9 +24,11 @@ port/                      everything added for the port
   run.sh [secs] [args]     rebuild + run under gdb from the run dir, print backtrace on crash
   play.sh --data DIR       build if needed, set up the run dir from DIR (game data), start the game normally
                            (--debug, --no-build; extra args go to the game)
+  memcheck.sh [secs] [args]  run under valgrind memcheck (fetched/set up on first use, no root) and summarise
+                           uninitialised reads by origin (memcheck_summary.py); see lessons
   compat/                  force-included msvc_compat.h, types-only windows.h, crtdbg.h, dinput.h,
                            win32_threads.* (threads/sync/fibers/timers on POSIX), win32_misc.* (MessageBox),
-                           pddi_heap.cpp (renderer's private heap)
+                           pddi_heap.cpp (renderer's private heap), valgrind/ (client-request headers)
 build-linux/               release build (RAD_RELEASE)     cmake -B build-linux -G Ninja
 build-linux-debug/         debug build (RAD_DEBUG: asserts + Radical's debug output)   -DSHAR_RAD_DEBUG=ON
 build-linux-audit/         -DSHAR_UNINIT_AUDIT=ON -DCMAKE_BUILD_TYPE=Release: all warnings on; grep -Wuninitialized /
@@ -54,6 +56,7 @@ srr2 skipfe                               # straight into Level 1; `skipfe l7 m3
                                           # races can't be started this way). l7 m3 (Pocket Protector) starts outdoors.
 SHAR_KEY_SCRIPT="17@30000-60000,..."      # scripted input; the retail ini binds Action to E (18), menus take Enter (28)
 SHAR_FILL_ALLOC=0xFF / SHAR_FILL_PDDI=0xFF  # fill new game / renderer allocations to expose uninitialised reads
+SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1 (~4 min to playable), summary at end
 ```
 
 ## Platform model
@@ -89,7 +92,12 @@ SHAR_FILL_ALLOC=0xFF / SHAR_FILL_PDDI=0xFF  # fill new game / renderer allocatio
   interfaces (true so far).
 - **Uninitialised reads were zero by luck under MSVC**: e.g. `BipedCharacterMappable::GetDirection` never set
   `direction.y`, so in mouse-look mode Homer ran on his own. Fixed sites are marked `// uninit fix (Linux port)`;
-  rerun the audit build after porting new code. Input debug env vars: `SHAR_INPUT_LOG`, `SHAR_NO_INPUT`,
+  rerun the audit build and `port/memcheck.sh` after porting new code. Fix by initialising to zero (what the
+  shipped game effectively saw), not to what looks intended. Under valgrind every game heap / FBMemoryPool
+  allocation is marked undefined, so recycled memory counts too; valgrind must not intercept the game's operator
+  new (`--soname-synonyms=somalloc=nouserintercepts`) and needs an unstripped i386 ld.so (the script builds one).
+  To find which member is undefined, `VALGRIND_GET_VBITS` on the object plus `gdb -batch -ex "ptype /o Class"`
+  maps byte offsets to members. Origins follow copies: the bad member may be far from the reported use. Input debug env vars: `SHAR_INPUT_LOG`, `SHAR_NO_INPUT`,
   `SHAR_NO_MOUSE`, `SHAR_KEY_SCRIPT="dik@startms-endms,..."` (1000+n = mouse button n), `SHAR_FORCE_MOUSELOOK`.
 - **Texture row order**: both pddis' `Lock()` hand out a bottom-up view (negative pitch), except D3D8 skips that
   for DXT formats and copies blocks as-is. The software DXT decoder (`dxtn.cpp`) therefore delivers rows with
@@ -147,7 +155,9 @@ SHAR_FILL_ALLOC=0xFF / SHAR_FILL_PDDI=0xFF  # fill new game / renderer allocatio
    pointer-to-int casts, ~35 int-to-pointer casts; fixed-size game heaps would need enlarging); modern GL later.
 7. (done 2026-10-14) Missing fences/ramps in Level 7: alphaRef fix above; HUD and level transparency confirmed
    in play by the user.
-8. `SHAR_FILL_ALLOC=0xFF` changes game behaviour (Level 1 started in a different state): more uninitialised reads
-   in game code remain. Worth a hunt (fill 0x00 vs 0xFF, compare).
+8. (done 2026-10-14) Uninitialised-read hunt with memcheck: boot, Level 1, walking outdoors and the first mission
+   are clean (Character parent transforms/ground data, InteriorManager gag flag, TrafficAI state, Context state,
+   sim joint state and cloned articulated objects, DSG rank/geo flags). Level 1 now starts identically with
+   `SHAR_FILL_ALLOC=0x00` and `0xFF`. Not yet covered under memcheck: driving, interiors, later levels, races.
 9. (done 2026-10-14) Widescreen verified by the user: scales correctly at all ratios, including extreme ones.
    Still open: borderless fullscreen at native resolution, a resolution menu listing native/arbitrary sizes.

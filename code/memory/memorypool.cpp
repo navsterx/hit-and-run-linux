@@ -21,6 +21,9 @@
 // Project Includes
 //========================================
 #include <memory/memorypool.h>
+#ifdef RAD_LINUX
+#include <valgrind/memcheck.h>
+#endif
 
 //******************************************************************************
 //
@@ -190,6 +193,13 @@ void* FBMemoryPool::Allocate( size_t size )
 
     ++mCurrentAllocs;
 
+#ifdef RAD_LINUX
+    // debug (Linux port): under valgrind, recycled pool slots count as uninitialised like fresh heap memory
+    if( pMemory != NULL )
+    {
+        VALGRIND_MAKE_MEM_UNDEFINED( pMemory, mSize );
+    }
+#endif
 
 #ifndef RAD_RELEASE
 

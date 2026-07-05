@@ -175,7 +175,8 @@ void Context::Resume()
 // Return:      
 //
 //==============================================================================// 
-Context::Context()
+Context::Context() :
+    m_state( S_NONE ) // uninit fix (Linux port): read before Start() sets it
 {
 }
 

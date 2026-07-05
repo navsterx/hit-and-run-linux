@@ -512,6 +512,8 @@ private: // MEMBERS
     {
         CollisionData( void )
             :
+        mCollisionPosition( 0.0f, 0.0f, 0.0f ), // uninit fix (Linux port)
+        mCollisionNormal( 0.0f, 0.0f, 0.0f ),
         mCollisionDistance( 0.0f ),
         mpCollisionVolume( 0 )
         {

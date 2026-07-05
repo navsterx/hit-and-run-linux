@@ -390,6 +390,9 @@ mManaged(false)
     mLastInteriorLoadCheck = radTimeGetMicroseconds64();
 
     mPrevSimTransform.Identity();
+    // uninit fix (Linux port): SetPuppet() (called before Init()) transforms the position by these
+    mParentTransform.Identity();
+    mInvParentTransform.Identity();
 
     mTranslucent = true;
 
@@ -400,6 +403,11 @@ mManaged(false)
     mRealGroundNormal.Set( 0.0f, 0.0f, 0.0f );
 
     mLastGoodPosOverStatic.Set( 0.0f, 0.0f, 0.0f );
+
+    // uninit fix (Linux port): read before first set (NPC ground height, collision positions); zero as under MSVC
+    mGroundY = 0.0f;
+    mCollidedThisFrame = false;
+    lameAssPosition.Set( 0.0f, 0.0f, 0.0f );
 
     unsigned int i;
     for ( i = 0; i < MAX_ACTION_BUTTON_HANDLERS; ++i )

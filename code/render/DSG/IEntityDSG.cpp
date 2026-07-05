@@ -56,6 +56,7 @@ bool IEntityDSG::msDeletionsSafe = false;
 //
 //========================================================================
 IEntityDSG::IEntityDSG() :
+    mRank(0.0f), // uninit fix (Linux port)
     mTranslucent(0),
     mpSpatialNode(NULL)
 {

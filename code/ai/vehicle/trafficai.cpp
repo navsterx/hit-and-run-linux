@@ -87,6 +87,7 @@ const float SWERVE_HEADLIGHT_SCALE = 1.0f;
 TrafficAI::TrafficAI( Vehicle* vehicle ) :
     AiVehicleController( vehicle )
 {
+    mState = DEAD; // uninit fix (Linux port): Init() reads it (zero = DEAD under MSVC)
     Init();
 }
 

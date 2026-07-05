@@ -302,6 +302,7 @@ void ArticulatedPhysicsObject::SetClone(ArticulatedPhysicsObject* clone, SimStat
     }
     
     clone->mTimeSinceComputeInertiaMatrix = 0.0f;
+    clone->mTimeComputeInertiaMatrix = 0.0f; // uninit fix (Linux port): never copied; zero (as under MSVC) = every step
     clone->mPose = static_cast<SimStateArticulated*>(inSimState)->GetPose();
     clone->mPose->AddRef();
 
@@ -318,6 +319,7 @@ void ArticulatedPhysicsObject::SetClone(ArticulatedPhysicsObject* clone, SimStat
     clone->mSelfCollisionCenter = NULL;
     clone->mSelfCollision = false;
     clone->mAllCacheEmpty = true;
+    clone->mImpulseReactionEnabled = mImpulseReactionEnabled; // uninit fix (Linux port): never copied
     mTimeStep = 0;
 }
 
