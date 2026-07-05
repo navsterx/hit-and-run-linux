@@ -65,6 +65,7 @@ public:
         return ((m_button[BUTTON_LEFT]==BUTTON_CLICKHOLD) ? m_hotSpotType : HOTSPOT_NONE);
     }
     bool IsRightButtonDown()            const { return (m_button[BUTTON_RIGHT]==BUTTON_CLICKHOLD); }
+    bool IsInGameMode()                 const { return m_bInGame && !m_bInGameOverride; } // Linux port
 
     void InitMouseCursor( tDrawable* pCursor );
     void SetClickable( bool bClickable ) { m_bClickable = bClickable; }

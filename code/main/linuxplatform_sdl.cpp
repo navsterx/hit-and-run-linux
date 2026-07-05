@@ -128,7 +128,21 @@ void Win32Platform::ShowTheCursor( bool show )
     if( mShowCursor != show )
     {
         mShowCursor = show;
-        SDL_ShowCursor( mShowCursor ? SDL_ENABLE : SDL_DISABLE );
+        // "Hidden" = a single pixel at alpha 1/255, not SDL_ShowCursor( SDL_DISABLE ) or a fully transparent
+        // cursor: XWayland treats both of those as hidden, and a hidden cursor keeps the pointer locked in the
+        // window after mouse-look (see radControllerSDLSetMouseLook)
+        static SDL_Cursor* s_blank = NULL;
+        if( s_blank == NULL )
+        {
+            SDL_Surface* pixel = SDL_CreateRGBSurfaceWithFormat( 0, 1, 1, 32, SDL_PIXELFORMAT_ARGB8888 );
+            if( pixel != NULL )
+            {
+                *(Uint32*) pixel->pixels = 0x01000000;
+                s_blank = SDL_CreateColorCursor( pixel, 0, 0 );
+                SDL_FreeSurface( pixel );
+            }
+        }
+        SDL_SetCursor( ( mShowCursor || s_blank == NULL ) ? SDL_GetDefaultCursor() : s_blank );
     }
 }
 
@@ -197,6 +211,15 @@ bool Win32Platform::PumpEvents()
                 if( pFEMouse )
                 {
                     pFEMouse->getCursor()->SetVisible( false );
+                }
+                break;
+
+            case SDL_WINDOWEVENT_ENTER:
+                // Win32 never showed the cursor again after WM_MOUSELEAVE (ClipCursor kept the pointer in the
+                // window); now that menus let it leave, bring the front-end cursor back when it returns
+                if( pFEMouse && !pFEMouse->IsInGameMode() )
+                {
+                    pFEMouse->getCursor()->SetVisible( true );
                 }
                 break;
             }

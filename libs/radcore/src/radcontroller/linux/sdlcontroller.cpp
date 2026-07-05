@@ -587,7 +587,12 @@ public:
             SDL_SetWindowGrab( w, on ? SDL_TRUE : SDL_FALSE );
             if ( on ) Recentre( w );
         }
-        if ( on ) SDL_ShowCursor( SDL_DISABLE );     // the front end hides it too and draws its own
+        // Only mouse-look truly hides the system cursor: XWayland then locks the pointer (its pointer-warp
+        // emulation, which the re-centring needs) and keeps it locked for as long as the cursor stays hidden,
+        // grab or not; it lets go only when the pointer leaves the window, and then puts it back where the last
+        // re-centre left it. Elsewhere the cursor stays "shown" as the near-invisible cursor
+        // Win32Platform::ShowTheCursor sets (the front end draws its own), which ends the lock straight away.
+        SDL_ShowCursor( on ? SDL_DISABLE : SDL_ENABLE );
     }
 
     void Recentre( SDL_Window* w )
