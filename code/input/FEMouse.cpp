@@ -1,4 +1,5 @@
 #include <input/FEMouse.h>
+#include <input/inputmanager.h>
 #include <presentation/gui/guimanager.h>
 #include <presentation/gui/guisystem.h>
 #include <presentation/gui/guiuserinputhandler.h>
@@ -310,9 +311,12 @@ void FEMouse::SetupInGameMode()
     m_pCursor->SetVisible( !ingame );
 
 #ifdef RAD_LINUX
-    // = the Win32 centre + ClipCursor below: hidden, confined pointer for mouse-look
+    // = the Win32 centre + ClipCursor below: hidden, confined pointer for mouse-look. Unlike Win32, the
+    // pointer is left free when mouse-look is off: gameplay then ignores the mouse (only PC_CAM reads it).
+    UserController* pController = GetInputManager() ? GetInputManager()->GetController( 0 ) : NULL;
+    bool mouseLook = ingame && pController != NULL && pController->IsMouseLookOn();
     if( !getenv( "SHAR_NO_MOUSE" ) && !getenv( "SHAR_NO_INPUT" ) )   // debug switch: do not capture the pointer
-        radControllerSDLSetMouseLook( ingame );
+        radControllerSDLSetMouseLook( mouseLook );
 #else
 
     if( ingame )

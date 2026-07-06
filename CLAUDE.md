@@ -142,6 +142,7 @@ SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1
   makes XWayland lock the pointer in the window until the cursor is shown, grab or not; it lets go only when the
   pointer first leaves, then snaps it back to the last warp position. Only mouse-look hides the cursor; menus use
   a 1-pixel alpha-1/255 cursor (`Win32Platform::ShowTheCursor`) so the pointer can leave (and the window be resized).
+  Gameplay only captures the pointer when mouse-look is on (`FEMouse::SetupInGameMode`; only PC_CAM reads the mouse).
 - Boot movies only play in release builds (`SHOW_MOVIES` needs `RAD_RELEASE`, `bootupcontext.cpp`): test them with
   `build-linux`, not the debug build.
 - radcore's `radoptions.hpp` enables debug comm / watcher / memory monitor in debug builds: off on Linux.
