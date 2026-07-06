@@ -6,3 +6,4 @@ port/*.log
 run/
 __pycache__/
 .git-accesstoken
+simpsons.sh
