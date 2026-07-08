@@ -124,6 +124,14 @@ SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1
   `FePure3dObject` (main-menu room) fills the window, smaller ones stay in their 4:3 box; the front end's TV frame
   sprite opts in to stretching over the window (`Scrooby::Sprite::SetStretchToWindow`). The GL display follows the
   window size each swap. Test resizing with `SHAR_RESIZE_SCRIPT="WxH@ms,..."`.
+- **Resolutions / fullscreen**: `Win32Platform::Resolution` values index a runtime table (`linuxplatform_sdl.cpp`):
+  the enum's ten entries first (values unchanged), then common PC sizes, the desktop size and any WxH read from
+  simpsons.ini. The display menu (`CGuiScreenDisplay::BuildResolutionList`) shows those that fit the desktop,
+  sorted, overwriting Display.pag's strings. Display Mode has a third value, Borderless (`display=borderless`,
+  `PDDI_DISPLAY_FULLSCREEN_DESKTOP`): fullscreen at the desktop size, resolution ignored. Full Screen
+  (`display=fullscreen`) is exclusive: `gldisplay.cpp` sets the closest display mode to the resolution (renders below
+  native, e.g. for speed; keep for a future Android port), leaving fullscreen first or the size does not change
+  under XWayland. The display's own mode list is not shown (XWayland reports ~35 emulated modes).
 - **The GL pddi had never been finished against D3D8 behaviour** (the shipped game used pddidx8). Fixed so far:
   `SetColourWrite` was missing (masks drawn with colour off, e.g. the HUD map's round "hole", showed black);
   `glClear` honours write masks while D3D's Clear does not (`pglContext::Clear` opens them); `alphaRef` was never
@@ -165,4 +173,4 @@ SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1
    sim joint state and cloned articulated objects, DSG rank/geo flags). Level 1 now starts identically with
    `SHAR_FILL_ALLOC=0x00` and `0xFF`. Not yet covered under memcheck: driving, interiors, later levels, races.
 9. (done 2026-10-14) Widescreen verified by the user: scales correctly at all ratios, including extreme ones.
-   Still open: borderless fullscreen at native resolution, a resolution menu listing native/arbitrary sizes.
+   Borderless fullscreen and the runtime resolution list added the same day.

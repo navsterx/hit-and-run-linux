@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include <radcontroller.hpp>
+#include <raddebug.hpp>
 #include <p3d/platform.hpp>
 #include <p3d/context.hpp>
 #include <input/inputmanager.h>
@@ -99,6 +100,113 @@ void Win32Platform::GetDesktopSize( int& width, int& height )
         width = 1024;
         height = 768;
     }
+}
+
+//==============================================================================
+// Resolution table
+//==============================================================================
+// Win32 offered a fixed list of mostly 4:3 sizes, checked against the adapter's modes. Here the list is built
+// at run time: the Resolution enum's entries first (their values stay valid), then common PC sizes and the
+// desktop size. The display menu shows the ones that fit the desktop, and any WxH in simpsons.ini is added.
+// The display's own mode list is not used: under XWayland it is a long list of emulated sizes, and neither
+// windows nor (borderless) fullscreen need a real mode. Fullscreen is borderless at the desktop size, so the resolution only sizes the window.
+namespace
+{
+    struct ResolutionSize { int w, h; };
+    ResolutionSize sResolutions[ Win32Platform::RES_TABLE_MAX + 1 ];
+    int sNumResolutions = 0;
+    bool sDesktopAdded = false;
+
+    int AddResolution( int w, int h )
+    {
+        for( int i = 0; i < sNumResolutions; i++ )
+        {
+            if( sResolutions[ i ].w == w && sResolutions[ i ].h == h )
+            {
+                return i;
+            }
+        }
+        if( sNumResolutions > Win32Platform::RES_TABLE_MAX )
+        {
+            return -1;
+        }
+        sResolutions[ sNumResolutions ].w = w;
+        sResolutions[ sNumResolutions ].h = h;
+        return sNumResolutions++;
+    }
+
+    void InitResolutions()
+    {
+        if( sNumResolutions == 0 )
+        {
+            // = Win32Platform::Resolution order
+            static const int enumSizes[][ 2 ] = { { 640, 480 }, { 800, 600 }, { 1024, 768 }, { 1152, 864 },
+                                                  { 1280, 1024 }, { 1600, 1200 }, { 1280, 720 }, { 1920, 1080 },
+                                                  { 2560, 1440 }, { 2560, 1600 } };
+            rAssert( sizeof( enumSizes ) / sizeof( enumSizes[ 0 ] ) == Win32Platform::NUM_RESOLUTIONS );
+            for( unsigned int i = 0; i < sizeof( enumSizes ) / sizeof( enumSizes[ 0 ] ); i++ )
+            {
+                AddResolution( enumSizes[ i ][ 0 ], enumSizes[ i ][ 1 ] );
+            }
+            static const int commonSizes[][ 2 ] = { { 1280, 800 }, { 1366, 768 }, { 1440, 900 }, { 1600, 900 },
+                                                    { 1680, 1050 }, { 1920, 1200 }, { 2560, 1080 }, { 3440, 1440 },
+                                                    { 3840, 2160 } };
+            for( unsigned int i = 0; i < sizeof( commonSizes ) / sizeof( commonSizes[ 0 ] ); i++ )
+            {
+                AddResolution( commonSizes[ i ][ 0 ], commonSizes[ i ][ 1 ] );
+            }
+        }
+        if( !sDesktopAdded && SDL_WasInit( SDL_INIT_VIDEO ) )
+        {
+            sDesktopAdded = true;
+            SDL_DisplayMode mode;
+            if( SDL_GetDesktopDisplayMode( 0, &mode ) == 0 )
+            {
+                AddResolution( mode.w, mode.h );
+            }
+        }
+    }
+}
+
+int Win32Platform::GetNumResolutions()
+{
+    InitResolutions();
+    return sNumResolutions;
+}
+
+Win32Platform::Resolution Win32Platform::FindResolution( int width, int height, bool add )
+{
+    InitResolutions();
+    for( int i = 0; i < sNumResolutions; i++ )
+    {
+        if( sResolutions[ i ].w == width && sResolutions[ i ].h == height )
+        {
+            return static_cast< Resolution >( i );
+        }
+    }
+    return static_cast< Resolution >( add ? AddResolution( width, height ) : -1 );
+}
+
+void Win32Platform::TranslateResolution( Resolution res, int& x, int& y )
+{
+    InitResolutions();
+    if( res >= 0 && res < sNumResolutions )
+    {
+        x = sResolutions[ res ].w;
+        y = sResolutions[ res ].h;
+    }
+    else
+    {
+        x = 640;
+        y = 480;
+    }
+}
+
+bool Win32Platform::IsResolutionSupported( Resolution res, int bpp ) const
+{
+    // any size works in a window, and fullscreen always uses the desktop's
+    InitResolutions();
+    return res >= 0 && res < sNumResolutions;
 }
 
 //==============================================================================

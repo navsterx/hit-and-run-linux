@@ -63,6 +63,17 @@ private:
 
     CGuiMenu* m_pMenu;
     bool      m_changedGamma;
+
+#ifdef RAD_LINUX
+    // Linux port: the resolution values come from Win32Platform's runtime table (sizes that fit the desktop,
+    // sorted), not Display.pag's fixed list
+    void BuildResolutionList();
+
+    enum { MAX_MENU_RESOLUTIONS = 64 };
+    int m_resolutions[ MAX_MENU_RESOLUTIONS ];  // menu value -> Win32Platform::Resolution
+    int m_numResolutions;
+    Scrooby::Text* m_pResolutionText;
+#endif
 };
 
 #endif // GUISCREENDISPLAY_H

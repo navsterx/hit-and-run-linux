@@ -63,7 +63,10 @@ public:
         Res_1920x1080,
         Res_2560x1440,
         Res_2560x1600,
-        NUM_RESOLUTIONS
+        NUM_RESOLUTIONS,
+        // Linux port: further values index the runtime resolution table (GetNumResolutions); this widens the
+        // enum's range to hold them
+        RES_TABLE_MAX = 63
     };
 
 public:
@@ -162,6 +165,18 @@ public:
     static bool PumpEvents();
     static void ShowGameWindow();
     static void GetDesktopSize( int& width, int& height );
+
+    // Resolutions: values index a runtime table, the enum's entries first (so they keep their meaning), then
+    // the desktop size, the display's modes and common PC sizes. FindResolution returns -1 if not found
+    // (add = false) or the table is full.
+    static int GetNumResolutions();
+    static Resolution FindResolution( int width, int height, bool add );
+
+    // Fullscreen kind: borderless at the desktop size, or exclusive (display switched to the resolution).
+    // Only meaningful while fullscreen; set it before SetResolution().
+    void SetBorderless( bool borderless ) { mBorderless = borderless; }
+    bool IsBorderless() const { return mBorderless; }
+    static void GetResolutionSize( Resolution res, int& x, int& y ) { TranslateResolution( res, x, y ); }
 private:
 #endif
 
@@ -185,6 +200,9 @@ private:
     Resolution mResolution;
     int mbpp;
     bool mFullscreen;
+#ifdef RAD_LINUX
+    bool mBorderless;
+#endif
     int mScreenWidth;
     int mScreenHeight;
 };

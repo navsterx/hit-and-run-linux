@@ -36,14 +36,15 @@ movies. It works with the retail PC release's data as well as the data from the 
   the 4:3 UI stays centred; letterbox bars, fades and the front-end TV frame span the window; verified in play,
   including extreme ratios
 - [x] **Resizable window** — the game adapts live to any window size
+- [x] **Fullscreen** — borderless at the desktop's native resolution, or exclusive at the chosen resolution
+- [x] **Resolution menu** — common PC sizes plus the desktop's own, filtered to what fits the screen;
+  any `WxH` set in `simpsons.ini` is accepted
 - [x] **Launcher** — `port/play.sh` builds if needed, sets up the run directory and starts the game
 
 ### To do
 
 - [ ] **EAX reverb** — environmental effects are ignored (aux sends are not mixed)
 - [ ] **Force feedback** — controller rumble through SDL haptics
-- [ ] **Fullscreen** — borderless fullscreen at the desktop's native resolution
-- [ ] **Resolution menu** — list arbitrary/native resolutions, not just the fixed set
 - [ ] **Full playthrough** — all seven levels, missions, races, bonus game, cutscenes, saving and loading
 - [ ] **64-bit build** — the code assumes 32-bit pointers in places
 - [ ] **Modern OpenGL** — replace the fixed-function GL 1.x renderer (core profile, shaders)

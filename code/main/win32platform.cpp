@@ -1073,10 +1073,30 @@ void Win32Platform::LoadConfig( ConfigString& config )
             else if( _stricmp( value, "fullscreen" ) == 0 )
             {
                 mFullscreen = true;
+#ifdef RAD_LINUX
+                mBorderless = false;
+            }
+            else if( _stricmp( value, "borderless" ) == 0 )
+            {
+                mFullscreen = true;
+                mBorderless = true;
+#endif
             }
         }
         else if( _stricmp( property, "resolution" ) == 0 )
         {
+#ifdef RAD_LINUX
+            // any size, not just the menu's list
+            int w = 0, h = 0;
+            if( sscanf( value, "%dx%d", &w, &h ) == 2 && w >= 320 && h >= 240 && w <= 16384 && h <= 16384 )
+            {
+                Resolution res = FindResolution( w, h, true );
+                if( res >= 0 )
+                {
+                    mResolution = res;
+                }
+            }
+#else
             if( strcmp( value, "640x480" ) == 0 )
             {
                 mResolution = Res_640x480;
@@ -1117,6 +1137,7 @@ void Win32Platform::LoadConfig( ConfigString& config )
             {
                 mResolution = Res_2560x1600;
             }
+#endif
         }
         else if( _stricmp( property, "bpp" ) == 0 )
         {
@@ -1157,8 +1178,18 @@ void Win32Platform::LoadConfig( ConfigString& config )
 
 void Win32Platform::SaveConfig( ConfigString& config )
 {
+#ifdef RAD_LINUX
+    config.WriteProperty( "display", !mFullscreen ? "window" : mBorderless ? "borderless" : "fullscreen" );
+#else
     config.WriteProperty( "display", mFullscreen ? "fullscreen" : "window" );
+#endif
 
+#ifdef RAD_LINUX
+    char res[ 32 ];
+    int w, h;
+    TranslateResolution( mResolution, w, h );
+    sprintf( res, "%dx%d", w, h );
+#else
     const char* res = "800x600";
     switch( mResolution )
     {
@@ -1217,6 +1248,7 @@ void Win32Platform::SaveConfig( ConfigString& config )
             rAssert( false );
         }
     }
+#endif
 
     config.WriteProperty( "resolution", res );
 
@@ -1252,6 +1284,9 @@ Win32Platform::Win32Platform( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPST
 {
     mhInstance = hInstance;
     mFullscreen = false;
+#ifdef RAD_LINUX
+    mBorderless = true;     // fullscreen without a display=... setting is borderless
+#endif
 
 #ifdef RAD_LINUX
     GetDesktopSize( mScreenWidth, mScreenHeight );
@@ -1634,7 +1669,12 @@ void Win32Platform::InitializeContext()
     //
     // Set the fullscreen/window mode.
     //
+#ifdef RAD_LINUX
+    init.displayMode = !mFullscreen ? PDDI_DISPLAY_WINDOW :
+                       mBorderless ? PDDI_DISPLAY_FULLSCREEN_DESKTOP : PDDI_DISPLAY_FULLSCREEN;
+#else
     init.displayMode = mFullscreen ? PDDI_DISPLAY_FULLSCREEN : PDDI_DISPLAY_WINDOW;
+#endif
 
     //
     // This the name of the PDDI we will be using for rendering
@@ -1696,6 +1736,7 @@ void Win32Platform::InitializeContext()
 //
 //==============================================================================
 
+#ifndef RAD_LINUX   // Linux: runtime resolution table in linuxplatform_sdl.cpp
 void Win32Platform::TranslateResolution( Resolution res, int&x, int&y )
 {
     switch( res )
@@ -1805,6 +1846,7 @@ bool Win32Platform::IsResolutionSupported( Resolution res, int bpp ) const
 
     return false;
 }
+#endif // !RAD_LINUX
 
 #ifndef RAD_LINUX   // Win32 window/message code; SDL2 versions in linuxplatform_sdl.cpp
 //==============================================================================

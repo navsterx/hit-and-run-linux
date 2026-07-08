@@ -47,15 +47,6 @@ const char* DISPLAY_MENU_ITEMS[] =
 
 const float SLIDER_ICON_SCALE = 0.5f;
 
-// Linux port: labels for the resolutions added after the original six (Win32Platform::Resolution order)
-static const char* EXTRA_RESOLUTION_LABELS[] =
-{
-    "1280 x 720",
-    "1920 x 1080",
-    "2560 x 1440",
-    "2560 x 1600"
-};
-
 //===========================================================================
 // Public Member Functions
 //===========================================================================
@@ -82,6 +73,10 @@ CGuiScreenDisplay::CGuiScreenDisplay
     m_changedGamma( false )
 {
 MEMTRACK_PUSH_GROUP( "CGuiScreenDisplay" );
+#ifdef RAD_LINUX
+    m_numResolutions = 0;
+    m_pResolutionText = NULL;
+#endif
     // Retrieve the Scrooby drawing elements.
     //
     Scrooby::Page* pPage = m_pScroobyScreen->GetPage( "Display" );
@@ -104,16 +99,17 @@ MEMTRACK_PUSH_GROUP( "CGuiScreenDisplay" );
         sprintf( itemName, "%s_Value", DISPLAY_MENU_ITEMS[ i ] );
         Scrooby::Text* pTextValue = group->GetText( itemName );
 
+#ifdef RAD_LINUX
         if( i == MENU_ITEM_RESOLUTION )
         {
-            // Display.pag lists Res_640x480..Res_1600x1200; append the rest before the menu counts them
-            const int numExtra = sizeof( EXTRA_RESOLUTION_LABELS ) / sizeof( EXTRA_RESOLUTION_LABELS[ 0 ] );
-            rAssert( Win32Platform::Res_1600x1200 + 1 + numExtra == Win32Platform::NUM_RESOLUTIONS );
-            for( int r = pTextValue->GetNumOfStrings() - ( Win32Platform::Res_1600x1200 + 1 ); r < numExtra; r++ )
-            {
-                pTextValue->AddHardCodedString( EXTRA_RESOLUTION_LABELS[ r ] );
-            }
+            m_pResolutionText = pTextValue;     // values filled in by BuildResolutionList()
         }
+        else if( i == MENU_ITEM_DISPLAY_MODE && pTextValue->GetNumOfStrings() == 2 )
+        {
+            // Window, Full Screen (exclusive: the display switches to the resolution), + borderless fullscreen
+            pTextValue->AddHardCodedString( "Borderless" );
+        }
+#endif
 
         sprintf( itemName, "%s_ArrowL", DISPLAY_MENU_ITEMS[ i ] );
         Scrooby::Sprite* pLArrow = group->GetSprite( itemName );
@@ -274,16 +270,34 @@ void CGuiScreenDisplay::InitIntro()
     Win32Platform* plat = Win32Platform::GetInstance();
 
     Win32Platform::Resolution res = plat->GetResolution();
+#ifdef RAD_LINUX
+    BuildResolutionList();
+    int resValue = 0;
+    for( int k = 0; k < m_numResolutions; k++ )
+    {
+        if( m_resolutions[ k ] == res )
+        {
+            resValue = k;
+        }
+    }
+    m_pMenu->SetSelectionValue( MENU_ITEM_RESOLUTION, resValue );
+#else
     m_pMenu->SetSelectionValue( MENU_ITEM_RESOLUTION,
                                 res );
+#endif
 
     int bpp = plat->GetBPP();
     m_pMenu->SetSelectionValue( MENU_ITEM_COLOUR_DEPTH,
                                 bpp == 16 ? 0: 1 );
 
     bool fullscreen = plat->IsFullscreen();
+#ifdef RAD_LINUX
+    m_pMenu->SetSelectionValue( MENU_ITEM_DISPLAY_MODE,
+                                !fullscreen ? 0 : plat->IsBorderless() ? 2 : 1 );
+#else
     m_pMenu->SetSelectionValue( MENU_ITEM_DISPLAY_MODE,
                                 fullscreen ? 1 : 0 );
+#endif
 
     GuiMenuItem* menuItem = m_pMenu->GetMenuItem( MENU_ITEM_GAMMA );
     rAssert( menuItem );
@@ -351,11 +365,26 @@ void CGuiScreenDisplay::ApplySettings()
 {
     // Retrieve the settings.
     //
+#ifdef RAD_LINUX
+    int resValue = m_pMenu->GetSelectionValue( MENU_ITEM_RESOLUTION );
+    if( resValue < 0 || resValue >= m_numResolutions )
+    {
+        return;
+    }
+    Win32Platform::Resolution res = static_cast< Win32Platform::Resolution >( m_resolutions[ resValue ] );
+#else
     Win32Platform::Resolution res = static_cast< Win32Platform::Resolution >( m_pMenu->GetSelectionValue( MENU_ITEM_RESOLUTION ) );
+#endif
 
     int bpp = m_pMenu->GetSelectionValue( MENU_ITEM_COLOUR_DEPTH ) ? 32: 16;
 
+#ifdef RAD_LINUX
+    int displayMode = m_pMenu->GetSelectionValue( MENU_ITEM_DISPLAY_MODE );
+    bool fullscreen = displayMode != 0;
+    Win32Platform::GetInstance()->SetBorderless( displayMode == 2 );
+#else
     bool fullscreen = m_pMenu->GetSelectionValue( MENU_ITEM_DISPLAY_MODE ) == 1;
+#endif
 
     // Set the resolution.
     Win32Platform::GetInstance()->SetResolution( res, bpp, fullscreen );
@@ -364,3 +393,62 @@ void CGuiScreenDisplay::ApplySettings()
     GetGameConfigManager()->SaveConfigFile();
     m_changedGamma = false;
 }
+
+#ifdef RAD_LINUX
+//===========================================================================
+// CGuiScreenDisplay::BuildResolutionList
+//===========================================================================
+// Description: Fills the resolution values with the sizes that fit the desktop (plus the current one),
+//              smallest first. Display.pag's own strings are overwritten, extra ones added.
+//
+//===========================================================================
+void CGuiScreenDisplay::BuildResolutionList()
+{
+    rAssert( m_pResolutionText != NULL );
+    int current = Win32Platform::GetInstance()->GetResolution();
+
+    int desktopW, desktopH;
+    Win32Platform::GetDesktopSize( desktopW, desktopH );
+
+    m_numResolutions = 0;
+    int sizes[ MAX_MENU_RESOLUTIONS ][ 2 ];
+    for( int r = 0; r < Win32Platform::GetNumResolutions() && m_numResolutions < MAX_MENU_RESOLUTIONS; r++ )
+    {
+        int w, h;
+        Win32Platform::GetResolutionSize( static_cast< Win32Platform::Resolution >( r ), w, h );
+        if( ( w > desktopW || h > desktopH ) && r != current )
+        {
+            continue;
+        }
+
+        // insertion sort by width, then height
+        int k = m_numResolutions;
+        while( k > 0 && ( sizes[ k - 1 ][ 0 ] > w || ( sizes[ k - 1 ][ 0 ] == w && sizes[ k - 1 ][ 1 ] > h ) ) )
+        {
+            sizes[ k ][ 0 ] = sizes[ k - 1 ][ 0 ];
+            sizes[ k ][ 1 ] = sizes[ k - 1 ][ 1 ];
+            m_resolutions[ k ] = m_resolutions[ k - 1 ];
+            k--;
+        }
+        sizes[ k ][ 0 ] = w;
+        sizes[ k ][ 1 ] = h;
+        m_resolutions[ k ] = r;
+        m_numResolutions++;
+    }
+
+    for( int k = 0; k < m_numResolutions; k++ )
+    {
+        char label[ 32 ];
+        sprintf( label, "%d x %d", sizes[ k ][ 0 ], sizes[ k ][ 1 ] );
+        if( k < m_pResolutionText->GetNumOfStrings() )
+        {
+            m_pResolutionText->SetString( k, label );
+        }
+        else
+        {
+            m_pResolutionText->AddHardCodedString( label );
+        }
+    }
+    m_pMenu->SetSelectionValueCount( MENU_ITEM_RESOLUTION, m_numResolutions );
+}
+#endif

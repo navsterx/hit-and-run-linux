@@ -129,8 +129,35 @@ bool pglDisplay::InitDisplay(const pddiDisplayInit* init)
     mode = init->displayMode;
     winBitDepth = init->bpp;
 
-    SDL_SetWindowSize(window, init->xsize, init->ysize);
-    SDL_SetWindowFullscreen(window, mode == PDDI_DISPLAY_FULLSCREEN ? SDL_WINDOW_FULLSCREEN : 0);
+    // Borderless fullscreen covers the desktop at its own size (no display mode change). Exclusive fullscreen
+    // switches the display to the mode closest to the requested size (rendering below the native resolution,
+    // e.g. for speed). In a window the requested size is the window size.
+    if(mode == PDDI_DISPLAY_FULLSCREEN_DESKTOP)
+    {
+        SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+    }
+    else if(mode == PDDI_DISPLAY_FULLSCREEN)
+    {
+        // leave fullscreen first: switching straight from borderless (or between exclusive modes) kept the old
+        // size under XWayland
+        SDL_SetWindowFullscreen(window, 0);
+        SDL_DisplayMode want, closest;
+        memset(&want, 0, sizeof(want));
+        want.w = init->xsize;
+        want.h = init->ysize;
+        int display = SDL_GetWindowDisplayIndex(window);
+        if(SDL_GetClosestDisplayMode(display < 0 ? 0 : display, &want, &closest) != NULL)
+        {
+            SDL_SetWindowDisplayMode(window, &closest);
+        }
+        SDL_SetWindowSize(window, init->xsize, init->ysize);
+        SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+    }
+    else
+    {
+        SDL_SetWindowFullscreen(window, 0);
+        SDL_SetWindowSize(window, init->xsize, init->ysize);
+    }
 
     if(!glContext)
     {
@@ -154,7 +181,12 @@ bool pglDisplay::InitDisplay(const pddiDisplayInit* init)
 
     CreateWorkerContexts(window, glContext);
 
-    return InitDisplay(init->xsize, init->ysize, init->bpp);
+    int w = init->xsize, h = init->ysize;
+    if(mode == PDDI_DISPLAY_FULLSCREEN || mode == PDDI_DISPLAY_FULLSCREEN_DESKTOP)
+    {
+        SDL_GL_GetDrawableSize(window, &w, &h);     // SwapBuffers keeps following it afterwards
+    }
+    return InitDisplay(w, h, init->bpp);
 }
 
 bool pglDisplay::InitDisplay(int x, int y, int bpp)

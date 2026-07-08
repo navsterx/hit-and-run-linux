@@ -15,7 +15,8 @@ enum pddiDisplayMode
 {
     PDDI_DISPLAY_FULLSCREEN,
     PDDI_DISPLAY_WINDOW,
-    PDDI_DISPLAY_FULLSCREEN_PAL
+    PDDI_DISPLAY_FULLSCREEN_PAL,
+    PDDI_DISPLAY_FULLSCREEN_DESKTOP     // Linux port: borderless fullscreen at the desktop's size
 };
 
 enum pddiLockType
