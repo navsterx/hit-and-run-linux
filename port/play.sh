@@ -1,7 +1,9 @@
 #!/bin/bash
 # Build (if needed) and start the game normally: no gdb, no timeout.
-# usage: port/play.sh --data DIR [--debug] [--no-build] [game args...]
+# usage: port/play.sh --data DIR [--mod MOD]... [--debug] [--no-build] [game args...]
 #   --data DIR   your copy's PC game data dir (the one holding art/, scripts/, *.rcf); required
+#   --mod MOD    load a Mod Launcher mod: an extracted folder or a .lmlm package (extracted once into
+#                RUN/mods/ with mod/tools/lmlm_extract.py); repeatable, earlier mods win (port/compat/shar_mods.h)
 #   --debug      use the debug build (build-linux-debug, asserts + debug output; no boot movies)
 #   --no-build   skip the ninja step
 # env: SHAR_RUN   run directory (default run/), set up on first use: symlinks to the data,
@@ -12,11 +14,13 @@ set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 RUN=${SHAR_RUN:-$ROOT/run}
 
-DATA=; DEBUG=0; BUILD_STEP=1
+DATA=; DEBUG=0; BUILD_STEP=1; MODS=()
 while [ $# -gt 0 ]; do
     case "$1" in
         --data) [ $# -ge 2 ] || { echo "--data needs a directory" >&2; exit 1; }; DATA=$2; shift 2 ;;
         --data=*) DATA=${1#--data=}; shift ;;
+        --mod) [ $# -ge 2 ] || { echo "--mod needs a folder or .lmlm" >&2; exit 1; }; MODS+=("$2"); shift 2 ;;
+        --mod=*) MODS+=("${1#--mod=}"); shift ;;
         --debug) DEBUG=1; shift ;;
         --no-build) BUILD_STEP=0; shift ;;
         *) break ;;
@@ -29,7 +33,7 @@ else
 fi
 
 if [ -z "$DATA" ]; then
-    echo "usage: port/play.sh --data DIR [--debug] [--no-build] [game args...]" >&2
+    echo "usage: port/play.sh --data DIR [--mod MOD]... [--debug] [--no-build] [game args...]" >&2
     echo "  DIR is your copy's PC game data dir (holding art/, scripts/, *.rcf)" >&2; exit 1
 fi
 [ -d "$DATA" ] || { echo "Game data dir not found: $DATA" >&2; exit 1; }
@@ -44,6 +48,25 @@ done
 for f in simpsons.ini Save1 Save2 Save3 Save4; do
     [ -e "$DATA/$f" ] && [ ! -e "$RUN/$f" ] && cp "$DATA/$f" "$RUN/$f"
 done
+
+# Mods: extract .lmlm packages (again when the package is newer), pass the folders in SHAR_MODS
+MOD_DIRS=
+for m in "${MODS[@]}"; do
+    [ -e "$m" ] || { echo "Mod not found: $m" >&2; exit 1; }
+    m=$(realpath "$m")
+    if [ -f "$m" ]; then
+        dir="$RUN/mods/$(basename "${m%.*}")"
+        if [ ! -d "$dir" ] || [ "$m" -nt "$dir" ]; then
+            rm -rf "$dir"
+            python3 -I "$ROOT/mod/tools/lmlm_extract.py" "$m" "$dir.tmp" && mv "$dir.tmp" "$dir" || {
+                rm -rf "$dir.tmp"; echo "Could not extract $m" >&2; exit 1; }
+        fi
+        m=$dir
+    fi
+    case "$m" in *:*) echo "Mod paths cannot contain ':': $m" >&2; exit 1 ;; esac
+    MOD_DIRS=${MOD_DIRS:+$MOD_DIRS:}$m
+done
+[ -n "$MOD_DIRS" ] && export SHAR_MODS=$MOD_DIRS
 
 # Build
 if [ $BUILD_STEP = 1 ]; then

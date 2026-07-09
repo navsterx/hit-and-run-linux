@@ -23,12 +23,14 @@ port/                      everything added for the port
   check.py FILE...         syntax-check files with their target's exact flags
   run.sh [secs] [args]     rebuild + run under gdb from the run dir, print backtrace on crash
   play.sh --data DIR       build if needed, set up the run dir from DIR (game data), start the game normally
-                           (--debug, --no-build; extra args go to the game)
+                           (--debug, --no-build, --mod FOLDER|.lmlm (repeatable); extra args go to the game)
   memcheck.sh [secs] [args]  run under valgrind memcheck (fetched/set up on first use, no root) and summarise
                            uninitialised reads by origin (memcheck_summary.py); see lessons
   compat/                  force-included msvc_compat.h, types-only windows.h, crtdbg.h, dinput.h,
                            win32_threads.* (threads/sync/fibers/timers on POSIX), win32_misc.* (MessageBox),
-                           pddi_heap.cpp (renderer's private heap), valgrind/ (client-request headers)
+                           pddi_heap.cpp (renderer's private heap), valgrind/ (client-request headers),
+                           shar_mods.* (Mod Launcher mods, see below)
+mod/tools/                 modding tools: lmlm_extract.py (unpacks Mod Launcher .lmlm "LSPA" packages)
 build-linux/               release build (RAD_RELEASE)     cmake -B build-linux -G Ninja
 build-linux-debug/         debug build (RAD_DEBUG: asserts + Radical's debug output)   -DSHAR_RAD_DEBUG=ON
 build-linux-audit/         -DSHAR_UNINIT_AUDIT=ON -DCMAKE_BUILD_TYPE=Release: all warnings on; grep -Wuninitialized /
@@ -154,6 +156,18 @@ SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1
 - Boot movies only play in release builds (`SHOW_MOVIES` needs `RAD_RELEASE`, `bootupcontext.cpp`): test them with
   `build-linux`, not the debug build.
 - radcore's `radoptions.hpp` enables debug comm / watcher / memory monitor in debug builds: off on Linux.
+
+## Mods (Lucas' Mod Launcher format)
+
+Mods are folders: `Meta.ini` (`RequiredHack=` lines), `CustomFiles/` (overrides game paths), per-hack config files,
+optionally Lua (`CustomFiles.lua`, `CustomFiles.ini` path handlers). Distributed as `.lmlm`: not a zip but an "LSPA"
+package (512-byte sectors, one field per sector; format notes in `mod/tools/lmlm_extract.py`).
+`port/compat/shar_mods.cpp` loads the extracted folders in `SHAR_MODS` (':'-separated, earlier wins; `play.sh --mod`
+extracts into RUN/mods/) and reports hacks it ignores. Supported: CustomFiles without Lua (index of lower-cased game
+paths; `requests.cpp` skips the RCF search and `linuxdrive.cpp` opens the mod copy, read-only opens only) and
+CustomLimits `[Billboards]` (`BillboardQuadManager`, default 25 groups x 100 quads). `SHAR_MOD_LOG=1` logs each
+override. Tested 2026-10-14 with "SHAR Remastered" 1.0 (Level 1 retexture). Not yet: Lua, other hacks, mod save dirs
+(`Main=1`), reading .lmlm directly. Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
 
 ## Known issues / next steps
 

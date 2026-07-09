@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include "linuxdrive.hpp"
+#include <shar_mods.h>
 
 //=============================================================================
 // Path resolution
@@ -235,7 +236,16 @@ radDrive::CompletionStatus radLinuxDrive::OpenFile
 )
 {
     char fullName[ PATH_MAX ];
-    radLinuxResolvePath( fileName, fullName, sizeof( fullName ), flags != OpenExisting );
+    const char* modFile = ( !writeAccess && flags == OpenExisting ) ? shar_ModFindFile( fileName ) : NULL;
+    if ( modFile != NULL )
+    {
+        strncpy( fullName, modFile, sizeof( fullName ) - 1 );   // a mod's CustomFiles copy (shar_mods.h)
+        fullName[ sizeof( fullName ) - 1 ] = '\0';
+    }
+    else
+    {
+        radLinuxResolvePath( fileName, fullName, sizeof( fullName ), flags != OpenExisting );
+    }
 
     int oflags = writeAccess ? O_RDWR : O_RDONLY;
     switch( flags )

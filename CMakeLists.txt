@@ -1080,7 +1080,7 @@ else()
 endif()
 
 # Win32 API subset implemented on POSIX (threads/sync/timers); linked after the libraries using it
-add_library(shar_compat STATIC port/compat/win32_threads.cpp port/compat/win32_misc.cpp port/compat/pddi_heap.cpp)
+add_library(shar_compat STATIC port/compat/win32_threads.cpp port/compat/win32_misc.cpp port/compat/pddi_heap.cpp port/compat/shar_mods.cpp)
 # the renderer allocates from its own heap, as pddidx8.dll did on Windows (port/compat/pddi_heap.cpp)
 add_custom_command(TARGET pddigl POST_BUILD COMMAND objcopy --redefine-sym _Znwj=pddi_heap_new --redefine-sym _Znaj=pddi_heap_new_array --redefine-sym _ZdlPv=pddi_heap_delete --redefine-sym _ZdaPv=pddi_heap_delete_array $<TARGET_FILE:pddigl> VERBATIM)
 target_include_directories(shar_compat PRIVATE port/compat)

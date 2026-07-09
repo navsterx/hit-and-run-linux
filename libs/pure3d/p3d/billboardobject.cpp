@@ -16,6 +16,9 @@
 #include <p3d/camera.hpp>
 #include <p3d/matrixstack.hpp>
 #include <p3d/billboardobject.hpp>
+#ifdef RAD_LINUX
+#include <shar_mods.h>
+#endif
 #include <pddi/pddiext.hpp>
 
 #ifdef RAD_XBOX
@@ -1945,13 +1948,21 @@ tBillboardQuadGroupLoader::LoadQuad(tChunkFile* f, tEntityStore* store)
 //////////////////////////////////////////////////////////////////////////
 BillboardQuadManager::BillboardQuadManager()
 {
-    mpBBQGs.Allocate(25);
-    mpBBQGs.AddUse(25);
+#ifdef RAD_LINUX
+    // Linux port: mods can raise both limits (CustomLimits.ini [Billboards], port/compat/shar_mods.h)
+    int groupLimit = shar_ModLimit( "Billboards", "QuadGroupLimit", 25 );
+    int quadLimit = shar_ModLimit( "Billboards", "QuadLimit", 100 );
+#else
+    int groupLimit = 25;
+    int quadLimit = 100;
+#endif
+    mpBBQGs.Allocate(groupLimit);
+    mpBBQGs.AddUse(groupLimit);
     for(int i=0; i<mpBBQGs.mSize-1;i++)
     {
         mpBBQGs[i] = new tBillboardQuadGroup();
         mpBBQGs[i]->AddRef();
-        mpBBQGs[i]->mTempQuads.Allocate(100);
+        mpBBQGs[i]->mTempQuads.Allocate(quadLimit);
     }
     mpBBQGs.ClearUse();
     sCollectPass = true;

@@ -24,6 +24,9 @@
 #include <string.h>
 #include <radthread.hpp>
 #include "requests.hpp"
+#ifdef RAD_LINUX
+#include <shar_mods.h>
+#endif
 #include "instancedrive.hpp"
 #include "file.hpp"
 
@@ -448,9 +451,15 @@ radDrive::CompletionStatus FileOpenRequest::DoRequest( void )
     //
     radCementLibraryList* pLibList = pDrive->GetLibraryList( );
     pLibList->BeginIteration( radCementLibraryBeforeDrive );
+#ifdef RAD_LINUX
+    // Linux port: a file a mod overrides (port/compat/shar_mods.h) comes from the drive, which opens the mod's copy
+    bool modOverride = !m_WriteAccess && m_Flags == OpenExisting && shar_ModHasFile( m_pFile->m_Filename );
+#else
+    bool modOverride = false;
+#endif
 
     radCementLibrary* pLib = NULL;
-    while ( ( pLib = pLibList->GetNext( ) ) != NULL )
+    while ( !modOverride && ( pLib = pLibList->GetNext( ) ) != NULL )
     {
         unsigned int offset, size;
         radFile* origFile = pLib->OpenFile( m_pFile->m_Filename, &offset, &size );
