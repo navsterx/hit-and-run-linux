@@ -23,7 +23,7 @@ port/                      everything added for the port
   check.py FILE...         syntax-check files with their target's exact flags
   run.sh [secs] [args]     rebuild + run under gdb from the run dir, print backtrace on crash
   play.sh --data DIR       build if needed, set up the run dir from DIR (game data), start the game normally
-                           (--debug, --no-build, --mod FOLDER|.lmlm (repeatable); extra args go to the game)
+                           (--debug, --no-build, --mod .lmlm|FOLDER (repeatable); extra args go to the game)
   memcheck.sh [secs] [args]  run under valgrind memcheck (fetched/set up on first use, no root) and summarise
                            uninitialised reads by origin (memcheck_summary.py); see lessons
   compat/                  force-included msvc_compat.h, types-only windows.h, crtdbg.h, dinput.h,
@@ -162,12 +162,15 @@ SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1
 Mods are folders: `Meta.ini` (`RequiredHack=` lines), `CustomFiles/` (overrides game paths), per-hack config files,
 optionally Lua (`CustomFiles.lua`, `CustomFiles.ini` path handlers). Distributed as `.lmlm`: not a zip but an "LSPA"
 package (512-byte sectors, one field per sector; format notes in `mod/tools/lmlm_extract.py`).
-`port/compat/shar_mods.cpp` loads the extracted folders in `SHAR_MODS` (':'-separated, earlier wins; `play.sh --mod`
-extracts into RUN/mods/) and reports hacks it ignores. Supported: CustomFiles without Lua (index of lower-cased game
-paths; `requests.cpp` skips the RCF search and `linuxdrive.cpp` opens the mod copy, read-only opens only) and
+`port/compat/shar_mods.cpp` loads the mods in `SHAR_MODS` (':'-separated, earlier wins; `play.sh --mod`), each a
+.lmlm read in place or an extracted folder, and reports hacks it ignores. Supported: CustomFiles without Lua (index
+of lower-cased game paths; `requests.cpp` skips the RCF search and `linuxdrive.cpp` opens the mod copy, read-only
+opens only; a packaged file is an fd on the .lmlm plus a per-fd offset/size slice that reads are confined to) and
 CustomLimits `[Billboards]` (`BillboardQuadManager`, default 25 groups x 100 quads). `SHAR_MOD_LOG=1` logs each
-override. Tested 2026-10-14 with "SHAR Remastered" 1.0 (Level 1 retexture). Not yet: Lua, other hacks, mod save dirs
-(`Main=1`), reading .lmlm directly. Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
+override. Tested 2026-10-14/15 with "SHAR Remastered" 1.0 (Level 1 retexture), as .lmlm and as a folder; package
+reads match the extractor's output for it and the Futurama demo (866 files). Keep local packages in `mod/lmlm/`
+(git-ignored). Not yet: Lua, other hacks, mod save dirs (`Main=1`), packages over 2 GB (32-bit off_t).
+Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
 
 ## Known issues / next steps
 

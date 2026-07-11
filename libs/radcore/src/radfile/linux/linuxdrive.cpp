@@ -150,6 +150,22 @@ void radLinuxResolvePath( const char* gamePath, char* realPath, unsigned int siz
 static inline int FdOf( radFileHandle h )               { return (int)(intptr_t)h; }
 static inline radFileHandle HandleOf( int fd )          { return (radFileHandle)(intptr_t)fd; }
 
+// A mod file inside a .lmlm package is an fd on the package plus the file's slice of it, kept here by fd
+// (each slot is only touched by the thread that owns the fd). Fds past the table cannot hold a packaged file.
+struct PackagedSlice
+{
+    unsigned long long offset;
+    unsigned int size;
+    bool used;
+};
+static const int MAX_SLICE_FDS = 4096;
+static PackagedSlice s_Slices[ MAX_SLICE_FDS ];
+
+static const PackagedSlice* SliceOf( int fd )
+{
+    return ( fd >= 0 && fd < MAX_SLICE_FDS && s_Slices[ fd ].used ) ? &s_Slices[ fd ] : NULL;
+}
+
 struct LinuxDirSearch
 {
     DIR* dir;
@@ -236,11 +252,34 @@ radDrive::CompletionStatus radLinuxDrive::OpenFile
 )
 {
     char fullName[ PATH_MAX ];
-    const char* modFile = ( !writeAccess && flags == OpenExisting ) ? shar_ModFindFile( fileName ) : NULL;
-    if ( modFile != NULL )
+    SharModFile modFile;
+    if ( !writeAccess && flags == OpenExisting && shar_ModFindFile( fileName, &modFile ) )
     {
-        strncpy( fullName, modFile, sizeof( fullName ) - 1 );   // a mod's CustomFiles copy (shar_mods.h)
-        fullName[ sizeof( fullName ) - 1 ] = '\0';
+        // a mod's CustomFiles copy (shar_mods.h): a loose file, or a slice of a .lmlm package
+        int fd = open( modFile.path, O_RDONLY );
+        if ( fd != -1 && modFile.packaged && fd >= MAX_SLICE_FDS )
+        {
+            close( fd );
+            fd = -1;
+            errno = EMFILE;
+        }
+        if ( fd != -1 )
+        {
+            if ( modFile.packaged )
+            {
+                s_Slices[ fd ].offset = modFile.offset;
+                s_Slices[ fd ].size = modFile.size;
+                s_Slices[ fd ].used = true;
+            }
+            m_OpenFiles++;
+            *pHandle = HandleOf( fd );
+            *pSize = modFile.size;
+            m_LastError = Success;
+            return Complete;
+        }
+        *pHandle = INVALID_HANDLE_VALUE;
+        m_LastError = TranslateError( errno );
+        return Error;
     }
     else
     {
@@ -281,7 +320,12 @@ radDrive::CompletionStatus radLinuxDrive::OpenFile
 
 radDrive::CompletionStatus radLinuxDrive::CloseFile( radFileHandle handle, const char* fileName )
 {
-    close( FdOf( handle ) );
+    int fd = FdOf( handle );
+    if ( fd >= 0 && fd < MAX_SLICE_FDS )
+    {
+        s_Slices[ fd ].used = false;
+    }
+    close( fd );
     m_OpenFiles--;
     return Complete;
 }
@@ -301,11 +345,21 @@ radDrive::CompletionStatus radLinuxDrive::ReadFile
     rAssertMsg( pDataSpace == radMemorySpace_Local,
                 "radFileSystem: radLinuxDrive: External memory not supported for reads." );
 
+    // A packaged mod file: read inside its slice only, so its end is a real end of file
+    off_t base = 0;
+    unsigned int toRead = bytesToRead;
+    const PackagedSlice* slice = SliceOf( FdOf( handle ) );
+    if ( slice != NULL )
+    {
+        base = (off_t)slice->offset;
+        toRead = position >= slice->size ? 0 : ( bytesToRead < slice->size - position ? bytesToRead : slice->size - position );
+    }
+
     // Win32 ReadFile is synchronous here and reports bytesToRead on success; keep that contract.
     unsigned int done = 0;
-    while ( done < bytesToRead )
+    while ( done < toRead )
     {
-        ssize_t n = pread( FdOf( handle ), (char*)pData + done, bytesToRead - done, (off_t)position + done );
+        ssize_t n = pread( FdOf( handle ), (char*)pData + done, toRead - done, base + (off_t)position + done );
         if ( n < 0 )
         {
             if ( errno == EINTR )

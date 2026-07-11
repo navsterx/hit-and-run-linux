@@ -2,8 +2,8 @@
 # Build (if needed) and start the game normally: no gdb, no timeout.
 # usage: port/play.sh --data DIR [--mod MOD]... [--debug] [--no-build] [game args...]
 #   --data DIR   your copy's PC game data dir (the one holding art/, scripts/, *.rcf); required
-#   --mod MOD    load a Mod Launcher mod: an extracted folder or a .lmlm package (extracted once into
-#                RUN/mods/ with mod/tools/lmlm_extract.py); repeatable, earlier mods win (port/compat/shar_mods.h)
+#   --mod MOD    load a Mod Launcher mod: a .lmlm package (read in place) or an extracted mod folder;
+#                repeatable, earlier mods win (port/compat/shar_mods.h)
 #   --debug      use the debug build (build-linux-debug, asserts + debug output; no boot movies)
 #   --no-build   skip the ninja step
 # env: SHAR_RUN   run directory (default run/), set up on first use: symlinks to the data,
@@ -49,24 +49,15 @@ for f in simpsons.ini Save1 Save2 Save3 Save4; do
     [ -e "$DATA/$f" ] && [ ! -e "$RUN/$f" ] && cp "$DATA/$f" "$RUN/$f"
 done
 
-# Mods: extract .lmlm packages (again when the package is newer), pass the folders in SHAR_MODS
-MOD_DIRS=
+# Mods: absolute paths in SHAR_MODS (the game runs from the run dir)
+MOD_PATHS=
 for m in "${MODS[@]}"; do
     [ -e "$m" ] || { echo "Mod not found: $m" >&2; exit 1; }
     m=$(realpath "$m")
-    if [ -f "$m" ]; then
-        dir="$RUN/mods/$(basename "${m%.*}")"
-        if [ ! -d "$dir" ] || [ "$m" -nt "$dir" ]; then
-            rm -rf "$dir"
-            python3 -I "$ROOT/mod/tools/lmlm_extract.py" "$m" "$dir.tmp" && mv "$dir.tmp" "$dir" || {
-                rm -rf "$dir.tmp"; echo "Could not extract $m" >&2; exit 1; }
-        fi
-        m=$dir
-    fi
     case "$m" in *:*) echo "Mod paths cannot contain ':': $m" >&2; exit 1 ;; esac
-    MOD_DIRS=${MOD_DIRS:+$MOD_DIRS:}$m
+    MOD_PATHS=${MOD_PATHS:+$MOD_PATHS:}$m
 done
-[ -n "$MOD_DIRS" ] && export SHAR_MODS=$MOD_DIRS
+[ -n "$MOD_PATHS" ] && export SHAR_MODS=$MOD_PATHS
 
 # Build
 if [ $BUILD_STEP = 1 ]; then

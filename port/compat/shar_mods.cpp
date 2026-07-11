@@ -2,21 +2,27 @@
 #include "shar_mods.h"
 #include <ctype.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 namespace {
 
 struct ModFile
 {
-    char* key;      // normalised game path: lower case, '/' separators ("art/l1z1.p3d")
-    char* path;     // real path on disk
-    int order;      // mod index * large + discovery order, so earlier mods sort first among equal keys
+    char* key;              // normalised game path: lower case, '/' separators ("art/l1z1.p3d")
+    char* path;             // real path on disk: the file, or the .lmlm package holding it
+    uint64_t offset;        // where the data starts in path (0 for a loose file)
+    unsigned int size;
+    bool packaged;
+    int order;              // mod index * large + discovery order, so earlier mods sort first among equal keys
 };
 
 struct Limit
@@ -120,17 +126,23 @@ char* FindNoCase( const char* dir, const char* name )
     return found;
 }
 
-void AddFile( const char* key, const char* path, int order )
+void AddFile( const char* rel, const char* path, uint64_t offset, unsigned int size, bool packaged, int modIndex )
 {
     if ( s_NumFiles == s_CapFiles )
     {
         s_CapFiles = s_CapFiles ? s_CapFiles * 2 : 256;
         s_Files = (ModFile*)realloc( s_Files, s_CapFiles * sizeof( ModFile ) );
     }
-    ModFile& f = s_Files[ s_NumFiles++ ];
+    char key[ PATH_MAX ];
+    Normalise( rel, key, sizeof( key ) );
+    ModFile& f = s_Files[ s_NumFiles ];
     f.key = Dup( key );
     f.path = Dup( path );
-    f.order = order;
+    f.offset = offset;
+    f.size = size;
+    f.packaged = packaged;
+    f.order = modIndex * 1000000 + s_NumFiles;
+    s_NumFiles++;
 }
 
 // Index every file under dir; rel is its game path so far.
@@ -163,15 +175,188 @@ int ScanTree( const char* dir, const char* rel, int modIndex )
         }
         else if ( S_ISREG( st.st_mode ) )
         {
-            char key[ PATH_MAX ];
-            Normalise( childRel, key, sizeof( key ) );
-            AddFile( key, path, modIndex * 1000000 + s_NumFiles );
+            AddFile( childRel, path, 0, (unsigned int)st.st_size, false, modIndex );
             count++;
         }
     }
     closedir( d );
     return count;
 }
+
+//=============================================================================
+// .lmlm packages ("LSPA"): 512-byte sectors, one field per sector (format notes in mod/tools/lmlm_extract.py)
+//=============================================================================
+
+struct PackageEntry
+{
+    char* rel;              // path inside the package, '/' separators, original case
+    uint64_t offset;
+    uint64_t size;
+};
+
+struct Package
+{
+    int fd;
+    uint64_t fileSize;
+    unsigned char sector[ 512 ];
+    unsigned int pos;       // next sector to read
+    PackageEntry* entries;
+    int numEntries, capEntries;
+    const char* error;
+};
+
+const unsigned int SECTOR = 512;
+const unsigned int FLAG_TIMESTAMP = 0x02;
+
+uint16_t U16( const unsigned char* p ) { return (uint16_t)( p[ 0 ] | p[ 1 ] << 8 ); }
+uint64_t U64( const unsigned char* p )
+{
+    uint64_t v = 0;
+    for ( int i = 7; i >= 0; i-- )
+    {
+        v = v << 8 | p[ i ];
+    }
+    return v;
+}
+
+bool NextSector( Package& pkg )
+{
+    if ( (uint64_t)( pkg.pos + 1 ) * SECTOR > pkg.fileSize ||
+         pread( pkg.fd, pkg.sector, SECTOR, (off_t)pkg.pos * SECTOR ) != (ssize_t)SECTOR )
+    {
+        pkg.error = "directory runs past the end of the file";
+        return false;
+    }
+    pkg.pos++;
+    return true;
+}
+
+bool ParseDir( Package& pkg, const char* rel, unsigned int count, unsigned int firstType, int depth )
+{
+    if ( depth > 64 )
+    {
+        pkg.error = "directories nested too deeply";
+        return false;
+    }
+    for ( unsigned int i = 0; i < count; i++ )
+    {
+        unsigned int type = firstType;
+        if ( i > 0 )
+        {
+            if ( !NextSector( pkg ) )
+            {
+                return false;
+            }
+            type = pkg.sector[ 0 ];
+        }
+        if ( !NextSector( pkg ) )
+        {
+            return false;
+        }
+        unsigned int flags = U16( pkg.sector );
+        if ( flags & ~FLAG_TIMESTAMP )
+        {
+            pkg.error = "unknown entry flags";
+            return false;
+        }
+        char name[ 256 ];                               // UTF-16LE name; mod paths are ASCII in practice
+        unsigned int n = 0;
+        for ( unsigned int at = 2; at + 1 < SECTOR && n + 1 < sizeof( name ); at += 2 )
+        {
+            uint16_t c = U16( pkg.sector + at );
+            if ( c == 0 )
+            {
+                break;
+            }
+            name[ n++ ] = c < 0x80 ? (char)c : '_';
+        }
+        name[ n ] = '\0';
+        if ( n == 0 || strcmp( name, "." ) == 0 || strcmp( name, ".." ) == 0 || strchr( name, '/' ) || strchr( name, '\\' ) )
+        {
+            pkg.error = "bad entry name";
+            return false;
+        }
+        char childRel[ PATH_MAX ];
+        snprintf( childRel, sizeof( childRel ), "%s%s%s", rel, rel[ 0 ] ? "/" : "", name );
+        if ( !NextSector( pkg ) )
+        {
+            return false;
+        }
+        const unsigned char* info = pkg.sector + 2 + ( ( flags & FLAG_TIMESTAMP ) ? 10 : 0 );
+        if ( type == 1 )
+        {
+            if ( !ParseDir( pkg, childRel, U16( info ), info[ 2 ], depth + 1 ) )
+            {
+                return false;
+            }
+        }
+        else if ( type == 0 )
+        {
+            uint64_t size = U64( info ), offset = U64( info + 8 );
+            if ( offset > pkg.fileSize || size > pkg.fileSize - offset || size > 0xFFFFFFFFu )
+            {
+                pkg.error = "file data past the end of the package";
+                return false;
+            }
+            if ( pkg.numEntries == pkg.capEntries )
+            {
+                pkg.capEntries = pkg.capEntries ? pkg.capEntries * 2 : 256;
+                pkg.entries = (PackageEntry*)realloc( pkg.entries, pkg.capEntries * sizeof( PackageEntry ) );
+            }
+            PackageEntry& e = pkg.entries[ pkg.numEntries++ ];
+            e.rel = Dup( childRel );
+            e.offset = offset;
+            e.size = size;
+        }
+        else
+        {
+            pkg.error = "unknown entry type";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool OpenPackage( const char* path, Package& pkg )
+{
+    memset( &pkg, 0, sizeof( pkg ) );
+    pkg.fd = open( path, O_RDONLY );
+    struct stat st;
+    if ( pkg.fd < 0 || fstat( pkg.fd, &st ) != 0 )
+    {
+        pkg.error = "cannot open";
+        return false;
+    }
+    pkg.fileSize = (uint64_t)st.st_size;
+    if ( !NextSector( pkg ) || memcmp( pkg.sector, "LSPA", 4 ) != 0 )
+    {
+        pkg.error = "not an LSPA package";
+        return false;
+    }
+    pkg.pos = 2;                                        // root directory record
+    if ( !NextSector( pkg ) )
+    {
+        return false;
+    }
+    return ParseDir( pkg, "", U16( pkg.sector + 2 ), pkg.sector[ 4 ], 0 );
+}
+
+void ClosePackage( Package& pkg )
+{
+    for ( int i = 0; i < pkg.numEntries; i++ )
+    {
+        free( pkg.entries[ i ].rel );
+    }
+    free( pkg.entries );
+    if ( pkg.fd >= 0 )
+    {
+        close( pkg.fd );
+    }
+}
+
+//=============================================================================
+// INI files
+//=============================================================================
 
 // Minimal INI reader: [section], key=value, ';' / '#' comments, UTF-8 BOM, CRLF.
 typedef void ( *IniCallback )( const char* section, const char* key, const char* value, void* user );
@@ -190,25 +375,17 @@ char* Trim( char* s )
     return s;
 }
 
-bool ReadIni( const char* path, IniCallback cb, void* user )
+// Parses text (modified in place).
+void ParseIni( char* text, IniCallback cb, void* user )
 {
-    FILE* f = fopen( path, "rb" );
-    if ( f == NULL )
+    if ( (unsigned char)text[ 0 ] == 0xEF && (unsigned char)text[ 1 ] == 0xBB && (unsigned char)text[ 2 ] == 0xBF )
     {
-        return false;
+        text += 3;
     }
     char section[ 128 ] = "";
-    char line[ 4096 ];
-    bool first = true;
-    while ( fgets( line, sizeof( line ), f ) != NULL )
+    for ( char* save = NULL, *line = strtok_r( text, "\r\n", &save ); line != NULL; line = strtok_r( NULL, "\r\n", &save ) )
     {
-        char* s = line;
-        if ( first && (unsigned char)s[ 0 ] == 0xEF && (unsigned char)s[ 1 ] == 0xBB && (unsigned char)s[ 2 ] == 0xBF )
-        {
-            s += 3;
-        }
-        first = false;
-        s = Trim( s );
+        char* s = Trim( line );
         if ( s[ 0 ] == '\0' || s[ 0 ] == ';' || s[ 0 ] == '#' )
         {
             continue;
@@ -231,9 +408,84 @@ bool ReadIni( const char* path, IniCallback cb, void* user )
         *eq = '\0';
         cb( section, Trim( s ), Trim( eq + 1 ), user );
     }
+}
+
+// A mod's root-level file, NUL-terminated (malloc'd), or NULL. pkg is NULL for a mod folder.
+char* ReadModFile( const char* root, Package* pkg, const char* name )
+{
+    if ( pkg != NULL )
+    {
+        for ( int i = 0; i < pkg->numEntries; i++ )
+        {
+            const PackageEntry& e = pkg->entries[ i ];
+            if ( strcasecmp( e.rel, name ) == 0 )
+            {
+                char* data = (char*)malloc( e.size + 1 );
+                if ( pread( pkg->fd, data, e.size, (off_t)e.offset ) != (ssize_t)e.size )
+                {
+                    free( data );
+                    return NULL;
+                }
+                data[ e.size ] = '\0';
+                return data;
+            }
+        }
+        return NULL;
+    }
+    char* path = FindNoCase( root, name );
+    if ( path == NULL )
+    {
+        return NULL;
+    }
+    FILE* f = fopen( path, "rb" );
+    free( path );
+    if ( f == NULL )
+    {
+        return NULL;
+    }
+    fseek( f, 0, SEEK_END );
+    long size = ftell( f );
+    fseek( f, 0, SEEK_SET );
+    char* data = (char*)malloc( size + 1 );
+    size_t got = fread( data, 1, size, f );
+    data[ got ] = '\0';
     fclose( f );
+    return data;
+}
+
+bool HasModFile( const char* root, Package* pkg, const char* name )
+{
+    if ( pkg != NULL )
+    {
+        for ( int i = 0; i < pkg->numEntries; i++ )
+        {
+            if ( strcasecmp( pkg->entries[ i ].rel, name ) == 0 )
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    char* path = FindNoCase( root, name );
+    free( path );
+    return path != NULL;
+}
+
+bool ReadModIni( const char* root, Package* pkg, const char* name, IniCallback cb, void* user )
+{
+    char* text = ReadModFile( root, pkg, name );
+    if ( text == NULL )
+    {
+        return false;
+    }
+    ParseIni( text, cb, user );
+    free( text );
     return true;
 }
+
+//=============================================================================
+// Loading
+//=============================================================================
 
 struct MetaInfo
 {
@@ -310,33 +562,51 @@ void OnLimit( const char* section, const char* key, const char* value, void* )
 void LoadMod( const char* root, int modIndex )
 {
     struct stat st;
-    if ( stat( root, &st ) != 0 || !S_ISDIR( st.st_mode ) )
+    if ( stat( root, &st ) != 0 )
     {
-        fprintf( stderr, "mods: %s is not a folder (extract .lmlm packages with mod/tools/lmlm_extract.py)\n", root );
+        fprintf( stderr, "mods: %s not found\n", root );
         return;
     }
+    Package pkg;
+    Package* pPkg = NULL;
+    int files = 0;
+    if ( S_ISDIR( st.st_mode ) )
+    {
+        char* customFiles = FindNoCase( root, "CustomFiles" );
+        if ( customFiles != NULL )
+        {
+            files = ScanTree( customFiles, "", modIndex );
+            free( customFiles );
+        }
+    }
+    else
+    {
+        if ( !OpenPackage( root, pkg ) )
+        {
+            fprintf( stderr, "mods: %s: %s (expected a mod folder or a .lmlm package)\n", root, pkg.error );
+            ClosePackage( pkg );
+            return;
+        }
+        pPkg = &pkg;
+        static const char PREFIX[] = "CustomFiles/";
+        for ( int i = 0; i < pkg.numEntries; i++ )
+        {
+            const PackageEntry& e = pkg.entries[ i ];
+            if ( strncasecmp( e.rel, PREFIX, sizeof( PREFIX ) - 1 ) == 0 )
+            {
+                AddFile( e.rel + sizeof( PREFIX ) - 1, root, e.offset, (unsigned int)e.size, true, modIndex );
+                files++;
+            }
+        }
+    }
+
     MetaInfo meta;
     meta.title[ 0 ] = meta.unsupported[ 0 ] = meta.requiredMods[ 0 ] = '\0';
-    char* metaPath = FindNoCase( root, "Meta.ini" );
-    if ( metaPath == NULL || !ReadIni( metaPath, OnMeta, &meta ) )
+    if ( !ReadModIni( root, pPkg, "Meta.ini", OnMeta, &meta ) )
     {
         fprintf( stderr, "mods: %s has no Meta.ini; loading its CustomFiles anyway\n", root );
     }
-    free( metaPath );
-
-    int files = 0;
-    char* customFiles = FindNoCase( root, "CustomFiles" );
-    if ( customFiles != NULL )
-    {
-        files = ScanTree( customFiles, "", modIndex );
-        free( customFiles );
-    }
-    char* limits = FindNoCase( root, "CustomLimits.ini" );
-    if ( limits != NULL )
-    {
-        ReadIni( limits, OnLimit, NULL );
-        free( limits );
-    }
+    ReadModIni( root, pPkg, "CustomLimits.ini", OnLimit, NULL );
     fprintf( stderr, "mods: loaded \"%s\" (%s): %d files\n", meta.title[ 0 ] ? meta.title : root, root, files );
     if ( meta.unsupported[ 0 ] )
     {
@@ -346,14 +616,14 @@ void LoadMod( const char* root, int modIndex )
     {
         fprintf( stderr, "mods:   also needs these mods: %s\n", meta.requiredMods );
     }
-    char* lua = FindNoCase( root, "CustomFiles.lua" );
-    char* handlers = FindNoCase( root, "CustomFiles.ini" );
-    if ( lua != NULL || handlers != NULL )
+    if ( HasModFile( root, pPkg, "CustomFiles.lua" ) || HasModFile( root, pPkg, "CustomFiles.ini" ) )
     {
         fprintf( stderr, "mods:   uses Lua (CustomFiles.lua / CustomFiles.ini path handlers): not supported yet, ignored\n" );
     }
-    free( lua );
-    free( handlers );
+    if ( pPkg != NULL )
+    {
+        ClosePackage( pkg );
+    }
 }
 
 int CompareFiles( const void* a, const void* b )
@@ -425,18 +695,29 @@ extern "C" int shar_ModHasFile( const char* gamePath )
     return Find( gamePath ) != NULL;
 }
 
-extern "C" const char* shar_ModFindFile( const char* gamePath )
+extern "C" int shar_ModFindFile( const char* gamePath, SharModFile* file )
 {
     const ModFile* f = Find( gamePath );
     if ( f == NULL )
     {
-        return NULL;
+        return 0;
     }
+    file->path = f->path;
+    file->offset = f->offset;
+    file->size = f->size;
+    file->packaged = f->packaged;
     if ( s_Log )
     {
-        fprintf( stderr, "mods: %s -> %s\n", gamePath, f->path );
+        if ( f->packaged )
+        {
+            fprintf( stderr, "mods: %s -> %s @%llu (%u bytes)\n", gamePath, f->path, (unsigned long long)f->offset, f->size );
+        }
+        else
+        {
+            fprintf( stderr, "mods: %s -> %s\n", gamePath, f->path );
+        }
     }
-    return f->path;
+    return 1;
 }
 
 extern "C" int shar_ModLimit( const char* section, const char* key, int defaultValue )
