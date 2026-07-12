@@ -5,7 +5,7 @@ Port of the original 2003 source to 32-bit Linux with SDL2 + OpenGL. The untouch
 (sources, included headers, the VS project files `gen_cmake.py` reads, and the Win32 originals it swaps for Linux ones).
 Status (2026-10-14): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
 dialogue and movies, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
-Missing: EAX reverb, force feedback. `README.md` has the user-facing status checklist; `RUST.md` holds notes for a
+Missing: EAX reverb, steering-wheel force feedback. `README.md` has the user-facing status checklist; `RUST.md` holds notes for a
 possible future Rust/Bevy reimplementation (not started).
 
 The source is leaked/proprietary: keep everything private and use game data from your own copy.
@@ -179,7 +179,10 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
    (or `SHAR_NO_AUDIO=1`) voices advance on a timer. Not done: EAX reverb (aux sends ignored).
    Test without speakers: `SDL_AUDIODRIVER=disk SDL_DISKAUDIOFILE=out.raw` (float32 stereo, 48 kHz).
 3. (done 2026-10-13) Movies: Bink via FFmpeg, see platform model. Clock is wall time; audio decoded ~0.5 s ahead.
-4. Force feedback via SDL haptics/rumble (controller output points).
+4. (done 2026-10-15) Gamepad rumble: `sdlcontroller.cpp` gives pads the "LeftMotor"/"RightMotor" output points
+   `RumbleEffect` wants (DirectInput never had them: retail PC gamepads never rumbled), sent with
+   SDL_GameControllerRumble; gated by the Force Feedback option (`useforcefeedback`, default off).
+   `SHAR_RUMBLE_LOG=1`. Verified on a PlayStation pad by the user. Steering-wheel effects not done.
 5. (done 2026-10-14) Input verified in play by the user: keyboard, mouse, wired and wireless controllers.
 6. (done 2026-10-14) Release build used throughout testing. 64-bit later (a -m64 syntax survey found ~80
    pointer-to-int casts, ~35 int-to-pointer casts; fixed-size game heaps would need enlarging); modern GL later.

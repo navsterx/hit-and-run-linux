@@ -12,7 +12,10 @@
 //     presents an Xbox-style pad (sticks on X/Y and Rx/Ry, triggers combined on Z, d-pad as POV 0,
 //     buttons A B X Y LB RB Back Start LS RS)
 //   - values computed exactly like radControllerInputPointDirectInput::CalculateNewValue
-// Force feedback (output points) is not implemented yet: controllers report no output points.
+// Force feedback: game controllers have the output points "LeftMotor" (low frequency) and "RightMotor" (high
+// frequency) that the game's RumbleEffect looks for (DirectInput never offered them, so PC gamepads never
+// rumbled), sent to SDL_GameControllerRumble. Steering-wheel effects (Spring, Damper, ...) are not provided.
+// SHAR_RUMBLE_LOG=1 prints every motor change.
 //=============================================================================
 
 #include "pch.hpp"
@@ -196,6 +199,48 @@ private:
 };
 
 //=============================================================================
+// Output point: a rumble motor. SetGain only records the value (as DirectInput's did); the controller sends
+// it to the device when it polls.
+//=============================================================================
+
+class radControllerOutputPointSDL
+    :
+    public IRadControllerOutputPoint,
+    public radRefCount
+{
+public:
+    IMPLEMENT_REFCOUNTED( "radControllerOutputPointSDL" )
+
+    radControllerOutputPointSDL( const char* name )
+        :
+        radRefCount( 0 ),
+        m_Gain( 0.0f )
+    {
+        strncpy( m_Name, name, sizeof( m_Name ) - 1 );
+        m_Name[ sizeof( m_Name ) - 1 ] = '\0';
+    }
+
+    virtual const char* GetName( void ) { return m_Name; }
+    virtual const char* GetType( void ) { return "Analog"; }
+    virtual float GetGain( void ) { return m_Gain; }
+    virtual void SetGain( float value )
+    {
+        m_Gain = value < 0.0f ? 0.0f : ( value > 1.0f ? 1.0f : value );
+    }
+
+    // DirectInput effects (steering wheels only)
+    virtual long GetOffset( void ) const { return 0; }
+    virtual void UpdateEffect( const DIEFFECT* effect ) { }
+    virtual void Start( void ) { }
+    virtual void Stop( void ) { }
+    virtual void ReleaseEffect( void ) { }
+
+private:
+    char  m_Name[ 16 ];
+    float m_Gain;
+};
+
+//=============================================================================
 // Controller
 //=============================================================================
 
@@ -218,7 +263,10 @@ public:
         m_InstanceId( -1 ),
         m_WheelAccum( 0 ),
         m_MotionX( 0 ),
-        m_MotionY( 0 )
+        m_MotionY( 0 ),
+        m_SentLow( 0 ),
+        m_SentHigh( 0 ),
+        m_SentTime( 0 )
     {
         strncpy( m_Type, type, sizeof( m_Type ) - 1 );
         m_Type[ sizeof( m_Type ) - 1 ] = '\0';
@@ -232,8 +280,13 @@ public:
         {
             m_Points[ i ]->Release( );
         }
+        for ( unsigned int i = 0; i < m_Motors.size( ); i++ )
+        {
+            m_Motors[ i ]->Release( );
+        }
         if ( m_pGameController != NULL )
         {
+            SDL_GameControllerRumble( m_pGameController, 0, 0, 0 );
             SDL_GameControllerClose( m_pGameController );
         }
     }
@@ -245,6 +298,13 @@ public:
         p->AddRef( );
         m_Points.push_back( p );
         return p;
+    }
+
+    void AddMotor( const char* name )
+    {
+        radControllerOutputPointSDL* p = new( g_ControllerSystemAllocator ) radControllerOutputPointSDL( name );
+        p->AddRef( );
+        m_Motors.push_back( p );
     }
 
     // ---- IRadController
@@ -262,7 +322,10 @@ public:
             if ( strcmp( m_Points[ i ]->GetType( ), pType ) == 0 ) n++;
         return n;
     }
-    virtual unsigned int GetNumberOfOutputPointsOfType( const char* pType ) { return 0; }
+    virtual unsigned int GetNumberOfOutputPointsOfType( const char* pType )
+    {
+        return strcmp( pType, "Analog" ) == 0 ? m_Motors.size( ) : 0;
+    }
 
     virtual IRadControllerInputPoint* GetInputPointByTypeAndIndex( const char* pType, unsigned int indx )
     {
@@ -276,7 +339,10 @@ public:
         }
         return NULL;
     }
-    virtual IRadControllerOutputPoint* GetOutputPointByTypeAndIndex( const char* pType, unsigned int indx ) { return NULL; }
+    virtual IRadControllerOutputPoint* GetOutputPointByTypeAndIndex( const char* pType, unsigned int indx )
+    {
+        return strcmp( pType, "Analog" ) == 0 ? GetOutputPointByIndex( indx ) : NULL;
+    }
 
     virtual IRadControllerInputPoint* GetInputPointByName( const char* pName )
     {
@@ -284,7 +350,12 @@ public:
             if ( strcmp( m_Points[ i ]->GetName( ), pName ) == 0 ) return m_Points[ i ];
         return NULL;
     }
-    virtual IRadControllerOutputPoint* GetOutputPointByName( const char* pName ) { return NULL; }
+    virtual IRadControllerOutputPoint* GetOutputPointByName( const char* pName )
+    {
+        for ( unsigned int i = 0; i < m_Motors.size( ); i++ )
+            if ( strcmp( m_Motors[ i ]->GetName( ), pName ) == 0 ) return m_Motors[ i ];
+        return NULL;
+    }
 
     virtual const char* GetLocation( void ) { return m_Location; }
     virtual unsigned int GetNumberOfInputPoints( void ) { return m_Points.size( ); }
@@ -292,8 +363,11 @@ public:
     {
         return indx < m_Points.size( ) ? m_Points[ indx ] : NULL;
     }
-    virtual unsigned int GetNumberOfOutputPoints( void ) { return 0; }
-    virtual IRadControllerOutputPoint* GetOutputPointByIndex( unsigned int indx ) { return NULL; }
+    virtual unsigned int GetNumberOfOutputPoints( void ) { return m_Motors.size( ); }
+    virtual IRadControllerOutputPoint* GetOutputPointByIndex( unsigned int indx )
+    {
+        return indx < m_Motors.size( ) ? m_Motors[ indx ] : NULL;
+    }
 
     // ---- polling
     void Poll( void )
@@ -376,7 +450,32 @@ public:
             };
             for ( int b = 0; b < 10; b++ )
                 m_Points[ 6 + b ]->Update( SDL_GameControllerGetButton( gc, order[ b ] ) ? 0x80 : 0 );
+
+            SendRumble( );
         }
+    }
+
+    // Sends the motors' gains when they change. A rumble lasts at most RUMBLE_MS, so it is renewed while it
+    // runs and a stalled game (breakpoint, hang) cannot leave the pad shaking.
+    void SendRumble( void )
+    {
+        const unsigned int RUMBLE_MS = 500;
+        Uint16 low = (Uint16) ( m_Motors[ 0 ]->GetGain( ) * 65535.0f );
+        Uint16 high = (Uint16) ( m_Motors[ 1 ]->GetGain( ) * 65535.0f );
+        unsigned int now = SDL_GetTicks( );
+        bool renew = ( low != 0 || high != 0 ) && now - m_SentTime >= RUMBLE_MS / 2;
+        if ( low == m_SentLow && high == m_SentHigh && !renew )
+        {
+            return;
+        }
+        static int s_log = -1;
+        if ( s_log < 0 ) { const char* e = getenv( "SHAR_RUMBLE_LOG" ); s_log = ( e && *e != '0' ) ? 1 : 0; }
+        if ( s_log && ( low != m_SentLow || high != m_SentHigh ) )
+            fprintf( stderr, "[rumble] %s: low %.2f high %.2f\n", m_Location, low / 65535.0f, high / 65535.0f );
+        SDL_GameControllerRumble( m_pGameController, low, high, RUMBLE_MS );
+        m_SentLow = low;
+        m_SentHigh = high;
+        m_SentTime = now;
     }
 
     static int AxisToDI( int sdlValue ) { return sdlValue + 32768; }
@@ -388,11 +487,15 @@ public:
     int                     m_WheelAccum;
     int                     m_MotionX;
     int                     m_MotionY;
+    Uint16                  m_SentLow;
+    Uint16                  m_SentHigh;
+    unsigned int            m_SentTime;
 
 private:
     char m_Type[ 64 ];
     char m_Location[ 32 ];
     std::vector< radControllerInputPointSDL* > m_Points;
+    std::vector< radControllerOutputPointSDL* > m_Motors;
 };
 
 //=============================================================================
@@ -517,10 +620,13 @@ public:
                 sprintf( name2, "Button %d", b );
                 c->AddPoint( name2, "Button", radControllerInputPointSDL::Button );
             }
+            c->AddMotor( "LeftMotor" );
+            c->AddMotor( "RightMotor" );
             m_Controllers.push_back( c );
         }
         c->m_pGameController = gc;
         c->m_InstanceId = id;
+        c->m_SentLow = c->m_SentHigh = 0;
         c->m_Connected = true;
         if ( notify )
         {
@@ -566,6 +672,7 @@ public:
                 {
                     SDL_GameControllerClose( c->m_pGameController );
                     c->m_pGameController = NULL;
+                    c->m_SentLow = c->m_SentHigh = 0;
                     c->m_Connected = false;
                     NotifyConnectionChange( c );
                 }

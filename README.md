@@ -28,6 +28,8 @@ movies. It works with the retail PC release's data as well as the data from the 
 - [x] **Gameplay** — loads levels and plays; uninitialised reads that were zero by luck under MSVC fixed
 - [x] **Input** — keyboard and mouse (mouse look via relative mode), wired and wireless gamepads through SDL;
   verified in play
+- [x] **Rumble** — gamepad vibration through SDL (the game's Force Feedback option; the Windows release never
+  rumbled gamepads)
 - [x] **Audio** — software mixer on SDL audio with 3D positioning: sound effects, music, dialogue
 - [x] **Movies** — Bink movies decoded with FFmpeg, audio through the game's mixer
 - [x] **Retail PC data** — split music archives (`music00`–`03.rcf`), Radical ADPCM dialogue,
@@ -44,10 +46,11 @@ movies. It works with the retail PC release's data as well as the data from the 
 ### To do
 
 - [ ] **EAX reverb** — environmental effects are ignored (aux sends are not mixed)
-- [ ] **Force feedback** — controller rumble through SDL haptics
 - [ ] **Full playthrough** — all seven levels, missions, races, bonus game, cutscenes, saving and loading
 - [ ] **64-bit build** — the code assumes 32-bit pointers in places
 - [ ] **Modern OpenGL** — replace the fixed-function GL 1.x renderer (core profile, shaders)
+- [ ] **Mods** — Mod Launcher mods load (custom files, Lua, Ogg audio, HD movies); custom cars, characters,
+  shops and the other hacks are not implemented yet (Futurama: Hit & Run crashes at the car shop)
 - [ ] **Packaging** — a simple install or AppImage-style bundle of the binary
 
 ## Building

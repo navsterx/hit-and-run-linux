@@ -581,7 +581,8 @@ void UserController::PulseRumble()
 
 void UserController::ApplyEffect( RumbleEffect::Effect effect, unsigned int durationms )
 {
-    if ( mbIsRumbleOn && !CommandLineOptions::Get( CLO_NO_HAPTIC ) )
+    // Linux port: also honour the Force Feedback option (gamepads only rumble here, DirectInput had no motors)
+    if ( mbIsRumbleOn && m_bForceFeedback && !CommandLineOptions::Get( CLO_NO_HAPTIC ) )
     {
         mRumbleEffect.SetEffect( effect, durationms );
     }
@@ -589,7 +590,8 @@ void UserController::ApplyEffect( RumbleEffect::Effect effect, unsigned int dura
 
 void UserController::ApplyDynaEffect( RumbleEffect::DynaEffect effect, unsigned int durationms, float gain )
 {
-    if ( mbIsRumbleOn && !CommandLineOptions::Get( CLO_NO_HAPTIC ) )
+    // Linux port: also honour the Force Feedback option (gamepads only rumble here, DirectInput had no motors)
+    if ( mbIsRumbleOn && m_bForceFeedback && !CommandLineOptions::Get( CLO_NO_HAPTIC ) )
     {
         mRumbleEffect.SetDynaEffect( effect, durationms, gain );
     }
