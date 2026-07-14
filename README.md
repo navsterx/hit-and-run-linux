@@ -31,6 +31,8 @@ movies. It works with the retail PC release's data as well as the data from the 
 - [x] **Rumble** — gamepad vibration through SDL (the game's Force Feedback option; the Windows release never
   rumbled gamepads)
 - [x] **Audio** — software mixer on SDL audio with 3D positioning: sound effects, music, dialogue
+- [x] **EAX reverb** — software reverb in tunnels, sewers and interiors, driven by the game's own presets;
+  verified by ear
 - [x] **Movies** — Bink movies decoded with FFmpeg, audio through the game's mixer
 - [x] **Retail PC data** — split music archives (`music00`–`03.rcf`), Radical ADPCM dialogue,
   logo movies replaced by stubs in some copies
@@ -45,7 +47,6 @@ movies. It works with the retail PC release's data as well as the data from the 
 
 ### To do
 
-- [ ] **EAX reverb** — environmental effects are ignored (aux sends are not mixed)
 - [ ] **Full playthrough** — all seven levels, missions, races, bonus game, cutscenes, saving and loading
 - [ ] **64-bit build** — the code assumes 32-bit pointers in places
 - [ ] **Modern OpenGL** — replace the fixed-function GL 1.x renderer (core profile, shaders)

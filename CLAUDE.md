@@ -5,7 +5,7 @@ Port of the original 2003 source to 32-bit Linux with SDL2 + OpenGL. The untouch
 (sources, included headers, the VS project files `gen_cmake.py` reads, and the Win32 originals it swaps for Linux ones).
 Status (2026-10-14): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
 dialogue and movies, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
-Missing: EAX reverb, steering-wheel force feedback. `README.md` has the user-facing status checklist; `RUST.md` holds notes for a
+Missing: steering-wheel force feedback. `README.md` has the user-facing status checklist; `RUST.md` holds notes for a
 possible future Rust/Bevy reimplementation (not started).
 
 The source is leaked/proprietary: keep everything private and use game data from your own copy.
@@ -176,7 +176,11 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
 
 1. (fixed 2026-10-13) 2D sprites upside down / HUD portraits looking clipped: DXT row order, see lessons.
 2. (done 2026-10-13) Audio: SDL mixer in `linuxhal.cpp`. The mixer owns voice play positions; without a device
-   (or `SHAR_NO_AUDIO=1`) voices advance on a timer. Not done: EAX reverb (aux sends ignored).
+   (or `SHAR_NO_AUDIO=1`) voices advance on a timer. EAX reverb (2026-10-15, verified by ear by the user): software
+   EAX2-style reverb in the mixer (`radSoundLinuxReverb`: room HF, early taps, 8 damped combs + 4 allpasses per side).
+   As under DirectSound only positional voices feed it; ReverbController's presets (scripts.rcf `reverbSettings`:
+   tunnels, sewers, mansion, power-plant rooms, ...) arrive through the effect's setters, its fades through the
+   system aux gain (which DirectSound's HAL ignored). `SHAR_REVERB=0` off, `SHAR_REVERB_LOG=1` logs presets/fades.
    Test without speakers: `SDL_AUDIODRIVER=disk SDL_DISKAUDIOFILE=out.raw` (float32 stereo, 48 kHz).
 3. (done 2026-10-13) Movies: Bink via FFmpeg, see platform model. Clock is wall time; audio decoded ~0.5 s ahead.
 4. (done 2026-10-15) Gamepad rumble: `sdlcontroller.cpp` gives pads the "LeftMotor"/"RightMotor" output points

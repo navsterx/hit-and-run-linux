@@ -13,10 +13,13 @@
 //     pan and pitch (doppler) adjustments are applied by the mixer
 //   - if no audio device can be opened (or SHAR_NO_AUDIO is set) voices advance in real time without
 //     output, so everything that waits on sounds still behaves
+//   - EAX2 environmental reverb in software (radSoundLinuxReverb below): as with EAX under DirectSound, only
+//     positional voices feed it; the game fades it with the system aux gain of the environment send
 // Voice state shared with the callback (play list, buffer, position) changes under the audio device lock.
 //=============================================================================
 
 #include "pch.hpp"
+#include <math.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -236,6 +239,232 @@ static void radSoundMixMovie( float* out, int frames )
 }
 
 //=============================================================================
+// Environmental reverb: stands in for the sound card's EAX 2 listener environment. The parameters are
+// EAX2 listener properties (levels in mB); the structure is a usual software one: room HF filter, a
+// predelay line with early-reflection taps (at ReflectionsDelay) and a late tail (ReflectionsDelay +
+// ReverbDelay later) of 8 damped comb filters per channel (decay from DecayTime, HF decay from
+// DecayHFRatio, HF reference 5 kHz as EAX2) into 4 allpasses (EnvironmentDiffusion). Mono in, stereo out.
+// Audio thread except Set*, which take the device lock. SHAR_REVERB=0 turns it off, SHAR_REVERB_LOG=1
+// prints each preset and fade.
+//=============================================================================
+
+struct radSoundLinuxReverbParams
+{
+    int   room, roomHF;
+    float roomRolloff, decayTime, decayHFRatio;
+    int   reflections;
+    float reflectionsDelay;
+    int   reverb;
+    float reverbDelay, diffusion;
+};
+
+static float s_AuxGain[ RSD_LINUX_MAX_AUX_SENDS ] = { 1.0f, 1.0f, 1.0f, 1.0f };    // system aux send gains
+static unsigned int s_ReverbAux = 0xFFFFFFFF;  // aux send the reverb effect is attached to
+static float* s_WetIn = NULL;                  // per-callback mono reverb send, s_WetCapacity frames
+static int s_WetCapacity = 0;
+
+static bool radSoundReverbLog( void )
+{
+    static int s_log = -1;
+    if ( s_log < 0 ) { const char* e = getenv( "SHAR_REVERB_LOG" ); s_log = ( e && *e != '0' ) ? 1 : 0; }
+    return s_log != 0;
+}
+
+static float MilliBelToGain( float mB ) { return powf( 10.0f, mB / 2000.0f ); }
+
+// One-pole lowpass y += (1 - d)(x - y) whose gain at hz is r (0 < r <= 1): the d in [0, 1) solving
+// r^2 (1 - 2 d cos w + d^2) = (1 - d)^2.
+static float LowpassCoefForGain( float r, float hz, float rate )
+{
+    if ( r >= 0.9999f ) return 0.0f;
+    if ( r < 0.0001f ) r = 0.0001f;
+    float c = cosf( 2.0f * 3.14159265f * hz / rate );
+    float a = r * r - 1.0f, b = 2.0f - 2.0f * r * r * c;
+    float disc = b * b - 4.0f * a * a;
+    if ( disc < 0.0f ) disc = 0.0f;
+    float d = ( -b + sqrtf( disc ) ) / ( 2.0f * a );
+    return d < 0.0f ? 0.0f : ( d > 0.99f ? 0.99f : d );
+}
+
+class radSoundLinuxReverb
+{
+public:
+    enum { NUM_COMBS = 8, NUM_ALLPASSES = 4, NUM_TAPS = 6 };
+
+    radSoundLinuxReverb( void ) : m_Rate( 0 ), m_Mem( NULL ), m_Enabled( false ), m_Gain( 0.0f ), m_InLP( 0.0f ),
+                                  m_Pre( NULL ), m_PreSize( 0 ), m_PreWrite( 0 ), m_Active( false ), m_Silent( 0 )
+    {
+        radSoundLinuxReverbParams defaults = { -1000, -500, 0.0f, 3.92f, 0.70f, -1230, 0.020f, -2, 0.029f, 1.0f };
+        m_Params = defaults;
+    }
+
+    void Open( int rate )
+    {
+        static const int combTune[ NUM_COMBS ] = { 1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617 };   // at 44.1 kHz
+        static const int allpassTune[ NUM_ALLPASSES ] = { 556, 441, 341, 225 };
+        const int SPREAD = 23;
+        m_Rate = rate;
+        float scale = rate / 44100.0f;
+        int total = 0;
+        for ( int ch = 0; ch < 2; ch++ )
+        {
+            for ( int i = 0; i < NUM_COMBS; i++ ) total += m_Comb[ ch ][ i ].size = (int) ( ( combTune[ i ] + ch * SPREAD ) * scale );
+            for ( int i = 0; i < NUM_ALLPASSES; i++ ) total += m_Allpass[ ch ][ i ].size = (int) ( ( allpassTune[ i ] + ch * SPREAD ) * scale );
+        }
+        m_PreSize = (int) ( 0.45f * rate );         // ReflectionsDelay (<= 0.3 s) + ReverbDelay (<= 0.1 s) + taps
+        total += m_PreSize;
+        m_Mem = (float*) calloc( total, sizeof( float ) );
+        if ( m_Mem == NULL ) return;
+        float* p = m_Mem;
+        m_Pre = p; p += m_PreSize;
+        for ( int ch = 0; ch < 2; ch++ )
+        {
+            for ( int i = 0; i < NUM_COMBS; i++ ) { Comb& c = m_Comb[ ch ][ i ]; c.buf = p; p += c.size; c.pos = 0; c.store = 0.0f; }
+            for ( int i = 0; i < NUM_ALLPASSES; i++ ) { Allpass& a = m_Allpass[ ch ][ i ]; a.buf = p; p += a.size; a.pos = 0; }
+        }
+        SetParams( m_Params );
+    }
+
+    void SetEnabled( bool enabled ) { m_Enabled = enabled; }
+    bool IsEnabled( void ) const { return m_Enabled && m_Mem != NULL; }
+    float RoomRolloff( void ) const { return m_Params.roomRolloff; }
+
+    void SetParams( const radSoundLinuxReverbParams& prm )
+    {
+        if ( radSoundReverbLog( ) && m_Rate != 0 && memcmp( &prm, &m_Params, sizeof( prm ) ) != 0 )
+            fprintf( stderr, "[reverb] room %d roomHF %d rolloff %.2f decay %.2f s HF ratio %.2f reflections %d @ %.3f s"
+                             " reverb %d @ +%.3f s diffusion %.2f\n", prm.room, prm.roomHF, prm.roomRolloff, prm.decayTime,
+                     prm.decayHFRatio, prm.reflections, prm.reflectionsDelay, prm.reverb, prm.reverbDelay, prm.diffusion );
+        m_Params = prm;
+        if ( m_Mem == NULL ) return;
+        float rate = (float) m_Rate;
+        float room = MilliBelToGain( (float) prm.room );
+        m_ReflGain = room * MilliBelToGain( (float) prm.reflections ) / sqrtf( (float) NUM_TAPS );
+        m_LateGain = room * MilliBelToGain( (float) prm.reverb );
+        m_InCoef = LowpassCoefForGain( MilliBelToGain( (float) prm.roomHF ), 5000.0f, rate );
+
+        // early reflections spread over ~25 ms after ReflectionsDelay, alternating sides
+        static const float tapMs[ NUM_TAPS ] = { 0.0f, 3.7f, 7.9f, 12.1f, 17.3f, 23.9f };
+        static const float tapGain[ NUM_TAPS ] = { 1.0f, 0.9f, 0.8f, 0.7f, 0.6f, 0.5f };
+        float reflDelay = prm.reflectionsDelay < 0.0f ? 0.0f : ( prm.reflectionsDelay > 0.3f ? 0.3f : prm.reflectionsDelay );
+        float revDelay = prm.reverbDelay < 0.0f ? 0.0f : ( prm.reverbDelay > 0.1f ? 0.1f : prm.reverbDelay );
+        for ( int t = 0; t < NUM_TAPS; t++ )
+        {
+            m_TapDelay[ t ] = (int) ( ( reflDelay + tapMs[ t ] * 0.001f ) * rate );
+            m_TapGain[ t ] = tapGain[ t ];
+        }
+        m_LateDelay = (int) ( ( reflDelay + revDelay ) * rate );
+
+        // comb feedback for a 60 dB decay in DecayTime; the loop lowpass makes 5 kHz decay in DecayTime * HFRatio
+        float t60 = prm.decayTime < 0.1f ? 0.1f : prm.decayTime;
+        float hfRatio = prm.decayHFRatio < 0.1f ? 0.1f : prm.decayHFRatio;
+        float diffusion = prm.diffusion < 0.0f ? 0.0f : ( prm.diffusion > 1.0f ? 1.0f : prm.diffusion );
+        for ( int ch = 0; ch < 2; ch++ )
+        {
+            for ( int i = 0; i < NUM_COMBS; i++ )
+            {
+                Comb& c = m_Comb[ ch ][ i ];
+                float seconds = c.size / rate;
+                c.feedback = powf( 10.0f, -3.0f * seconds / t60 );
+                float hfFeedback = powf( 10.0f, -3.0f * seconds / ( t60 * hfRatio ) );
+                c.damp = LowpassCoefForGain( hfFeedback / c.feedback, 5000.0f, rate );
+                c.inGain = sqrtf( 1.0f - c.feedback * c.feedback ) / sqrtf( (float) NUM_COMBS );
+            }
+            for ( int i = 0; i < NUM_ALLPASSES; i++ )
+                m_Allpass[ ch ][ i ].feedback = 0.3f + 0.35f * diffusion;
+        }
+    }
+
+    // Adds the reverb of wet (mono, frames) into out (stereo). gain is the send's aux gain, ramped from the last.
+    void Process( const float* wet, float* out, int frames, float gain )
+    {
+        bool feeding = gain > 0.0f || m_Gain > 0.0f;
+        if ( !feeding && !m_Active ) { m_Gain = gain; return; }
+        float g = m_Gain, dg = ( gain - m_Gain ) / frames;
+        m_Gain = gain;
+        float peak = 0.0f;
+        for ( int i = 0; i < frames; i++ )
+        {
+            float x = wet[ i ] * g;
+            g += dg;
+            m_InLP += ( 1.0f - m_InCoef ) * ( x - m_InLP );
+            m_Pre[ m_PreWrite ] = m_InLP;
+
+            float early[ 2 ] = { 0.0f, 0.0f };
+            for ( int t = 0; t < NUM_TAPS; t++ )
+                early[ t & 1 ] += Delayed( m_TapDelay[ t ] ) * m_TapGain[ t ];
+            float late = Delayed( m_LateDelay ) + 1e-18f;          // keeps the loops out of denormals
+            if ( ++m_PreWrite == m_PreSize ) m_PreWrite = 0;
+
+            for ( int ch = 0; ch < 2; ch++ )
+            {
+                float sum = 0.0f;
+                for ( int c = 0; c < NUM_COMBS; c++ ) sum += m_Comb[ ch ][ c ].Run( late );
+                for ( int a = 0; a < NUM_ALLPASSES; a++ ) sum = m_Allpass[ ch ][ a ].Run( sum );
+                float y = early[ ch ] * m_ReflGain + sum * m_LateGain;
+                out[ i * 2 + ch ] += y;
+                float ay = y < 0.0f ? -y : y;
+                if ( ay > peak ) peak = ay;
+            }
+        }
+        // after the input stops, run until the tail has died away (then skip the work)
+        if ( feeding || peak > 1e-5f ) { m_Active = true; m_Silent = 0; }
+        else if ( ++m_Silent > 8 ) m_Active = false;
+    }
+
+private:
+    struct Comb
+    {
+        float* buf; int size, pos; float feedback, damp, inGain, store;
+        float Run( float x )
+        {
+            float y = buf[ pos ];
+            store = y + damp * ( store - y );
+            buf[ pos ] = x * inGain + store * feedback;
+            if ( ++pos == size ) pos = 0;
+            return y;
+        }
+    };
+    struct Allpass
+    {
+        float* buf; int size, pos; float feedback;
+        float Run( float x )
+        {
+            float b = buf[ pos ];                   // v[n - size]
+            float v = x + b * feedback;             // H = ( z^-size - g ) / ( 1 - g z^-size ): flat
+            buf[ pos ] = v;
+            if ( ++pos == size ) pos = 0;
+            return b - v * feedback;
+        }
+    };
+
+    float Delayed( int samples ) const
+    {
+        int r = m_PreWrite - samples;
+        if ( r < 0 ) r += m_PreSize;
+        return m_Pre[ r ];
+    }
+
+    int m_Rate;
+    float* m_Mem;
+    bool m_Enabled;
+    float m_Gain;
+    radSoundLinuxReverbParams m_Params;
+    float m_ReflGain, m_LateGain, m_InCoef, m_InLP;
+    float* m_Pre;
+    int m_PreSize, m_PreWrite;
+    int m_TapDelay[ NUM_TAPS ];
+    float m_TapGain[ NUM_TAPS ];
+    int m_LateDelay;
+    Comb m_Comb[ 2 ][ NUM_COMBS ];
+    Allpass m_Allpass[ 2 ][ NUM_ALLPASSES ];
+    bool m_Active;
+    int m_Silent;
+};
+
+static radSoundLinuxReverb s_Reverb;
+
+//=============================================================================
 // Voice
 //=============================================================================
 
@@ -253,7 +482,7 @@ public:
         :
         m_Priority( 0 ), m_Playing( false ), m_InUpdateList( false ), m_ActiveIndex( -1 ), m_PositionFrames( 0.0 ),
         m_Volume( 1.0f ), m_Trim( 1.0f ), m_Muted( false ), m_Pan( 0.0f ), m_Pitch( 1.0f ),
-        m_LastGainL( 0.0f ), m_LastGainR( 0.0f )
+        m_LastGainL( 0.0f ), m_LastGainR( 0.0f ), m_LastWet( 0.0f ), m_WetDistanceFactor( 1.0f )
     {
         for ( unsigned int i = 0; i < RSD_LINUX_MAX_AUX_SENDS; i++ )
         {
@@ -343,8 +572,23 @@ public:
     }
     virtual IRadSoundHalPositionalGroup* GetPositionalGroup( void ) { return m_xPositionalGroup; }
 
-    // radSoundHalPositionalEntity: the group recomputed its volume/pan/pitch adjustments (used by a mixer)
-    virtual void OnApplyPositionalSettings( void ) { }
+    // radSoundHalPositionalEntity: the group recomputed its volume/pan/pitch adjustments (the mixer reads
+    // them). Here: the reverb send's distance factor, EAX's room rolloff (DirectSound's rolloff law applied
+    // to the reflected sound; 0 = none) and silence past the maximum distance (DSBCAPS_MUTE3DATMAXDISTANCE).
+    virtual void OnApplyPositionalSettings( void )
+    {
+        if ( m_xPositionalGroup == NULL ) return;
+        radSoundHalPositionalInformation& pi = m_xPositionalGroup->m_RadSoundHalPositionalInformation;
+        radSoundVector listener;
+        radSoundHalListener::GetInstance( )->GetPosition( &listener );
+        float d = listener.GetDistanceBetween( pi.m_Position );
+        float rolloff = s_Reverb.RoomRolloff( );
+        float minD = pi.m_MinDistance > 0.1f ? pi.m_MinDistance : 0.1f;
+        float f = 1.0f;
+        if ( !( d < pi.m_MaxDistance ) ) f = 0.0f;
+        else if ( rolloff > 0.0f && d > minD ) f = minD / ( minD + rolloff * ( d - minD ) );
+        m_WetDistanceFactor = f;
+    }
 
 private:
     virtual ~radSoundHalVoiceLinux( void )
@@ -410,9 +654,10 @@ private:
     }
 
 public:
-    // Mix this voice into out (interleaved stereo float, frames output frames). Audio thread, lock held.
+    // Mix this voice into out (interleaved stereo float, frames output frames) and, when wet is not NULL,
+    // its send into the reverb input wet (mono) for reverbAux. Audio thread, lock held.
     // Returns false when a one-shot finished.
-    bool MixInto( float* out, int frames )
+    bool MixInto( float* out, float* wet, unsigned int reverbAux, int frames )
     {
         radSoundHalBufferLinux* b = m_refBuffer;
         if ( b == NULL ) return false;
@@ -440,10 +685,21 @@ public:
         float l = pan > 0.0f ? ( 1.0f - pan ) : 1.0f;
         float r = pan < 0.0f ? ( 1.0f + pan ) : 1.0f;
         float gainL = amp * l * l, gainR = amp * r * r;
-        if ( m_LastGainL < 0.0f ) { m_LastGainL = gainL; m_LastGainR = gainR; }
+        // reverb send: positional voices only (EAX acted on DirectSound 3D buffers)
+        float wetGain = 0.0f;
+        if ( wet != NULL && m_xPositionalGroup != NULL && reverbAux < RSD_LINUX_MAX_AUX_SENDS &&
+             m_xPositionalGroup->m_RadSoundHalPositionalInformation.m_EnvAuxSend == reverbAux )
+        {
+            wetGain = ( m_AuxMode[ reverbAux ] == radSoundAuxMode_PreFader ? 1.0f : analog * analog ) *
+                      m_AuxGain[ reverbAux ] * m_WetDistanceFactor;
+            if ( !( wetGain >= 0.0f && wetGain < 16.0f ) ) wetGain = 0.0f;
+        }
+        if ( m_LastGainL < 0.0f ) { m_LastGainL = gainL; m_LastGainR = gainR; m_LastWet = wetGain; }
         float dL = ( gainL - m_LastGainL ) / frames, dR = ( gainR - m_LastGainR ) / frames;
         float gL = m_LastGainL, gR = m_LastGainR;
-        m_LastGainL = gainL; m_LastGainR = gainR;
+        float dW = ( wetGain - m_LastWet ) / frames, gW = m_LastWet;
+        m_LastGainL = gainL; m_LastGainR = gainR; m_LastWet = wetGain;
+        if ( wetGain == 0.0f && gW == 0.0f ) wet = NULL;
 
         double step = (double) f->GetSampleRate( ) * EffectivePitch( ) / (double) s_OutputRate;
         // a NaN from the game (e.g. a positional source at a NaN position) would poison the whole mix
@@ -493,6 +749,7 @@ public:
             out[ i * 2 ]     += sl * gL;
             out[ i * 2 + 1 ] += sr * gR;
             gL += dL; gR += dR;
+            if ( wet != NULL ) { wet[ i ] += ( sl + sr ) * 0.5f * gW; gW += dW; }
             pos += step;
         }
 
@@ -517,6 +774,8 @@ private:
     int    m_ActiveIndex;                   // slot in s_ActiveVoices, -1 when not playing
     volatile double m_PositionFrames;
     float  m_LastGainL, m_LastGainR;        // gains at the end of the last mixed block (ramped)
+    float  m_LastWet;                       // reverb send gain, likewise
+    volatile float m_WetDistanceFactor;     // main thread (OnApplyPositionalSettings)
     float  m_Volume, m_Trim;
     bool   m_Muted;
     float  m_Pan, m_Pitch;
@@ -535,7 +794,8 @@ IRadSoundHalVoice* radSoundHalVoiceCreate( radMemoryAllocator allocator )
 }
 
 //=============================================================================
-// EAX2 reverb effect (parameters are stored; the mixer has no reverb)
+// EAX2 reverb effect: holds the parameters and hands them to the mixer's reverb while attached to an aux
+// send (the defaults are radsound's win32 ones)
 //=============================================================================
 
 class radSoundHalEffectEAX2ReverbLinux : public IRadSoundHalEffectEAX2Reverb, public radSoundObject
@@ -543,35 +803,59 @@ class radSoundHalEffectEAX2ReverbLinux : public IRadSoundHalEffectEAX2Reverb, pu
 public:
     IMPLEMENT_REFCOUNTED( "radSoundHalEffectEAX2ReverbLinux" )
 
-    radSoundHalEffectEAX2ReverbLinux( void )
-        : m_AuxSend( 0xFFFFFFFF ), m_Room( -1000 ), m_RoomHF( -100 ), m_RoomRolloff( 0.0f ), m_DecayTime( 1.49f ),
-          m_DecayHFRatio( 0.83f ), m_Reflections( -2602 ), m_ReflectionsDelay( 0.007f ), m_Reverb( 200 ),
-          m_ReverbDelay( 0.011f ), m_Diffusion( 1.0f ), m_AirAbsorptionHF( -5.0f ) { }
+    radSoundHalEffectEAX2ReverbLinux( void ) : m_AuxSend( 0xFFFFFFFF ), m_EnvironmentSize( 7.5f ), m_AirAbsorptionHF( -5.0f )
+    {
+        radSoundLinuxReverbParams p = { -1000, -500, 0.0f, 3.92f, 0.70f, -1230, 0.020f, -2, 0.029f, 1.0f };
+        m_P = p;
+    }
 
-    virtual void Attach( unsigned int auxSend ) { m_AuxSend = auxSend; }
-    virtual void Detach( void ) { m_AuxSend = 0xFFFFFFFF; }
+    virtual void Attach( unsigned int auxSend )
+    {
+        m_AuxSend = auxSend;
+        const char* e = getenv( "SHAR_REVERB" );
+        radSoundMixLock lock;
+        s_ReverbAux = auxSend;
+        s_Reverb.SetParams( m_P );
+        s_Reverb.SetEnabled( e == NULL || *e != '0' );
+    }
+    virtual void Detach( void )
+    {
+        radSoundMixLock lock;
+        if ( s_ReverbAux == m_AuxSend )
+        {
+            s_ReverbAux = 0xFFFFFFFF;
+            s_Reverb.SetEnabled( false );
+        }
+        m_AuxSend = 0xFFFFFFFF;
+    }
     virtual void Update( void ) { }
 
-    virtual void  SetRoom( int v ) { m_Room = v; }                     virtual int   GetRoom( void ) { return m_Room; }
-    virtual void  SetRoomHF( int v ) { m_RoomHF = v; }                 virtual int   GetRoomHF( void ) { return m_RoomHF; }
-    virtual void  SetRoomRolloffFactor( float v ) { m_RoomRolloff = v; } virtual float GetRoomRolloffFactor( void ) { return m_RoomRolloff; }
-    virtual void  SetDecayTime( float v ) { m_DecayTime = v; }         virtual float GetDecayTime( void ) { return m_DecayTime; }
-    virtual void  SetDecayHFRatio( float v ) { m_DecayHFRatio = v; }   virtual float GetDecayHFRatio( void ) { return m_DecayHFRatio; }
-    virtual void  SetReflections( int v ) { m_Reflections = v; }       virtual int   GetReflections( void ) { return m_Reflections; }
-    virtual void  SetReflectionsDelay( float v ) { m_ReflectionsDelay = v; } virtual float GetReflectionsDelay( void ) { return m_ReflectionsDelay; }
-    virtual void  SetReverb( int v ) { m_Reverb = v; }                 virtual int   GetReverb( void ) { return m_Reverb; }
-    virtual void  SetReverbDelay( float v ) { m_ReverbDelay = v; }     virtual float GetReverbDelay( void ) { return m_ReverbDelay; }
-    virtual void  SetEnvironmentDiffusion( float v ) { m_Diffusion = v; } virtual float GetEnvironmentDiffusion( void ) { return m_Diffusion; }
-    virtual void  SetAirAbsorptionHF( float v ) { m_AirAbsorptionHF = v; } virtual float GetAirAbsorptionHF( void ) { return m_AirAbsorptionHF; }
+    virtual void  SetRoom( int v ) { m_P.room = v; Changed( ); }                     virtual int   GetRoom( void ) { return m_P.room; }
+    virtual void  SetRoomHF( int v ) { m_P.roomHF = v; Changed( ); }                 virtual int   GetRoomHF( void ) { return m_P.roomHF; }
+    virtual void  SetRoomRolloffFactor( float v ) { m_P.roomRolloff = v; Changed( ); } virtual float GetRoomRolloffFactor( void ) { return m_P.roomRolloff; }
+    virtual void  SetDecayTime( float v ) { m_P.decayTime = v; Changed( ); }         virtual float GetDecayTime( void ) { return m_P.decayTime; }
+    virtual void  SetDecayHFRatio( float v ) { m_P.decayHFRatio = v; Changed( ); }   virtual float GetDecayHFRatio( void ) { return m_P.decayHFRatio; }
+    virtual void  SetReflections( int v ) { m_P.reflections = v; Changed( ); }       virtual int   GetReflections( void ) { return m_P.reflections; }
+    virtual void  SetReflectionsDelay( float v ) { m_P.reflectionsDelay = v; Changed( ); } virtual float GetReflectionsDelay( void ) { return m_P.reflectionsDelay; }
+    virtual void  SetReverb( int v ) { m_P.reverb = v; Changed( ); }                 virtual int   GetReverb( void ) { return m_P.reverb; }
+    virtual void  SetReverbDelay( float v ) { m_P.reverbDelay = v; Changed( ); }     virtual float GetReverbDelay( void ) { return m_P.reverbDelay; }
+    virtual void  SetEnvironmentDiffusion( float v ) { m_P.diffusion = v; Changed( ); } virtual float GetEnvironmentDiffusion( void ) { return m_P.diffusion; }
+    // not modelled: environment size only scales EAX's presets, air absorption is a per-distance HF loss
+    virtual void  SetEnvironmentSize( float v ) { m_EnvironmentSize = v; }           virtual float GetEnvironmentSize( void ) { return m_EnvironmentSize; }
+    virtual void  SetAirAbsorptionHF( float v ) { m_AirAbsorptionHF = v; }           virtual float GetAirAbsorptionHF( void ) { return m_AirAbsorptionHF; }
 
 private:
+    // the game sets the parameters one by one (Win32ReverbController::SetReverbOn); each applies at once
+    void Changed( void )
+    {
+        if ( m_AuxSend == 0xFFFFFFFF ) return;
+        radSoundMixLock lock;
+        s_Reverb.SetParams( m_P );
+    }
+
     unsigned int m_AuxSend;
-    int m_Room, m_RoomHF;
-    float m_RoomRolloff, m_DecayTime, m_DecayHFRatio;
-    int m_Reflections;
-    float m_ReflectionsDelay;
-    int m_Reverb;
-    float m_ReverbDelay, m_Diffusion, m_AirAbsorptionHF;
+    radSoundLinuxReverbParams m_P;
+    float m_EnvironmentSize, m_AirAbsorptionHF;
 };
 
 IRadSoundHalEffectEAX2Reverb* radSoundHalEffectEAX2ReverbCreate( radMemoryAllocator allocator )
@@ -588,10 +872,22 @@ static void SDLCALL radSoundMixCallback( void* /*user*/, Uint8* stream, int len 
     float* out = (float*) stream;
     int frames = len / ( 2 * sizeof( float ) );
     memset( stream, 0, len );
+    unsigned int reverbAux = s_ReverbAux;
+    bool reverb = s_Reverb.IsEnabled( ) && reverbAux < RSD_LINUX_MAX_AUX_SENDS &&
+                  radSoundHalListener::GetInstance( )->GetEnvEffectsEnabled( ) &&
+                  radSoundHalListener::GetInstance( )->GetEnvironmentAuxSend( ) == reverbAux;
+    if ( reverb && frames > s_WetCapacity )
+    {
+        free( s_WetIn );
+        s_WetIn = (float*) malloc( frames * sizeof( float ) );
+        s_WetCapacity = s_WetIn != NULL ? frames : 0;
+        reverb = s_WetIn != NULL;
+    }
+    if ( reverb ) memset( s_WetIn, 0, frames * sizeof( float ) );
     for ( unsigned int i = 0; i < s_NumActiveVoices; )
     {
         radSoundHalVoiceLinux* v = s_ActiveVoices[ i ];
-        if ( v->MixInto( out, frames ) )
+        if ( v->MixInto( out, reverb ? s_WetIn : NULL, reverbAux, frames ) )
         {
             i++;
         }
@@ -600,6 +896,7 @@ static void SDLCALL radSoundMixCallback( void* /*user*/, Uint8* stream, int len 
             v->FinishFromMixer( );                      // swaps the last voice into slot i
         }
     }
+    if ( reverb ) s_Reverb.Process( s_WetIn, out, frames, s_AuxGain[ reverbAux ] );
     radSoundMixMovie( out, frames );
     for ( int i = 0; i < frames * 2; i++ )             // soft limit instead of hard clipping
     {
@@ -634,6 +931,9 @@ static void radSoundOpenAudio( void )
         return;
     }
     s_OutputRate = have.freq;
+    s_Reverb.Open( s_OutputRate );
+    s_WetCapacity = have.samples * 2;
+    s_WetIn = (float*) malloc( s_WetCapacity * sizeof( float ) );
     fprintf( stderr, "radsound: SDL audio driver %s, %d Hz, %d-frame buffer\n",
              SDL_GetCurrentAudioDriver( ), have.freq, have.samples );
     SDL_PauseAudioDevice( s_AudioDevice, 0 );
@@ -660,10 +960,6 @@ public:
         : m_NumAuxSends( 0 ), m_pSoundMemory( NULL ), m_LastServiceTime( ::radTimeGetMilliseconds( ) )
     {
         s_pSystem = this;
-        for ( unsigned int i = 0; i < RSD_LINUX_MAX_AUX_SENDS; i++ )
-        {
-            m_AuxGain[ i ] = 1.0f;
-        }
         ::radSoundPrintBanner( );
     }
 
@@ -690,8 +986,16 @@ public:
         if ( m_refEffect[ aux ] != NULL ) m_refEffect[ aux ]->Attach( aux );
     }
     virtual IRadSoundHalEffect* GetAuxEffect( unsigned int aux ) { return aux < m_NumAuxSends ? (IRadSoundHalEffect*) m_refEffect[ aux ] : NULL; }
-    virtual void SetAuxGain( unsigned int aux, float gain ) { if ( aux < RSD_LINUX_MAX_AUX_SENDS ) m_AuxGain[ aux ] = gain; }
-    virtual float GetAuxGain( unsigned int aux ) { return aux < RSD_LINUX_MAX_AUX_SENDS ? m_AuxGain[ aux ] : 0.0f; }
+    // the reverb's input fades with this (ReverbController; DirectSound's HAL ignored it)
+    virtual void SetAuxGain( unsigned int aux, float gain )
+    {
+        if ( aux >= RSD_LINUX_MAX_AUX_SENDS ) return;
+        if ( !( gain >= 0.0f ) ) gain = 0.0f;
+        if ( radSoundReverbLog( ) && aux == s_ReverbAux && ( gain == 0.0f ) != ( s_AuxGain[ aux ] == 0.0f ) )
+            fprintf( stderr, "[reverb] %s\n", gain > 0.0f ? "fading in" : "off" );
+        s_AuxGain[ aux ] = gain;
+    }
+    virtual float GetAuxGain( unsigned int aux ) { return aux < RSD_LINUX_MAX_AUX_SENDS ? s_AuxGain[ aux ] : 0.0f; }
     virtual void SetOutputMode( radSoundOutputMode mode ) { }
     virtual radSoundOutputMode GetOutputMode( void ) { return radSoundOutputMode_Stereo; }
 
@@ -737,7 +1041,6 @@ private:
     unsigned int m_NumAuxSends;
     void* m_pSoundMemory;
     unsigned int m_LastServiceTime;
-    float m_AuxGain[ RSD_LINUX_MAX_AUX_SENDS ];
     ref< IRadSoundHalEffect > m_refEffect[ RSD_LINUX_MAX_AUX_SENDS ];
 };
 
