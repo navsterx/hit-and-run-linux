@@ -48,12 +48,15 @@ LINUX_EXTRA = {
     "radsound": ["libs/radsound/src/hal/linux/linuxhal.cpp",
                  "libs/radsound/src/hal/win32/bufferloader.cpp",          # platform-neutral, reused as is
                  "libs/radsound/src/hal/common/softwarelistener.cpp",     # software 3D (as PS2/GameCube)
-                 "libs/radsound/src/hal/common/softwarepositionalgroup.cpp"],
+                 "libs/radsound/src/hal/common/softwarepositionalgroup.cpp",
+                 "libs/radsound/src/radsound/linux/oggdecoder.cpp"],      # mods' Ogg Vorbis files (FFmpeg)
 }
 
 WIN_SDK_RE = re.compile(r"sdks/(dx8|dx9|win32|eax\w*|mfc|XBox|GameCube)", re.I)
 
 COMPAT_DIR = "port/compat"
+LUA_DIR = "port/third_party/lua"
+LUA_SOURCES = sorted(f"{LUA_DIR}/{f}" for f in os.listdir(os.path.join(vcx.ROOT, LUA_DIR)) if f.endswith(".c"))
 COMPAT_HEADER = "port/compat/msvc_compat.h"
 PLATFORM_DIRS = ("/win32/", "/dx8/")      # sources here need a Linux implementation; excluded for now
 
@@ -123,6 +126,11 @@ def main():
         "# static C++ runtime + no exported runtime symbols: the game's own operator new must not leak into",
         "# shared libraries (GPU drivers) the way it would by default on ELF (see SHAR_LOCAL in msvc_compat.h)",
         "set(CMAKE_EXE_LINKER_FLAGS \"${CMAKE_EXE_LINKER_FLAGS} -m32 -static-libstdc++ -static-libgcc -Wl,--exclude-libs,ALL\")",
+        "# Lua for mods' scripts (port/third_party/lua, port/compat/shar_modlua.cpp): plain C, so declared before the",
+        "# game-wide definitions and the force-included MSVC compat header below",
+        f"add_library(lua STATIC {' '.join(LUA_SOURCES)})",
+        "target_compile_options(lua PRIVATE -O2)",
+        "target_compile_definitions(lua PRIVATE LUA_USE_POSIX)",
         f"add_compile_definitions({' '.join(PLATFORM_DEFINES)})",
         "# MSVC built-ins/CRT names -> GCC/POSIX, and a types-only windows.h (searched after the source dirs)",
         f"add_compile_options(\"SHELL:-include ${{CMAKE_SOURCE_DIR}}/{COMPAT_HEADER}\")",
@@ -174,16 +182,16 @@ def main():
             libs.append(name)
     out.append("# Win32 API subset implemented on POSIX (threads/sync/timers); linked after the libraries using it")
     out.append(f"add_library(shar_compat STATIC {COMPAT_DIR}/win32_threads.cpp {COMPAT_DIR}/win32_misc.cpp "
-               f"{COMPAT_DIR}/pddi_heap.cpp {COMPAT_DIR}/shar_mods.cpp)")
+               f"{COMPAT_DIR}/pddi_heap.cpp {COMPAT_DIR}/shar_mods.cpp {COMPAT_DIR}/shar_modlua.cpp)")
     out.append("# the renderer allocates from its own heap, as pddidx8.dll did on Windows (port/compat/pddi_heap.cpp)")
     out.append("add_custom_command(TARGET pddigl POST_BUILD COMMAND objcopy "
                "--redefine-sym _Znwj=pddi_heap_new --redefine-sym _Znaj=pddi_heap_new_array "
                "--redefine-sym _ZdlPv=pddi_heap_delete --redefine-sym _ZdaPv=pddi_heap_delete_array "
                "$<TARGET_FILE:pddigl> VERBATIM)")
-    out.append(f"target_include_directories(shar_compat PRIVATE {COMPAT_DIR})")
+    out.append(f"target_include_directories(shar_compat PRIVATE {COMPAT_DIR} {LUA_DIR})")
     # static libraries reference each other in both directions (pure3d <-> pddigl/libpng, radmusic -> radsound,
     # ...); MSVC resolves that automatically, GNU ld needs them in a group
-    out.append(f"target_link_libraries(srr2 PRIVATE -Wl,--start-group {' '.join(l for l in libs)} shar_compat "
+    out.append(f"target_link_libraries(srr2 PRIVATE -Wl,--start-group {' '.join(l for l in libs)} shar_compat lua "
                f"-Wl,--end-group SDL2 GL openal avformat avcodec swscale swresample avutil pthread dl)")
     open(os.path.join(vcx.ROOT, "CMakeLists.txt"), "w").write("\n".join(out) + "\n")
 

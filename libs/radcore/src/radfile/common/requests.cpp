@@ -451,9 +451,31 @@ radDrive::CompletionStatus FileOpenRequest::DoRequest( void )
     //
     radCementLibraryList* pLibList = pDrive->GetLibraryList( );
     pLibList->BeginIteration( radCementLibraryBeforeDrive );
+    const char* fileName = m_pFile->m_Filename;
 #ifdef RAD_LINUX
-    // Linux port: a file a mod overrides (port/compat/shar_mods.h) comes from the drive, which opens the mod's copy
-    bool modOverride = !m_WriteAccess && m_Flags == OpenExisting && shar_ModHasFile( m_pFile->m_Filename );
+    // Linux port: mods (port/compat/shar_mods.h). A path a mod occludes does not exist, a redirected one opens
+    // another game path, and a file a mod provides comes from the drive, which takes this resolution over
+    // (shar_ModTakeResolved) and opens the mod's copy.
+    bool modOverride = false;
+    char redirected[ radFileFilenameMax + 1 ];
+    if ( !m_WriteAccess && m_Flags == OpenExisting )
+    {
+        SharModFile modFile;
+        const char* redirect = NULL;
+        switch ( shar_ModResolve( fileName, &modFile, &redirect ) )
+        {
+        case SHAR_MOD_MISSING:
+            return handleError( radDrive::Error, FileNotFound );
+        case SHAR_MOD_FILE:
+            modOverride = true;
+            break;
+        case SHAR_MOD_REDIRECT:
+            strncpy( redirected, redirect, sizeof( redirected ) - 1 );
+            redirected[ sizeof( redirected ) - 1 ] = '\0';
+            fileName = redirected;
+            break;
+        }
+    }
 #else
     bool modOverride = false;
 #endif
@@ -462,7 +484,7 @@ radDrive::CompletionStatus FileOpenRequest::DoRequest( void )
     while ( !modOverride && ( pLib = pLibList->GetNext( ) ) != NULL )
     {
         unsigned int offset, size;
-        radFile* origFile = pLib->OpenFile( m_pFile->m_Filename, &offset, &size );
+        radFile* origFile = pLib->OpenFile( fileName, &offset, &size );
         if ( origFile != NULL )
         {
             //
@@ -488,7 +510,7 @@ radDrive::CompletionStatus FileOpenRequest::DoRequest( void )
     //
     radDrive::CompletionStatus status = pDrive->OpenFile
                                             ( 
-                                                m_pFile->m_Filename,
+                                                fileName,
                                                 m_Flags,
                                                 m_WriteAccess,
                                                 &m_pFile->m_Handle,
@@ -517,7 +539,7 @@ radDrive::CompletionStatus FileOpenRequest::DoRequest( void )
     while ( ( pLib = pLibList->GetNext( ) ) != NULL )
     {
         unsigned int offset, size;
-        radFile* origFile = pLib->OpenFile( m_pFile->m_Filename, &offset, &size );
+        radFile* origFile = pLib->OpenFile( fileName, &offset, &size );
         if ( origFile != NULL )
         {
             //

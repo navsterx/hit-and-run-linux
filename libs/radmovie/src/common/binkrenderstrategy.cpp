@@ -235,7 +235,12 @@ void radMovieRenderStrategyBink::ChangeParameters( unsigned int width, unsigned 
 void radMovieRenderStrategyBink::UpdateLayout( void )
 {
     // Assume that we'll fill the screen
+    #ifdef RAD_LINUX
+    // Linux port: the fit below also for movies larger than the window (mods' 1440x1080 ones)
+    if ( true )
+    #else
     if ( (unsigned int) p3d::display->GetWidth( ) >= m_MovieWidth )
+    #endif
     {
         #ifdef RAD_WIN32
         // Linux port: fit the whole movie in a window of any shape (black bars), not just its width

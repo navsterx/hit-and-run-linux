@@ -1818,7 +1818,13 @@ CharacterSheetManager::IsAllStoryMissionsCompleted()
             {
                 if (spInstance->mCharacterSheet.mLevelList[i].mPurchasedRewards[j])
                 {
-                    GetRewardsManager()->GetMerchandise(i,j)->UnlockReward();
+                    // Linux port: null check as in the else branch (a save from other game data, e.g. a mod's,
+                    // can list purchases this data does not have)
+                    Merchandise* merchandise = GetRewardsManager()->GetMerchandise(i,j);
+                    if( merchandise != NULL )
+                    {
+                        merchandise->UnlockReward();
+                    }
                 }
                 else
                 {

@@ -35,6 +35,9 @@
 #include <radfile.hpp>
 #include <raddebugwatch.hpp>
 #include <radtime.hpp>
+#ifdef RAD_LINUX
+#include <shar_mods.h>
+#endif
 
 #ifdef RAD_PS2
     #include <radstring.hpp>
@@ -883,6 +886,10 @@ GameDataManager::FormatSavedGameFilename( char* filename,
 
 #ifdef RAD_XBOX
     sprintf( filename, "Saved Game (Slot %d)", slot + 1 );
+#elif defined( RAD_LINUX )
+    // Linux port: a main mod keeps its own saved games, as with the Mod Launcher (port/compat/shar_mods.h)
+    const char* modSaves = shar_ModSaveDir( );
+    snprintf( filename, filenameLength, "%s%sSave%d", modSaves ? modSaves : "", modSaves ? "/" : "", slot + 1 );
 #else
     sprintf( filename, "%sSave%d", PS2_FILENAME_PREFIX, slot + 1 );
 #endif

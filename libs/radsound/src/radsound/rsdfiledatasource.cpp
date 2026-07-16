@@ -7,6 +7,9 @@
 #include <radsoundfile.hpp>
 #include "rsdfiledatasource.hpp"
 #include "radicaladpcm.hpp"
+#ifdef RAD_LINUX
+#include "linux/oggdecoder.hpp"
+#endif
 
 RadSoundFilePerformanceCallback * gpFpc;
 
@@ -37,7 +40,11 @@ radSoundRsdFileDataSource::radSoundRsdFileDataSource( void )
     m_CarryOffset( 0 ),
     m_CarryFrames( 0 ),
     m_pDecodeDest( NULL ),
-    m_DecodeFrames( 0 )
+    m_DecodeFrames( 0 ),
+    m_pOgg( NULL ),
+    m_pOggData( NULL ),
+    m_OggInitialPos( 0 ),
+    m_OggInitialPosUnits( IRadSoundHalAudioFormat::Frames )
 {
 	m_StateInfo.m_State = StateInfo::NONE;
 }
@@ -48,6 +55,10 @@ radSoundRsdFileDataSource::~radSoundRsdFileDataSource( void )
     {
         ::radMemoryFreeAligned( GetThisAllocator( ), m_pAdpcm );
     }
+#ifdef RAD_LINUX
+    radOggDecoderClose( m_pOgg );
+    free( m_pOggData );
+#endif
 }
 
 IRadSoundHalDataSource::State radSoundRsdFileDataSource::GetState( void )
@@ -184,6 +195,20 @@ void radSoundRsdFileDataSource::GetFramesAsync
 	m_StateInfo.m_ReadingDataInfo.m_ReadSizeInFrames = sizeInFrames;
 	m_refIRadSoundHalDataSourceCallback = pIRshdsc;
 
+#ifdef RAD_LINUX
+    if ( m_pOgg != NULL )
+    {
+        // Decode now; a stream shorter than its granule position said ends in silence
+        unsigned int got = radOggDecoderRead( m_pOgg, (short*) pFrameBuffer, sizeInFrames );
+        unsigned int frameBytes = radOggDecoderChannels( m_pOgg ) * 2;
+        memset( (char*) pFrameBuffer + got * frameBytes, 0, ( sizeInFrames - got ) * frameBytes );
+
+        // Called back once the file system next completes, so never re-entrantly (as for RADP above)
+        m_refIRadFile->AddCompletionCallback( this, NULL );
+        return;
+    }
+#endif
+
     if ( m_Decode )
     {
         // Serve what is left of the last block first, then read whole blocks for the rest
@@ -285,6 +310,13 @@ void radSoundRsdFileDataSource::OnFileOperationsComplete( void* pUserData )
 			_StateReadingData( );
 			break;
 		}
+#ifdef RAD_LINUX
+		case StateInfo::READING_OGG:
+		{
+			_StateReadingOgg( );
+			break;
+		}
+#endif
         default:
         {
             rAssert( false );
@@ -366,6 +398,23 @@ void radSoundRsdFileDataSource::_StateOpeningFile( void )
 void radSoundRsdFileDataSource::_StateReadingHeader( void )
 {
 	rAssert(  m_refIRadFile->IsOpen( ) );  // If the file isn't open, we shouldn't be here
+
+#ifdef RAD_LINUX
+    if ( radOggIsOgg( m_StateInfo.m_ReadingHeaderInfo.m_pRadSoundHalFileHeader ) )
+    {
+        // An Ogg file under an .rsd name: read all of it, then decode as it plays
+        ::radMemoryFreeAligned( RADMEMORY_ALLOC_TEMP, m_StateInfo.m_ReadingHeaderInfo.m_pRadSoundHalFileHeader );
+        m_OggInitialPos = m_StateInfo.m_ReadingHeaderInfo.m_InitialPlaybackPos;
+        m_OggInitialPosUnits = m_StateInfo.m_ReadingHeaderInfo.m_InitalPlaybackPosUnits;
+        unsigned int size = m_refIRadFile->GetSize( );
+        m_pOggData = (unsigned char*) malloc( size > 0 ? size : 1 );
+        m_StateInfo.m_State = StateInfo::READING_OGG;
+        m_refIRadFile->SetPositionAsync( 0 );
+        m_refIRadFile->ReadAsync( m_pOggData, size );
+        m_refIRadFile->AddCompletionCallback( this, NULL );
+        return;
+    }
+#endif
 
 	// Get the data under control for strange platforms
 
@@ -479,6 +528,40 @@ void radSoundRsdFileDataSource::InitFile( void )
 void radSoundRsdFileDataSource::_StateIdle( void )
 {
 }
+
+#ifdef RAD_LINUX
+void radSoundRsdFileDataSource::_StateReadingOgg( void )
+{
+    const char* name = m_refIRadFile->GetFilename( );
+    m_pOgg = radOggDecoderOpen( m_pOggData, m_refIRadFile->GetSize( ), name );
+    m_pOggData = NULL;                                  // the decoder owns it now
+    if ( m_pOgg == NULL )
+    {
+        m_StateInfo.m_State = StateInfo::FILE_ERROR;
+        m_FramesLeftInFile = 0;
+        m_refIRadFile = NULL;
+        return;
+    }
+
+    unsigned int channels = radOggDecoderChannels( m_pOgg );
+    m_refIRadSoundHalAudioFormat = ::radSoundHalAudioFormatCreate( GetThisAllocator( ) );
+    m_refIRadSoundHalAudioFormat->Initialize( IRadSoundHalAudioFormat::PCM, NULL,
+        radOggDecoderRate( m_pOgg ), channels, 16 );
+
+    unsigned int total = radOggDecoderTotalFrames( m_pOgg );
+    unsigned int start = m_refIRadSoundHalAudioFormat->ConvertSizeType(
+        IRadSoundHalAudioFormat::Frames, m_OggInitialPos, m_OggInitialPosUnits );
+    if ( start > total )
+    {
+        start = total;
+    }
+    radOggDecoderRead( m_pOgg, NULL, start );
+    m_FramesLeftInFile = total - start;
+
+    m_StateInfo.m_State = StateInfo::IDLE;
+    ::radSoundHalSystemGet( )->Service( );
+}
+#endif
 
 void radSoundRsdFileDataSource::DecodeReadBlocks( void )
 {

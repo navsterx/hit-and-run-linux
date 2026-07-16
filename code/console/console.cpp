@@ -38,6 +38,9 @@
 #include <raddebugconsole.hpp>
 #include <console/debugconsolecallback.h>
 #endif
+#ifdef RAD_LINUX
+#include <shar_mods.h>
+#endif
 
 //******************************************************************************
 //
@@ -364,11 +367,23 @@ mpCallback( 0 )
 
     mArgv = new char*[MAX_ARGS];
     mPrevArgv = new char*[MAX_ARGS];
+
+    mArgLength = MAX_ARG_LENGTH;
+#ifdef RAD_LINUX
+    // Linux port: mods' longer arguments (the limit is in characters; at most a line, ReadToken's buffer)
+    {
+        int modLength = shar_ModLimit( "Scripting", "ArgumentLengthLimit", 0 ) + 1;
+        if ( modLength > mArgLength )
+        {
+            mArgLength = modLength < MAX_STRING_LENGTH ? modLength : MAX_STRING_LENGTH;
+        }
+    }
+#endif
     
     for( i = 0; i < MAX_ARGS; ++i )
     {
-        mArgv[i] = new char[MAX_ARG_LENGTH];
-        mPrevArgv[i] = new char[MAX_ARG_LENGTH];
+        mArgv[i] = new char[mArgLength];
+        mPrevArgv[i] = new char[mArgLength];
     }
 
     #ifdef RAD_GAMECUBE
@@ -1635,6 +1650,20 @@ bool Console::ReadToken(char **stringPtr, const char *requiredToken)
 // Return:      
 //
 //==============================================================================
+#ifdef RAD_LINUX
+// Linux port: tokens longer than the argument buffers are cut (the original wrote past them, corrupting the heap)
+int Console::ClampTokenLength( int length, const char* token )
+{
+    if ( length >= mArgLength )
+    {
+        Printf( "ConERR file %s line %d - argument longer than %d characters cut: %.*s...", mFileName, mLineNumber,
+                mArgLength - 1, 32, token );
+        length = mArgLength - 1;
+    }
+    return length;
+}
+#endif
+
 char* Console::GetNextToken(char **stringPtr, char *tokenBuffer)
 {
     //validate parameters
@@ -1677,6 +1706,9 @@ char* Console::GetNextToken(char **stringPtr, char *tokenBuffer)
 
         //now we've got our string enclosed with quotes, copy it the contents to the tokenBuffer
         int strLength = (tokenEnd - tokenPtr) - 1;
+#ifdef RAD_LINUX
+        strLength = ClampTokenLength( strLength, tokenPtr + 1 );
+#endif
         strncpy(tokenBuffer, tokenPtr + 1, strLength);
         tokenBuffer[strLength] = '\0';
 
@@ -1694,7 +1726,13 @@ char* Console::GetNextToken(char **stringPtr, char *tokenBuffer)
         if (! tokenEnd)
         {
             //copy the token to the tokenBuffer
+#ifdef RAD_LINUX
+            int strLength = ClampTokenLength( (int) strlen( tokenPtr ), tokenPtr );
+            strncpy( tokenBuffer, tokenPtr, strLength );
+            tokenBuffer[ strLength ] = '\0';
+#else
             strcpy(tokenBuffer, tokenPtr);
+#endif
 
             //update the next position in the string
             *stringPtr = &tokenPtr[strlen(tokenPtr)];
@@ -1717,6 +1755,9 @@ char* Console::GetNextToken(char **stringPtr, char *tokenBuffer)
         {
             //copy the token into the tokenBuffer
             int strLength = tokenEnd - tokenPtr;
+#ifdef RAD_LINUX
+            strLength = ClampTokenLength( strLength, tokenPtr );
+#endif
             strncpy(tokenBuffer, tokenPtr, strLength);
             tokenBuffer[strLength] = '\0';
 

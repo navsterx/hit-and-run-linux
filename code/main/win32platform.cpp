@@ -862,8 +862,15 @@ bool Win32Platform::OnDriveError( radFileError error, const char* pDriveName, vo
             unsigned int adjustedIndex = lastIndex == 0 ? lastIndex : lastIndex + 1;
 
             char adjustedName[32];
+#ifdef RAD_LINUX
+            // Linux port: bounded (long names overflowed adjustedName), and the full path goes to stderr
+            fprintf( stderr, "File not found: %s\n", fileName );
+            strncpy( adjustedName, &fileName[adjustedIndex], sizeof( adjustedName ) - 1 );
+            adjustedName[ sizeof( adjustedName ) - 1 ] = '\0';
+#else
             strncpy( adjustedName, &fileName[adjustedIndex], ( strlen( fileName ) - lastIndex ) );
             adjustedName[ strlen( fileName ) - lastIndex ] = '\0';
+#endif
 
             if( strcmp( fileName, GameConfigManager::ConfigFilename ) == 0 )
             {

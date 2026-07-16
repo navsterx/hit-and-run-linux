@@ -366,6 +366,16 @@ public:
 
         buffer->total++;
         PDDIASSERT(buffer->total <= buffer->allocated);
+        if(buffer->total >= buffer->allocated)
+        {
+            // Linux port: past the allocation, further vertices overwrite the last one instead of the heap
+            // (Unlock reports them); pddidx8 would have locked no more than its vertex buffer either
+            unsigned last = buffer->allocated > 0 ? buffer->allocated - 1 : 0;
+            if(buffer->coord)  buffer->coord = buffer->coordBase + last * 3;
+            if(buffer->normal) buffer->normal = buffer->normalBase + last * 3;
+            if(buffer->uv)     buffer->uv = buffer->uvBase + last * 2;
+            if(buffer->colour) buffer->colour = buffer->colourBase + last * 4;
+        }
     }
 
     void Position(float x, float y, float z)  
@@ -525,7 +535,16 @@ pglPrimBuffer::pglPrimBuffer(pglContext* c, pddiPrimType type, unsigned vertexFo
 
     indexCount = nIndex;
     if(indexCount) 
+    {
         indices = new unsigned short[indexCount];
+        memset(indices, 0, indexCount * sizeof(unsigned short));   // Linux port: never draw garbage indices
+    }
+    indexUsed = indexCount;
+    useSize = 0;
+    coordBase = coord;
+    normalBase = normal;
+    uvBase = uv;
+    colourBase = colour;
 
     mem += nIndex * 2;
 
@@ -544,10 +563,10 @@ pglPrimBuffer::~pglPrimBuffer()
 
     delete [] strips;
     delete [] indices;
-    delete [] coord;
-    delete [] normal;
-    delete [] uv;
-    delete [] colour;
+    delete [] coordBase;
+    delete [] normalBase;
+    delete [] uvBase;
+    delete [] colourBase;
 
     context->ADD_STAT(PDDI_STAT_BUFFERED_COUNT, -1);
     context->ADD_STAT(PDDI_STAT_BUFFERED_ALLOC, -mem);
@@ -561,17 +580,18 @@ pddiPrimBufferStream* pglPrimBuffer::Lock()
 
 void pglPrimBuffer::Unlock(pddiPrimBufferStream* stream)
 {
-    if(coord)
-        coord -= total * 3;
-
-    if(normal)
-        normal -= total * 3;
-
-    if(uv)
-        uv -= total * 2;
-
-    if(colour)
-        colour -= total * 4;
+    // Linux port: back to the starts (the stream stops advancing at the allocation, see Next)
+    coord = coordBase;
+    normal = normalBase;
+    uv = uvBase;
+    colour = colourBase;
+    if(total > allocated)
+    {
+        static int reported = 0;
+        if(reported++ < 8)
+            fprintf(stderr, "pddigl: prim buffer filled with %u vertices, has room for %u; the rest dropped\n", total, allocated);
+        total = allocated;
+    }
 }
 
 unsigned char* pglPrimBuffer::LockIndexBuffer()
@@ -588,7 +608,29 @@ void pglPrimBuffer::UnlockIndexBuffer(int count)
 void pglPrimBuffer::SetIndices(unsigned short* i, int count)
 {
     PDDIASSERT(count <= (int)indexCount);
+    // Linux port: as pddidx8, the count set is the count drawn; out-of-range indices (D3D read past the vertex
+    // buffer harmlessly, GL's client arrays read any memory) become 0
+    if(count < 0)
+        count = 0;
+    if(count > (int)indexCount)
+        count = indexCount;
     memcpy(indices, i, count * sizeof(unsigned short));
+    indexUsed = count;
+    int bad = 0;
+    for(int n = 0; n < count; n++)
+    {
+        if(indices[n] >= allocated)
+        {
+            indices[n] = 0;
+            bad++;
+        }
+    }
+    if(bad)
+    {
+        static int reported = 0;
+        if(reported++ < 8)
+            fprintf(stderr, "pddigl: %d of %d indices past the %u vertices of a prim buffer, drawn as vertex 0\n", bad, count, allocated);
+    }
 }
 
 void pglPrimBuffer::Display(void)
@@ -627,11 +669,13 @@ void pglPrimBuffer::Display(void)
 
     if(indexCount && indices)
     {
-        glDrawElements(primTypeTable[primType],indexCount,GL_UNSIGNED_SHORT,indices);
+        unsigned count = (useSize && useSize < indexUsed) ? useSize : indexUsed;
+        glDrawElements(primTypeTable[primType],count,GL_UNSIGNED_SHORT,indices);
     }
     else
     {
-        glDrawArrays(primTypeTable[primType], 0, total);
+        unsigned count = (useSize && useSize < total) ? useSize : total;
+        glDrawArrays(primTypeTable[primType], 0, count);
     }
 }
 

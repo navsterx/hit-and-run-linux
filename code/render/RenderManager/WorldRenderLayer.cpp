@@ -59,6 +59,9 @@
 
 #include <render/Loaders/BillboardWrappedLoader.h>
 #include <worldsim/avatarmanager.h>
+#ifdef RAD_LINUX
+#include <shar_mods.h>
+#endif
 
 #ifdef RAD_PS2
 #define DEFAULT_R 67;
@@ -999,20 +1002,27 @@ MEMTRACK_PUSH_GROUP( "WorldRenderLayer" );
    mpWorldScene = new WorldScene;
    mpWorldScene->Init(msMaxGuts);
 
-   mStaticLoadLists.Allocate(7);
-   mLoadLists.Allocate(7);
+#ifdef RAD_LINUX
+   // Linux port: mods can raise both (CustomLimits.ini [Regions] Limit / EntityLimit, port/compat/shar_mods.h)
+   int numLoadLists = shar_ModLimit( "Regions", "Limit", 7 );
+   mnLoadListRefs = shar_ModLimit( "Regions", "EntityLimit", 2000 );
+#else
+   int numLoadLists = 7;
+   mnLoadListRefs = 2000;
+#endif
+   mStaticLoadLists.Allocate(numLoadLists);
+   mLoadLists.Allocate(numLoadLists);
 
-   mLoadLists.AddUse(7);
-   mStaticLoadLists.AddUse(7);
+   mLoadLists.AddUse(numLoadLists);
+   mStaticLoadLists.AddUse(numLoadLists);
 
    mWorldSpheres.Allocate(10);
 
    mDynaLoadState = msPreLoads;
-   mnLoadListRefs = 2000;
    mCurLoadIndex  = -1;
 
    int i;
-   for(i=0;i<7;i++)
+   for(i=0;i<numLoadLists;i++)
    {
       mStaticLoadLists[i].AllocateAll(mnLoadListRefs);
       mLoadLists[i] = &(mStaticLoadLists[i]);
@@ -1524,6 +1534,15 @@ bool WorldRenderLayer::DoPreDynaLoad(tName& irGiveItAFuckinName)//tUID iUID)
       rReleasePrintf("ARGH! You're driving TOO FAST!*******************\n");
       rAssert(mDynaLoadState != msLoad);
    }
+#ifdef RAD_LINUX
+   else if( mLoadLists.mUseSize >= mLoadLists.mSize )
+   {
+      // Linux port: the original wrote past the list (more regions at once than CustomLimits [Regions] Limit)
+      rReleasePrintf("DSG: cannot load region %s: %d regions loaded already\n", irGiveItAFuckinName.GetText(), mLoadLists.mUseSize);
+      HeapMgr()->PopHeap (GMA_LEVEL_ZONE);
+      return false;
+   }
+#endif
    else
    {
       rReleasePrintf("*******************Loading*****%s****\n", irGiveItAFuckinName.GetText());

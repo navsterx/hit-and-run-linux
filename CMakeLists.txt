@@ -21,6 +21,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32 -g -std=gnu++98 -fpermissive -fno-s
 # static C++ runtime + no exported runtime symbols: the game's own operator new must not leak into
 # shared libraries (GPU drivers) the way it would by default on ELF (see SHAR_LOCAL in msvc_compat.h)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -m32 -static-libstdc++ -static-libgcc -Wl,--exclude-libs,ALL")
+# Lua for mods' scripts (port/third_party/lua, port/compat/shar_modlua.cpp): plain C, so declared before the
+# game-wide definitions and the force-included MSVC compat header below
+add_library(lua STATIC port/third_party/lua/lapi.c port/third_party/lua/lauxlib.c port/third_party/lua/lbaselib.c port/third_party/lua/lcode.c port/third_party/lua/lcorolib.c port/third_party/lua/lctype.c port/third_party/lua/ldblib.c port/third_party/lua/ldebug.c port/third_party/lua/ldo.c port/third_party/lua/ldump.c port/third_party/lua/lfunc.c port/third_party/lua/lgc.c port/third_party/lua/linit.c port/third_party/lua/liolib.c port/third_party/lua/llex.c port/third_party/lua/lmathlib.c port/third_party/lua/lmem.c port/third_party/lua/loadlib.c port/third_party/lua/lobject.c port/third_party/lua/lopcodes.c port/third_party/lua/loslib.c port/third_party/lua/lparser.c port/third_party/lua/lstate.c port/third_party/lua/lstring.c port/third_party/lua/lstrlib.c port/third_party/lua/ltable.c port/third_party/lua/ltablib.c port/third_party/lua/ltm.c port/third_party/lua/lundump.c port/third_party/lua/lutf8lib.c port/third_party/lua/lvm.c port/third_party/lua/lzio.c)
+target_compile_options(lua PRIVATE -O2)
+target_compile_definitions(lua PRIVATE LUA_USE_POSIX)
 add_compile_definitions(RAD_WIN32 RAD_LINUX LINUX RAD_PC PDDI_NO_ASM)
 # MSVC built-ins/CRT names -> GCC/POSIX, and a types-only windows.h (searched after the source dirs)
 add_compile_options("SHELL:-include ${CMAKE_SOURCE_DIR}/port/compat/msvc_compat.h")
@@ -935,6 +940,7 @@ add_library(radsound STATIC
   libs/radsound/src/hal/win32/bufferloader.cpp
   libs/radsound/src/hal/common/softwarelistener.cpp
   libs/radsound/src/hal/common/softwarepositionalgroup.cpp
+  libs/radsound/src/radsound/linux/oggdecoder.cpp
 )
 target_include_directories(radsound PRIVATE libs libs/radsound/src/common libs/radsound/inc libs/radcore/inc code libs/radsound/src/pch)
 if(SHAR_RAD_DEBUG)
@@ -1080,8 +1086,8 @@ else()
 endif()
 
 # Win32 API subset implemented on POSIX (threads/sync/timers); linked after the libraries using it
-add_library(shar_compat STATIC port/compat/win32_threads.cpp port/compat/win32_misc.cpp port/compat/pddi_heap.cpp port/compat/shar_mods.cpp)
+add_library(shar_compat STATIC port/compat/win32_threads.cpp port/compat/win32_misc.cpp port/compat/pddi_heap.cpp port/compat/shar_mods.cpp port/compat/shar_modlua.cpp)
 # the renderer allocates from its own heap, as pddidx8.dll did on Windows (port/compat/pddi_heap.cpp)
 add_custom_command(TARGET pddigl POST_BUILD COMMAND objcopy --redefine-sym _Znwj=pddi_heap_new --redefine-sym _Znaj=pddi_heap_new_array --redefine-sym _ZdlPv=pddi_heap_delete --redefine-sym _ZdaPv=pddi_heap_delete_array $<TARGET_FILE:pddigl> VERBATIM)
-target_include_directories(shar_compat PRIVATE port/compat)
-target_link_libraries(srr2 PRIVATE -Wl,--start-group choreo libpng pddigl pure3d zlib radcontent radcore radmath radmovie radscript radsound scrooby sim poser radmusic shar_compat -Wl,--end-group SDL2 GL openal avformat avcodec swscale swresample avutil pthread dl)
+target_include_directories(shar_compat PRIVATE port/compat port/third_party/lua)
+target_link_libraries(srr2 PRIVATE -Wl,--start-group choreo libpng pddigl pure3d zlib radcontent radcore radmath radmovie radscript radsound scrooby sim poser radmusic shar_compat lua -Wl,--end-group SDL2 GL openal avformat avcodec swscale swresample avutil pthread dl)

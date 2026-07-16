@@ -31,6 +31,7 @@ port/                      everything added for the port
                            pddi_heap.cpp (renderer's private heap), valgrind/ (client-request headers),
                            shar_mods.* (Mod Launcher mods, see below)
 mod/tools/                 modding tools: lmlm_extract.py (unpacks Mod Launcher .lmlm "LSPA" packages)
+port/third_party/lua/      Lua 5.4.8 (MIT), for mods' scripts
 build-linux/               release build (RAD_RELEASE)     cmake -B build-linux -G Ninja
 build-linux-debug/         debug build (RAD_DEBUG: asserts + Radical's debug output)   -DSHAR_RAD_DEBUG=ON
 build-linux-audit/         -DSHAR_UNINIT_AUDIT=ON -DCMAKE_BUILD_TYPE=Release: all warnings on; grep -Wuninitialized /
@@ -163,13 +164,26 @@ Mods are folders: `Meta.ini` (`RequiredHack=` lines), `CustomFiles/` (overrides 
 optionally Lua (`CustomFiles.lua`, `CustomFiles.ini` path handlers). Distributed as `.lmlm`: not a zip but an "LSPA"
 package (512-byte sectors, one field per sector; format notes in `mod/tools/lmlm_extract.py`).
 `port/compat/shar_mods.cpp` loads the mods in `SHAR_MODS` (':'-separated, earlier wins; `play.sh --mod`), each a
-.lmlm read in place or an extracted folder, and reports hacks it ignores. Supported: CustomFiles without Lua (index
-of lower-cased game paths; `requests.cpp` skips the RCF search and `linuxdrive.cpp` opens the mod copy, read-only
-opens only; a packaged file is an fd on the .lmlm plus a per-fd offset/size slice that reads are confined to) and
-CustomLimits `[Billboards]` (`BillboardQuadManager`, default 25 groups x 100 quads). `SHAR_MOD_LOG=1` logs each
-override. Tested 2026-10-14/15 with "SHAR Remastered" 1.0 (Level 1 retexture), as .lmlm and as a folder; package
-reads match the extractor's output for it and the Futurama demo (866 files). Keep local packages in `mod/lmlm/`
-(git-ignored). Not yet: Lua, other hacks, mod save dirs (`Main=1`), packages over 2 GB (32-bit off_t).
+.lmlm read in place or an extracted folder, and reports hacks it ignores. Every read-only open goes through
+`shar_ModResolve` once (`requests.cpp`, handed to `linuxdrive.cpp` via `shar_ModTakeResolved`; `binkffmpeg.cpp` for
+movies): Lua path handlers, then CustomFiles.ini rules (OccludedPath, PathRedirections/AdditionalFiles), then
+CustomFiles. Results: a mod file (a packaged one is an fd on the .lmlm plus a per-fd offset/size slice), generated
+Lua output (a memfd), a redirect to another game path, or missing. The sound system opens files by key string
+(decimal radMakeCaseInsensitiveKey32 of the backslashed path, as RCFs resolve them): files and rules are indexed by
+that key too. Lua 5.4.8 is vendored in `port/third_party/lua` (one sandboxed state per mod, launcher API subset and a
+virtual file system /Mods, /GameData, /GameDir in `shar_modlua.cpp`). `SHAR_MOD_LOG=1` logs each file a mod provides,
+`SHAR_MOD_DUMP=dir` saves Lua-generated files. Main mods (`Main=1`) save to ModSaves/<InternalName>/; settings are
+Meta.ini defaults unless ModSettings.ini in the game dir sets them.
+Hacks implemented: CustomFiles, LuaSupport, OggVorbisSupport (x.ogg serves x.rsd; `radsound/linux/oggdecoder.cpp`,
+FFmpeg, detected by the "OggS" header in `rsdfiledatasource.cpp`), CustomLimits [Billboards], [Regions] Limit /
+EntityLimit, [Scripting] ArgumentLengthLimit (console arguments were unbounded copies). Movies up to 1920x1080
+(64 tiles) and fitted to the window either way (IncreasedVideoResolutionSupport).
+Fixed on the way (would also hit vanilla data in other cases): GL prim buffers drew all allocated indices instead
+of the count set (uninitialised indices: intermittent crashes inside the GL driver with mod meshes), stream writes
+past the allocation; null merchandise in `CharacterSheetManager::UpdateRewardsManager`; region list overflow.
+Tested 2026-10-15: "SHAR Remastered" 1.0; Futurama: Hit & Run demo 0.1.3 boots (its movies, menu scene) and reaches
+Level 1 by New Game (5/5 runs) and `skipfe`. Its other 20 hacks are not implemented (custom cars/characters/shops/
+interiors/text, ASF commands, ...), nor its required HoverCarRefraction mod: driving and missions untested.
 Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
 
 ## Known issues / next steps
@@ -198,3 +212,6 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
    `SHAR_FILL_ALLOC=0x00` and `0xFF`. Not yet covered under memcheck: driving, interiors, later levels, races.
 9. (done 2026-10-14) Widescreen verified by the user: scales correctly at all ratios, including extreme ones.
    Borderless fullscreen and the runtime resolution list added the same day.
+10. (paused 2026-10-15) Mods: Futurama: Hit & Run demo 0.1.3 drives fine in Level 1 (user-tested) but crashes when
+    looking at buyable cars (car shop / Gil-style purchase screen; needs CustomCarSupport and the other unimplemented
+    hacks: custom cars/characters/shops/interiors/text, ASF commands, HoverCarRefraction). Pick up later.

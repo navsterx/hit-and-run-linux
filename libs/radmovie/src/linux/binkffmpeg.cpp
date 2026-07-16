@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <shar_mods.h>
+#include <unistd.h>
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -177,12 +179,47 @@ void BinkSetSoundTrack( U32 total_tracks, U32* tracks )
 
 HBINK BinkOpen( const char* name, U32 /*flags*/ )
 {
+    // Mods (port/compat/shar_mods.h): occluded movies do not exist, others may be redirected or replaced; a
+    // replacement inside a .lmlm package is opened as a byte range of it (FFmpeg's subfile protocol)
     char path[ 1024 ];
-    radLinuxResolvePath( name, path, sizeof( path ), false );
+    SharModFile modFile;
+    const char* redirect = NULL;
+    int modFd = -1;
+    switch ( shar_ModResolve( name, &modFile, &redirect ) )
+    {
+    case SHAR_MOD_MISSING:
+        snprintf( s_Error, sizeof( s_Error ), "occluded by a mod: %s", name );
+        return NULL;
+    case SHAR_MOD_FILE:
+        if ( modFile.fd >= 0 )
+        {
+            modFd = modFile.fd;
+            snprintf( path, sizeof( path ), "/proc/self/fd/%d", modFd );
+        }
+        else if ( modFile.packaged )
+        {
+            snprintf( path, sizeof( path ), "subfile,,start,%llu,end,%llu,,:%s", modFile.offset,
+                      modFile.offset + modFile.size, modFile.path );
+        }
+        else
+        {
+            snprintf( path, sizeof( path ), "%s", modFile.path );
+        }
+        break;
+    case SHAR_MOD_REDIRECT:
+        radLinuxResolvePath( redirect, path, sizeof( path ), false );
+        break;
+    default:
+        radLinuxResolvePath( name, path, sizeof( path ), false );
+    }
 
     av_log_set_level( AV_LOG_ERROR );
     AVFormatContext* fmt = NULL;
     int err = avformat_open_input( &fmt, path, NULL, NULL );
+    if ( modFd >= 0 )
+    {
+        close( modFd );             // FFmpeg opened its own descriptor
+    }
     if ( err < 0 || avformat_find_stream_info( fmt, NULL ) < 0 )
     {
         av_strerror( err, s_Error, sizeof( s_Error ) );

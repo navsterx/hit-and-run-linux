@@ -67,7 +67,8 @@ struct radSoundRsdFileDataSource
 
 		struct StateInfo
 		{
-			enum State { NONE, INITIALIZED, OPENING_FILE, FILE_ERROR, READING_HEADER, IDLE, READING_DATA } m_State;
+			enum State { NONE, INITIALIZED, OPENING_FILE, FILE_ERROR, READING_HEADER, IDLE, READING_DATA,
+			             READING_OGG } m_State;                 // READING_OGG: Linux port, see below
 
 			union
 			{
@@ -116,4 +117,15 @@ struct radSoundRsdFileDataSource
         unsigned int   m_CarryFrames;
         char *         m_pDecodeDest;
         unsigned int   m_DecodeFrames;
+
+        // Ogg Vorbis (Linux port, the Mod Launcher's OggVorbisSupport): a mod's .ogg stands in for an .rsd
+        // (port/compat/shar_mods.cpp serves it under the .rsd name). Found by its "OggS" header, read whole,
+        // then decoded to PCM as frames are asked for (radsound/linux/oggdecoder.hpp).
+
+        void _StateReadingOgg( void );
+
+        struct radOggDecoder * m_pOgg;
+        unsigned char *        m_pOggData;
+        unsigned int           m_OggInitialPos;
+        IRadSoundHalAudioFormat::SizeType m_OggInitialPosUnits;
 };

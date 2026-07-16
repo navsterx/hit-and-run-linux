@@ -246,6 +246,10 @@ class Console : public LoadingManager::ProcessRequestsCallback
         int mPrevArgc;
         char** mPrevArgv;
 
+        // Linux port: the size of each mArgv / mPrevArgv buffer (MAX_ARG_LENGTH, or more for mods: CustomLimits
+        // [Scripting] ArgumentLengthLimit); GetNextToken truncates to it instead of writing past the end
+        int mArgLength;
+
         //line number for reporting console errors
         int mLineNumber;
         char mFileName[256];
@@ -259,6 +263,9 @@ class Console : public LoadingManager::ProcessRequestsCallback
         bool FoundComment( char** stringPtr );
         char* FindTokenEnd( const char* string );
         char* GetNextToken( char** stringPtr, char* tokenBuffer );
+#ifdef RAD_LINUX
+        int ClampTokenLength( int length, const char* token );
+#endif
         bool ReadToken( char** stringPtr, const char* requiredToken );
 
         bool AddFunc( const char* name,

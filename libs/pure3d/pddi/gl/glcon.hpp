@@ -138,6 +138,9 @@ public:
     unsigned GetMemImageLength() {return 0; }
     void SetMemImageParam(unsigned param, unsigned value) { /**/ }
 
+    // Linux port: draw only the first size indices (or vertices), as pddidx8 does
+    void SetUsedSize(int size) { useSize = size > 0 ? (unsigned) size : 0; }
+
     void Display(void);
 
 protected:
@@ -161,6 +164,16 @@ protected:
 
     unsigned short* indices;
     unsigned indexCount;
+
+    // Linux port: as pddidx8, draw the indices last set (SetIndices), not all allocated ones (the rest were
+    // uninitialised: GL then read vertices from anywhere); the arrays' own starts, for Unlock and the stream's
+    // bounds check
+    unsigned indexUsed;
+    unsigned useSize;
+    float* coordBase;
+    float* normalBase;
+    float* uvBase;
+    unsigned char* colourBase;
 
     float mem;
 };

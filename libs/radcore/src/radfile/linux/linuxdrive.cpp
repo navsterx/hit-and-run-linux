@@ -252,39 +252,55 @@ radDrive::CompletionStatus radLinuxDrive::OpenFile
 )
 {
     char fullName[ PATH_MAX ];
-    SharModFile modFile;
-    if ( !writeAccess && flags == OpenExisting && shar_ModFindFile( fileName, &modFile ) )
+    char redirected[ PATH_MAX ];
+    const char* openName = fileName;
+    if ( !writeAccess && flags == OpenExisting )
     {
-        // a mod's CustomFiles copy (shar_mods.h): a loose file, or a slice of a .lmlm package
-        int fd = open( modFile.path, O_RDONLY );
-        if ( fd != -1 && modFile.packaged && fd >= MAX_SLICE_FDS )
+        // Mods (shar_mods.h): usually resolved by the file request already (requests.cpp)
+        SharModFile modFile;
+        const char* redirect = NULL;
+        switch ( shar_ModTakeResolved( fileName, &modFile, &redirect ) )
         {
-            close( fd );
-            fd = -1;
-            errno = EMFILE;
-        }
-        if ( fd != -1 )
-        {
-            if ( modFile.packaged )
+        case SHAR_MOD_MISSING:
+            *pHandle = INVALID_HANDLE_VALUE;
+            m_LastError = FileNotFound;
+            return Error;
+        case SHAR_MOD_REDIRECT:
+            strncpy( redirected, redirect, sizeof( redirected ) - 1 );
+            redirected[ sizeof( redirected ) - 1 ] = '\0';
+            openName = redirected;
+            break;
+        case SHAR_MOD_FILE:
             {
-                s_Slices[ fd ].offset = modFile.offset;
-                s_Slices[ fd ].size = modFile.size;
-                s_Slices[ fd ].used = true;
+                // generated content (an fd we now own), a mod folder's file, or a slice of a .lmlm package
+                int fd = modFile.fd >= 0 ? modFile.fd : open( modFile.path, O_RDONLY | O_CLOEXEC );
+                if ( fd != -1 && modFile.packaged && fd >= MAX_SLICE_FDS )
+                {
+                    close( fd );
+                    fd = -1;
+                    errno = EMFILE;
+                }
+                if ( fd == -1 )
+                {
+                    *pHandle = INVALID_HANDLE_VALUE;
+                    m_LastError = TranslateError( errno );
+                    return Error;
+                }
+                if ( modFile.packaged )
+                {
+                    s_Slices[ fd ].offset = modFile.offset;
+                    s_Slices[ fd ].size = modFile.size;
+                    s_Slices[ fd ].used = true;
+                }
+                m_OpenFiles++;
+                *pHandle = HandleOf( fd );
+                *pSize = modFile.size;
+                m_LastError = Success;
+                return Complete;
             }
-            m_OpenFiles++;
-            *pHandle = HandleOf( fd );
-            *pSize = modFile.size;
-            m_LastError = Success;
-            return Complete;
         }
-        *pHandle = INVALID_HANDLE_VALUE;
-        m_LastError = TranslateError( errno );
-        return Error;
     }
-    else
-    {
-        radLinuxResolvePath( fileName, fullName, sizeof( fullName ), flags != OpenExisting );
-    }
+    radLinuxResolvePath( openName, fullName, sizeof( fullName ), flags != OpenExisting );
 
     int oflags = writeAccess ? O_RDWR : O_RDONLY;
     switch( flags )
