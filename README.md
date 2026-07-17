@@ -27,7 +27,7 @@ movies. It works with the retail PC release's data as well as the data from the 
   - [x] colour-write masks and alpha testing matching Direct3D (HUD map, see-through fences and ramps)
 - [x] **Gameplay** — loads levels and plays; uninitialised reads that were zero by luck under MSVC fixed
 - [x] **Input** — keyboard and mouse (mouse look via relative mode), wired and wireless gamepads through SDL;
-  verified in play
+  verified in play; the menu cursor hides while a gamepad is in use
 - [x] **Rumble** — gamepad vibration through SDL (the game's Force Feedback option; the Windows release never
   rumbled gamepads)
 - [x] **Audio** — software mixer on SDL audio with 3D positioning: sound effects, music, dialogue

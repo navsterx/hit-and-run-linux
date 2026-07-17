@@ -154,6 +154,8 @@ SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1
   pointer first leaves, then snaps it back to the last warp position. Only mouse-look hides the cursor; menus use
   a 1-pixel alpha-1/255 cursor (`Win32Platform::ShowTheCursor`) so the pointer can leave (and the window be resized).
   Gameplay only captures the pointer when mouse-look is on (`FEMouse::SetupInGameMode`; only PC_CAM reads the mouse).
+  The game's own drawn menu cursor hides (and stops hovering) after gamepad input until the mouse moves or clicks
+  (`FEMouse::SetHiddenForGamepad`, fed from `PumpEvents`; the revealing click is swallowed).
 - Boot movies only play in release builds (`SHOW_MOVIES` needs `RAD_RELEASE`, `bootupcontext.cpp`): test them with
   `build-linux`, not the debug build.
 - radcore's `radoptions.hpp` enables debug comm / watcher / memory monitor in debug builds: off on Linux.

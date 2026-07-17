@@ -37,7 +37,8 @@ FEMouse::FEMouse()
     m_bInGameOverride( false ),
     m_inGamePosX( 0 ),
     m_inGamePosY( 0 ),
-    m_buttonDownSelection( 0 )
+    m_buttonDownSelection( 0 ),
+    m_bHiddenForGamepad( false )
 {
     m_pCursor = new MouseCursor();
     memset( m_button, 0, sizeof(m_button));
@@ -108,6 +109,8 @@ void FEMouse::Update()
                     (GetGameFlow()->GetCurrentContext() == CONTEXT_EXIT);
     if( ingame || bLoading ) return;
     if( !m_pCursor->IsVisible() ) return;
+    if( m_bHiddenForGamepad ) return;   // Linux port: neither drawn nor hovering (a still cursor would steal the
+                                        // highlight from the gamepad's selection)
 
     CGuiWindow* pCurrentWindow = GetGuiSystem()->GetCurrentManager()->GetCurrentWindow();
     CGuiMenu* pCurrentMenu = pCurrentWindow->HasMenu();
@@ -302,6 +305,20 @@ void FEMouse::SetInGameOverride( bool override )
 {
     m_bInGameOverride = override;
     SetupInGameMode();
+}
+
+// Linux port: the last input was a gamepad (true) or the mouse (false)
+void FEMouse::SetHiddenForGamepad( bool hidden )
+{
+    if( hidden && !m_bHiddenForGamepad )
+    {
+        m_hotSpotType = HOTSPOT_NONE;   // forget what the cursor was over until it is shown again
+        if( m_button[ BUTTON_LEFT ] == BUTTON_CLICKHOLD )
+        {
+            m_button[ BUTTON_LEFT ] = BUTTON_IDLE;
+        }
+    }
+    m_bHiddenForGamepad = hidden;
 }
 
 void FEMouse::SetupInGameMode()

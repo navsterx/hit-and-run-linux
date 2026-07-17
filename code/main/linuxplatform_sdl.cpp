@@ -26,6 +26,7 @@
 
 static const char ApplicationName[] = "The Simpsons: Hit & Run";
 static const Win32Platform::Resolution StartingResolution = Win32Platform::Res_800x600;   // as win32platform.cpp
+static bool s_swallowLeftUp = false;      // a click that only re-showed the front-end cursor (see PumpEvents)
 
 //==============================================================================
 // Win32Platform::InitializeWindow
@@ -339,6 +340,7 @@ bool Win32Platform::PumpEvents()
                 int w, h;
                 SDL_GetWindowSize( (SDL_Window*) mhWnd, &w, &h );
                 pFEMouse->Move( e.motion.x, e.motion.y, w, h );
+                pFEMouse->SetHiddenForGamepad( false );
             }
             ShowTheCursor( false );
             break;
@@ -346,14 +348,46 @@ bool Win32Platform::PumpEvents()
         case SDL_MOUSEBUTTONDOWN:                           // WM_LBUTTONDOWN
             if( pFEMouse && e.button.button == SDL_BUTTON_LEFT )
             {
-                pFEMouse->ButtonDown( BUTTON_LEFT );
+                if( pFEMouse->IsHiddenForGamepad() )
+                {
+                    // the first click only brings the cursor back: it was not visibly over anything
+                    pFEMouse->SetHiddenForGamepad( false );
+                    s_swallowLeftUp = true;
+                }
+                else
+                {
+                    pFEMouse->ButtonDown( BUTTON_LEFT );
+                }
             }
             break;
 
         case SDL_MOUSEBUTTONUP:                             // WM_LBUTTONUP
             if( pFEMouse && e.button.button == SDL_BUTTON_LEFT )
             {
-                pFEMouse->ButtonUp( BUTTON_LEFT );
+                if( s_swallowLeftUp )
+                {
+                    s_swallowLeftUp = false;
+                }
+                else
+                {
+                    pFEMouse->ButtonUp( BUTTON_LEFT );
+                }
+            }
+            break;
+
+        // A gamepad in use hides the front-end cursor until the mouse moves or clicks again (sticks and
+        // triggers count past half travel, so drift does not)
+        case SDL_CONTROLLERBUTTONDOWN:
+            if( pFEMouse )
+            {
+                pFEMouse->SetHiddenForGamepad( true );
+            }
+            break;
+
+        case SDL_CONTROLLERAXISMOTION:
+            if( pFEMouse && ( e.caxis.value > 16384 || e.caxis.value < -16384 ) )
+            {
+                pFEMouse->SetHiddenForGamepad( true );
             }
             break;
 

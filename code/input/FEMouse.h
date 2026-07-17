@@ -66,6 +66,7 @@ public:
     }
     bool IsRightButtonDown()            const { return (m_button[BUTTON_RIGHT]==BUTTON_CLICKHOLD); }
     bool IsInGameMode()                 const { return m_bInGame && !m_bInGameOverride; } // Linux port
+    bool IsHiddenForGamepad()           const { return m_bHiddenForGamepad; }               // Linux port
 
     void InitMouseCursor( tDrawable* pCursor );
     void SetClickable( bool bClickable ) { m_bClickable = bClickable; }
@@ -81,6 +82,7 @@ public:
 
     void SetInGameMode( bool ingame );
     void SetInGameOverride( bool override );
+    void SetHiddenForGamepad( bool hidden );    // Linux port: hide the cursor while a gamepad drives the menus
 
 private:
     void SetupInGameMode();
@@ -105,6 +107,7 @@ private:
     int             m_inGamePosY;
 
     int             m_buttonDownSelection;
+    bool            m_bHiddenForGamepad;
 };
 
 #endif
