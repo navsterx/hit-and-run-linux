@@ -1419,6 +1419,10 @@ void UserController::LoadFEMappings()
     m_pController[GAMEPAD]->SetMap( DIJOFS_X, DIR_DOWN, InputManager::feMoveLeft );
     m_pController[GAMEPAD]->SetMap( DIJOFS_BUTTON0, DIR_UP, InputManager::feSelect );
     m_pController[GAMEPAD]->SetMap( DIJOFS_BUTTON1, DIR_UP, InputManager::feBack );
+#ifdef RAD_LINUX
+    // Start pauses, as on the consoles (Win32 paused only with Escape); SDL's Start is button 7 (sdlcontroller.cpp)
+    m_pController[GAMEPAD]->SetMap( DIJOFS_BUTTON7, DIR_UP, InputManager::feStart );
+#endif
     m_pController[GAMEPAD]->SetMap( DIJOFS_POV(0), DIR_UP, InputManager::feMoveUp );
     m_pController[GAMEPAD]->SetMap( DIJOFS_POV(0), DIR_DOWN, InputManager::feMoveDown );
     m_pController[GAMEPAD]->SetMap( DIJOFS_POV(0), DIR_RIGHT, InputManager::feMoveRight );

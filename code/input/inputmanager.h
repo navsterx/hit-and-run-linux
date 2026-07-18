@@ -126,6 +126,7 @@ public:
         feMouseRight,
         feMouseUp,
         feMouseDown,
+        feStart,                // Linux port: gamepad Start (pause), the GUI's "feStart"
 
         P1_KBD_Start,
         P1_KBD_Gas,

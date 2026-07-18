@@ -56,6 +56,7 @@ static const char* szVirtualInputs[] =
     "feMouseRight",
     "feMouseUp",
     "feMouseDown",
+    "feStart",              // Linux port: gamepad Start
 
     "P1_KBD_Start",
     "P1_KBD_Gas",
@@ -144,6 +145,7 @@ eMapType VirtualInputs::GetType( int VirtualInput )
         case InputManager::feMouseRight:
         case InputManager::feMouseUp:
         case InputManager::feMouseDown:
+        case InputManager::feStart:
             return MAP_FRONTEND;
         default:
             {
