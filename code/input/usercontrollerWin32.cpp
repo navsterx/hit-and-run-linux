@@ -1007,6 +1007,36 @@ void UserController::LoadDefaults()
     SetMap( SLOT_SECONDARY, InputManager::MoveDown, GAMEPAD, DIJOFS_Y, DIR_DOWN );
     SetMap( SLOT_SECONDARY, InputManager::MoveLeft, GAMEPAD, DIJOFS_X, DIR_DOWN );
     SetMap( SLOT_SECONDARY, InputManager::MoveRight, GAMEPAD, DIJOFS_X, DIR_UP );
+#ifdef RAD_LINUX
+    // SDL numbers every pad's buttons the same way (sdlcontroller.cpp: 0 A/Cross, 1 B/Circle, 2 X/Square,
+    // 3 Y/Triangle, 4/5 shoulders, 6 Back/Share, 7 Start, 8/9 stick clicks); the DirectInput defaults below put
+    // Sprint/Accelerate on Start (feStart), Reverse on Back and the camera on the triggers (Z; the right stick is
+    // RX/RY). These follow the console layout instead.
+    SetMap( SLOT_SECONDARY, InputManager::Attack, GAMEPAD, DIJOFS_BUTTON2 );
+    SetMap( SLOT_SECONDARY, InputManager::Jump, GAMEPAD, DIJOFS_BUTTON0 );
+    SetMap( SLOT_SECONDARY, InputManager::Sprint, GAMEPAD, DIJOFS_BUTTON1 );
+    SetMap( SLOT_SECONDARY, InputManager::DoAction, GAMEPAD, DIJOFS_BUTTON3 );
+
+    SetMap( SLOT_SECONDARY, InputManager::Accelerate, GAMEPAD, DIJOFS_BUTTON0 );
+    SetMap( SLOT_SECONDARY, InputManager::Reverse, GAMEPAD, DIJOFS_BUTTON1 );
+    SetMap( SLOT_SECONDARY, InputManager::SteerLeft, GAMEPAD, DIJOFS_X, DIR_DOWN );
+    SetMap( SLOT_SECONDARY, InputManager::SteerRight, GAMEPAD, DIJOFS_X, DIR_UP );
+    SetMap( SLOT_SECONDARY, InputManager::GetOutCar, GAMEPAD, DIJOFS_BUTTON3 );
+    SetMap( SLOT_SECONDARY, InputManager::HandBrake, GAMEPAD, DIJOFS_BUTTON2 );
+    SetMap( SLOT_SECONDARY, InputManager::Horn, GAMEPAD, DIJOFS_BUTTON8 );
+    SetMap( SLOT_SECONDARY, InputManager::ResetCar, GAMEPAD, DIJOFS_BUTTON6 );
+
+    SetMap( SLOT_SECONDARY, InputManager::CameraLeft, GAMEPAD, DIJOFS_RX, DIR_DOWN );      // right stick
+    SetMap( SLOT_SECONDARY, InputManager::CameraRight, GAMEPAD, DIJOFS_RX, DIR_UP );
+    SetMap( SLOT_SECONDARY, InputManager::CameraMoveIn, GAMEPAD, DIJOFS_RY, DIR_DOWN );
+    SetMap( SLOT_SECONDARY, InputManager::CameraMoveOut, GAMEPAD, DIJOFS_RY, DIR_UP );
+    SetMap( SLOT_SECONDARY, InputManager::CameraZoom, GAMEPAD, DIJOFS_BUTTON4 );
+    SetMap( SLOT_SECONDARY, InputManager::CameraLookUp, GAMEPAD, DIJOFS_BUTTON5 );
+    SetMap( SLOT_SECONDARY, InputManager::CameraCarLeft, GAMEPAD, DIJOFS_Z, DIR_DOWN );     // triggers
+    SetMap( SLOT_SECONDARY, InputManager::CameraCarRight, GAMEPAD, DIJOFS_Z, DIR_UP );
+    SetMap( SLOT_SECONDARY, InputManager::CameraCarLookUp, GAMEPAD, DIJOFS_BUTTON4 );
+    SetMap( SLOT_SECONDARY, InputManager::CameraCarLookBack, GAMEPAD, DIJOFS_BUTTON5 );
+#else
     SetMap( SLOT_SECONDARY, InputManager::Attack, GAMEPAD, DIJOFS_BUTTON0 );
     SetMap( SLOT_SECONDARY, InputManager::Jump, GAMEPAD, DIJOFS_BUTTON3 );
     SetMap( SLOT_SECONDARY, InputManager::Sprint, GAMEPAD, DIJOFS_BUTTON7 );
@@ -1032,6 +1062,7 @@ void UserController::LoadDefaults()
     SetMap( SLOT_SECONDARY, InputManager::CameraCarRight, GAMEPAD, DIJOFS_Z, DIR_UP );
     SetMap( SLOT_SECONDARY, InputManager::CameraCarLookUp, GAMEPAD, DIJOFS_RZ, DIR_UP );
     SetMap( SLOT_SECONDARY, InputManager::CameraCarLookBack, GAMEPAD, DIJOFS_RZ, DIR_DOWN );
+#endif
     
 
     // Initialize the game settings

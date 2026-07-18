@@ -205,6 +205,8 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
    `SHAR_RUMBLE_LOG=1`. Verified on a PlayStation pad by the user. Steering-wheel effects not done.
 5. (done 2026-10-14) Input verified in play by the user: keyboard, mouse, wired and wireless controllers.
    Gamepad Start pauses/resumes (new front-end input `feStart` on button 7; Win32 paused only with Escape).
+   Linux gamepad defaults (`UserController::LoadDefaults`) follow the console layout in SDL's button order (the
+   DirectInput defaults put Sprint/Accelerate on Start): the user's own PS4 mapping.
 6. (done 2026-10-14) Release build used throughout testing. 64-bit later (a -m64 syntax survey found ~80
    pointer-to-int casts, ~35 int-to-pointer casts; fixed-size game heaps would need enlarging); modern GL later.
 7. (done 2026-10-14) Missing fences/ramps in Level 7: alphaRef fix above; HUD and level transparency confirmed
