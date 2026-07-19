@@ -146,7 +146,7 @@ public:
 protected:
     struct PathStruct
     {
-        PathStruct(){ mpTargetRoadSeg = NULL; }
+        PathStruct(){ mpTargetRoadSeg = NULL; mUpdateCount = 0; } // uninit fix (Linux port): read before LightPath sets it
         SwapArray<RoadManager::PathElement> mPathRoute;
         rmt::Vector  mTargetPosn;
         RoadSegment* mpTargetRoadSeg; 
