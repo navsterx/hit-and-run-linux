@@ -182,6 +182,10 @@ void DemoContext::OnStart( ContextEnum previousContext )
     GetGame()->IncrementDemoCount();
 
     m_elapsedTime = 0; // reset elapsed demo time
+    if( CommandLineOptions::Get( CLO_RUNTIME_DEMO ) )
+    {
+        m_elapsedTime = -1; // Linux port: no loop time, keep driving (for testing)
+    }
 
     ////////////////////////////////////////////////////////////
     // RenderManager 

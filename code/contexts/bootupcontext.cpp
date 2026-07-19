@@ -159,6 +159,16 @@ void BootupContext::StartMovies()
             //
             GetInputManager()->RegisterControllerID( 0, 0 );
 
+            if( CommandLineOptions::Get( CLO_RUNTIME_DEMO ) )
+            {
+                // Linux port: straight into the level's attract demo (scripts\missions\level0N\demo.mfk: the
+                // family car driven by the race AI, with traffic), as the console splash screen started it
+                GetGameplayManager()->SetLevelIndex( static_cast< RenderEnums::LevelEnum >( levelIndex ) );
+                GetGameplayManager()->SetMissionIndex( RenderEnums::M1 );
+                GetGameFlow()->SetContext( CONTEXT_LOADING_DEMO );
+                return;
+            }
+
             short missionIndex = CommandLineOptions::GetDefaultMission();
             if( levelIndex == RenderEnums::L1 )
             {

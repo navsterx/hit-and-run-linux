@@ -57,6 +57,8 @@ python3 port/syntax_survey.py; python3 port/check.py code/foo.cpp
 srr2 skipfe                               # straight into Level 1; `skipfe l7 m3` = level 7 mission 3 (index from
                                           # MISSION_TITLE_L<l>_M<m> in art/frontend/scrooby2/resource/txtbible/srr2.txt;
                                           # races can't be started this way). l7 m3 (Pocket Protector) starts outdoors.
+srr2 skipfe demo l3                       # level 3's attract demo: the race AI drives the family car (demo.mfk/d1i.mfk:
+                                          # race route, traffic, opponent, HUD), no time limit; for driving tests
 SHAR_KEY_SCRIPT="17@30000-60000,..."      # scripted input; the retail ini binds Action to E (18), menus take Enter (28)
 SHAR_FILL_ALLOC=0xFF / SHAR_FILL_PDDI=0xFF  # fill new game / renderer allocations to expose uninitialised reads
 SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1 (~4 min to playable), summary at end
