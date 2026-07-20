@@ -66,10 +66,9 @@ AnimObjSoundPlayer::AnimObjSoundPlayer() :
 //=============================================================================
 AnimObjSoundPlayer::~AnimObjSoundPlayer()
 {
-    if( m_identity != NULL )
-    {
-        m_identity->Release();
-    }
+    // Linux port: Activate() never AddRef's m_identity (Deactivate() just drops it), so releasing it here freed
+    // an object we do not own; on an exit without a level unload (window closed in the demo) it was already gone
+    m_identity = NULL;
 }
 
 //=============================================================================

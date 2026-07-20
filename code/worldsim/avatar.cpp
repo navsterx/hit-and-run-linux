@@ -168,6 +168,9 @@ mHasBeenUpdatedThisFrame( false ),
 mLastRoadSegment( NULL ),
 mLastRoadSegmentT( 0.0f ),
 mLastRoadT( 0.0f ),
+mDistToCurrentCollectible( 0.0f ), // uninit fix (Linux port): race data the AI's catch-up logic reads before
+mCurrentCollectible( 0 ),          // SetRaceInfo (e.g. the attract demo, where the player car is AI driven)
+mNumLapsCompleted( 0 ),
 mControllerId( INVALID_CONTROLLER ),
 mPlayerId( 0 ),
 mpCharacter( 0 ),

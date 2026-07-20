@@ -582,6 +582,10 @@ size_t GetTotalMemoryUsed()
 #if defined RAD_GAMECUBE
     return 0;
 #endif
+
+#if defined RAD_LINUX
+    return 0;   // Linux port: as Win32 release; with no return the function ran off its end (GCC traps: SIGILL)
+#endif
 };
 
 //=============================================================================

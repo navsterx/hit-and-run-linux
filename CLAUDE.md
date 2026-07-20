@@ -219,7 +219,11 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
    `SHAR_FILL_ALLOC=0x00` and `0xFF`. 2026-10-15: Level 7 Mission 1 (`skipfe l7 m1`, starts in the Simpsons' house):
    interior, talking to Lisa, leaving the house and walking outdoors are clean after one fix (MissionObjective
    `PathStruct::mUpdateCount`, read before a path is lit). Under memcheck L7 takes 3-5 min to load; start key
-   scripts at ~330 s. Not yet covered: driving, races, other interiors (Kwik-E-Mart, school, ...).
+   scripts at ~330 s. Driving (2026-10-15): `port/memcheck.sh 900 skipfe demo l1` (AI drives, no input needed) is
+   clean after fixes to Avatar race data and Character::mbNeedChoreoUpdate; it also found GetTotalMemoryUsed()
+   with no return on Linux (GCC traps: SIGILL when the AI reached its last waypoint; a -Wreturn-type scan of every
+   source found no other). Under memcheck the world streams in late, so the car often drives over unloaded zones.
+   Not yet covered: player-driven cars, races, other interiors (Kwik-E-Mart, school, ...).
 9. (done 2026-10-14) Widescreen verified by the user: scales correctly at all ratios, including extreme ones.
    Borderless fullscreen and the runtime resolution list added the same day.
 10. (paused 2026-10-15) Mods: Futurama: Hit & Run demo 0.1.3 drives fine in Level 1 (user-tested) but crashes when

@@ -390,6 +390,8 @@ mManaged(false)
     mLastInteriorLoadCheck = radTimeGetMicroseconds64();
 
     mPrevSimTransform.Identity();
+    // uninit fix (Linux port): PostSimUpdate reads it on frames that skip OnPostSimUpdate, which sets it
+    mbNeedChoreoUpdate = false;
     // uninit fix (Linux port): SetPuppet() (called before Init()) transforms the position by these
     mParentTransform.Identity();
     mInvParentTransform.Identity();

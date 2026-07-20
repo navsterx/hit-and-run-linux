@@ -231,7 +231,9 @@ void VehicleMappable::LoadControllerMappings( unsigned int controllerId )
     #ifdef RAD_WIN32
 
     ClearMap(0);
-    if ( GetGameFlow()->GetCurrentContext() == CONTEXT_LOADING_SUPERSPRINT &&
+    // Linux port: GetGameFlow() is NULL when the cameras unregister during the emergency exit (window closed while
+    // loading or in the demo: Game::Terminate destroys GameFlow before DestroySingletons)
+    if ( GetGameFlow() != NULL && GetGameFlow()->GetCurrentContext() == CONTEXT_LOADING_SUPERSPRINT &&
          controllerId == 3 )
     {
         Map( "P1_KBD_Left", SteerLeft, 0, controllerId );

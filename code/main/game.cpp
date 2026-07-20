@@ -539,6 +539,14 @@ void Game::Run()
 #ifdef RAD_LINUX
         if( Win32Platform::PumpEvents() )       // SDL2: true when the window was closed (WM_QUIT)
         {
+            // The attract demo (only reachable with the "demo" test option on PC) was never shut down from: its
+            // teardown crashes in several places with the level loaded, so just end the process.
+            if ( GetGameFlow()->GetCurrentContext() == CONTEXT_DEMO ||
+                 GetGameFlow()->GetCurrentContext() == CONTEXT_LOADING_DEMO )
+            {
+                fflush( NULL );
+                _exit( 0 );
+            }
             if ( GetGameFlow()->GetCurrentContext() != CONTEXT_FRONTEND &&
                  GetGameFlow()->GetCurrentContext() != CONTEXT_GAMEPLAY &&
                  GetGameFlow()->GetCurrentContext() != CONTEXT_PAUSE )
