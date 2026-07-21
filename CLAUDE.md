@@ -59,6 +59,8 @@ srr2 skipfe                               # straight into Level 1; `skipfe l7 m3
                                           # races can't be started this way). l7 m3 (Pocket Protector) starts outdoors.
 srr2 skipfe demo l3                       # level 3's attract demo: the race AI drives the family car (demo.mfk/d1i.mfk:
                                           # race route, traffic, opponent, HUD), no time limit; for driving tests
+srr2 skipfe incar l7 m3                   # normal gameplay, but 2 s after loading the player is put in the mission's
+                                          # car wherever it is parked (not from an interior); for player-driven tests
 SHAR_KEY_SCRIPT="17@30000-60000,..."      # scripted input; the retail ini binds Action to E (18), menus take Enter (28)
 SHAR_FILL_ALLOC=0xFF / SHAR_FILL_PDDI=0xFF  # fill new game / renderer allocations to expose uninitialised reads
 SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1 (~4 min to playable), summary at end

@@ -69,6 +69,9 @@
 #include <worldsim/character/footprint/footprintmanager.h>
 #include <worldsim/worldphysicsmanager.h>
 #include <worldsim/avatarmanager.h>
+#include <worldsim/avatar.h>
+#include <loading/loadingmanager.h>
+#include <main/commandlineoptions.h>
 #include <worldsim/coins/coinmanager.h>
 #include <worldsim/skidmarks/skidmarkmanager.h>
 #include <worldsim/coins/sparkle.h>
@@ -465,6 +468,33 @@ void GameplayContext::OnUpdate( unsigned int elapsedTime )
     if( frameCount == 0 )
     {
         HeapMgr()->ResetArtStats();
+    }
+#endif
+
+#ifdef RAD_LINUX
+    // Linux port: "incar" test option: two seconds after loading, put the player in the mission's current car
+    // (it teleports them to wherever the car is parked; skipped inside an interior)
+    if( CommandLineOptions::Get( CLO_START_IN_CAR ) )
+    {
+        static int s_inCarWait = 2000;
+        if( s_inCarWait > 0 && m_state != S_SUSPENDED && !m_PausedAllButPresentation &&
+            !GetLoadingManager()->IsLoading() )
+        {
+            s_inCarWait -= static_cast< int >( elapsedTime );
+            if( s_inCarWait <= 0 )
+            {
+                Avatar* avatar = GetAvatarManager()->GetAvatarForPlayer( 0 );
+                Vehicle* car = GetGameplayManager()->GetCurrentVehicle();
+                if( GetInteriorManager()->IsInside() )
+                {
+                    rReleasePrintf( "incar: the player is in an interior, not moved\n" );
+                }
+                else if( avatar != NULL && car != NULL && !avatar->IsInCar() )
+                {
+                    GetAvatarManager()->PutCharacterInCar( avatar->GetCharacter(), car );
+                }
+            }
+        }
     }
 #endif
 

@@ -225,6 +225,10 @@ void CommandLineOptions::HandleOption( const char* const optionIn )
     {
         orValue <<= CLO_PRINT_MEMORY;
     }
+    else if( strcmp( strupr(option), "INCAR" ) == 0 )
+    {
+        orValue <<= CLO_START_IN_CAR;
+    }
     else if( strcmp( strupr(option), "DEMO" ) == 0 )
     {
         orValue <<= CLO_RUNTIME_DEMO;

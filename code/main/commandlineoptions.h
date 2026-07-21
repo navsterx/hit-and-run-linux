@@ -83,6 +83,7 @@ enum CmdLineOptionEnum
     CLO_FILE_NOT_FOUND,     //Testing for file not found
     CLO_NO_LOADING_SPEW,    // Don't Spew <<START>>, <<END>> messages
     CLO_AUDIO_LOADING_SPEW, // Spew Audio loading info
+    CLO_START_IN_CAR,       // Linux port: with skipfe, seat the player in the mission's car once the level is up
     CLO_RUNTIME_DEMO,       // Linux port: with skipfe, run level l<N>'s attract demo (AI drives the car), no time limit
 
     NUM_CLO             // Must not exceed 64
