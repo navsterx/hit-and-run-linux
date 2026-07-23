@@ -3,8 +3,8 @@
 Port of the original 2003 source to 32-bit Linux with SDL2 + OpenGL. The untouched original dump is at
 `~/Documents/Decomp/hitnrun_source/game` (never modify it). This repo holds only the files the build uses
 (sources, included headers, the VS project files `gen_cmake.py` reads, and the Win32 originals it swaps for Linux ones).
-Status (2026-10-14): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
-dialogue and movies, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
+Status (2026-10-15): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
+dialogue, movies, reverb and rumble, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
 Missing: steering-wheel force feedback. `README.md` has the user-facing status checklist; `RUST.md` holds notes for a
 possible future Rust/Bevy reimplementation (not started).
 
@@ -184,6 +184,14 @@ Hacks implemented: CustomFiles, LuaSupport, OggVorbisSupport (x.ogg serves x.rsd
 FFmpeg, detected by the "OggS" header in `rsdfiledatasource.cpp`), CustomLimits [Billboards], [Regions] Limit /
 EntityLimit, [Scripting] ArgumentLengthLimit (console arguments were unbounded copies). Movies up to 1920x1080
 (64 tiles) and fitted to the window either way (IncreasedVideoResolutionSupport).
+Config files reach the game through `shar_ModConfig` / `shar_ModConfigFolder`; XML ones through `shar_modxml.h`.
+CustomShopSupport (only <CarShop>: the level's seller and conversation, `actionbuttonhandler.cpp`; PhoneBooth /
+SkinShop item lists not yet), CustomDialogueCharacterCodes (only [CharacterCodes]: speaker codes appended to
+`dialogline.cpp`'s characterTable; the outfit voice sections not yet), CustomText (`guitextbible.cpp`, through a
+hook in Scrooby's FeLanguage::GetString; global/level/mission sections, $(Variables), \\ = \; English file only, no
+Language setting yet), 3DPhoneBoothPreviewSupport (`guiscreenphonebooth.cpp`: the car shop's 3D preview path;
+DarkenLockedCars/FullScreen not yet). A missing file still hangs the game in OnDriveError's retry loop (the
+original "insert disc" logic): fix pending.
 Fixed on the way (would also hit vanilla data in other cases): GL prim buffers drew all allocated indices instead
 of the count set (uninitialised indices: intermittent crashes inside the GL driver with mod meshes), stream writes
 past the allocation; null merchandise in `CharacterSheetManager::UpdateRewardsManager`; region list overflow.
@@ -228,6 +236,6 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
    Not yet covered: player-driven cars, races, other interiors (Kwik-E-Mart, school, ...).
 9. (done 2026-10-14) Widescreen verified by the user: scales correctly at all ratios, including extreme ones.
    Borderless fullscreen and the runtime resolution list added the same day.
-10. (paused 2026-10-15) Mods: Futurama: Hit & Run demo 0.1.3 drives fine in Level 1 (user-tested) but crashes when
-    looking at buyable cars (car shop / Gil-style purchase screen; needs CustomCarSupport and the other unimplemented
-    hacks: custom cars/characters/shops/interiors/text, ASF commands, HoverCarRefraction). Pick up later.
+10. (in progress 2026-10-15) Mods: Futurama: Hit & Run demo 0.1.3 drives in Level 1; the car shop (seller,
+    conversation, names), clothes store names and the 3D phone booth work (user-tested). Still unimplemented: custom
+    cars/characters/interiors/audio/traffic, ASF commands, HoverCarRefraction and the rest of the 17 listed at startup.

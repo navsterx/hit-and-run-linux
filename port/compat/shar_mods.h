@@ -5,12 +5,17 @@
  * Supported: CustomFiles (a mod's CustomFiles/ tree overrides game files, also those inside RCF archives, also
  * by the sound system's key strings; CustomFiles.ini redirections, occluded paths and Lua path handlers;
  * CustomFiles.lua), OggVorbisSupport (x.ogg serves x.rsd), CustomLimits (only the limits wired up through
- * shar_ModLimit). Other hacks a mod's Meta.ini requires are reported at startup and ignored. Mod settings are
+ * shar_ModLimit); read by the game through shar_ModConfig: CustomShopSupport (car shop sellers only),
+ * CustomDialogueCharacterCodes ([CharacterCodes] only), CustomText (guitextbible.cpp; English or the first
+ * language), 3DPhoneBoothPreviewSupport (guiscreenphonebooth.cpp; not DarkenLockedCars/FullScreen).
+ * Other hacks a mod's Meta.ini requires are reported at startup and ignored. Mod settings are
  * their Meta.ini defaults unless ModSettings.ini in the game dir sets them ([InternalName] Name=value).
  * SHAR_MOD_LOG=1 prints every file a mod provides as it is opened.
  * Loaded on first use; malloc only (called from the file system, see the compat-layer rule in CLAUDE.md). */
 #ifndef SHAR_COMPAT_SHAR_MODS_H
 #define SHAR_COMPAT_SHAR_MODS_H
+
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,6 +56,15 @@ const char* shar_ModSaveDir(void);
 /* A CustomLimits.ini value ([section] key=value, case-insensitive). Several mods setting it: the largest wins.
  * Returns defaultValue when no mod sets it. */
 int shar_ModLimit(const char* section, const char* key, int defaultValue);
+
+/* A config file in a mod's root folder ("CustomShopSupport.xml"), from the first mod that has one, as malloc'd
+ * NUL-terminated text the caller frees; NULL when no mod has it. */
+char* shar_ModConfig(const char* name);
+
+/* The files directly in a mod's root subfolder ("CustomText"), from the first mod that has any: up to max texts
+ * (malloc'd, NUL-terminated after sizes[i] bytes, which may include zeros, e.g. UTF-16) and file names (malloc'd),
+ * all for the caller to free. Returns the count. */
+int shar_ModConfigFolder(const char* folder, char** texts, size_t* sizes, char** names, int max);
 
 #ifdef __cplusplus
 }

@@ -487,7 +487,7 @@ void GameplayContext::OnUpdate( unsigned int elapsedTime )
                 Vehicle* car = GetGameplayManager()->GetCurrentVehicle();
                 if( GetInteriorManager()->IsInside() )
                 {
-                    rReleasePrintf( "incar: the player is in an interior, not moved\n" );
+                    fprintf( stderr, "incar: the player is in an interior, not moved\n" );
                 }
                 else if( avatar != NULL && car != NULL && !avatar->IsInCar() )
                 {

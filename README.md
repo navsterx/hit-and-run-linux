@@ -48,10 +48,14 @@ movies. It works with the retail PC release's data as well as the data from the 
 ### To do
 
 - [ ] **Full playthrough** — all seven levels, missions, races, bonus game, cutscenes, saving and loading
+- [ ] **Memory checks** — valgrind memcheck is clean for Level 1, a Level 7 interior and AI driving; still to
+  cover: player driving (`incar`), races, the bonus game, other interiors and later levels
+- [ ] **Steering-wheel force feedback** — wheel effects (springs, dampers) are not wired up; needs a wheel to test
 - [ ] **64-bit build** — the code assumes 32-bit pointers in places
 - [ ] **Modern OpenGL** — replace the fixed-function GL 1.x renderer (core profile, shaders)
-- [ ] **Mods** — Mod Launcher mods load (custom files, Lua, Ogg audio, HD movies); custom cars, characters,
-  shops and the other hacks are not implemented yet (Futurama: Hit & Run crashes at the car shop)
+- [ ] **Mods** — Mod Launcher mods load (custom files, Lua, Ogg audio, HD movies, custom text, car shop sellers,
+  new dialogue characters, 3D phone booth); custom cars, characters, interiors and the other hacks are not
+  implemented yet
 - [ ] **Packaging** — a simple install or AppImage-style bundle of the binary
 
 ## Building

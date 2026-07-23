@@ -48,6 +48,10 @@ public:
 
     virtual CGuiMenu* HasMenu() { return m_pMenu; }
 
+#ifdef RAD_LINUX
+    void OnProcessRequestsComplete( void* pUserData );  // 3D phone booth background (mods)
+#endif
+
 #ifdef RAD_WIN32
     virtual eFEHotspotType CheckCursorAgainstHotspots( float x, float y );
 #endif
@@ -64,6 +68,9 @@ protected:
 private:
     virtual void OnUpdate( unsigned int elapsedTime );
     void LoadSelectedReward();
+#ifdef RAD_LINUX
+    bool Is3D() const;
+#endif
     void UpdateDamagedInfo();
 
     Scrooby::Group* m_damagedInfo;

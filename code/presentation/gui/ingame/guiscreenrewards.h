@@ -62,6 +62,20 @@ private:
 //===========================================================================
 // Interface Definitions
 //===========================================================================
+#ifdef RAD_LINUX
+// Linux port: Mod Launcher 3DPhoneBoothPreviewSupport (a mod provides 3DPhoneBoothPreviewSupport.ini): the phone
+// booth shows 3D cars (art\frontend\dynaload\cars\<car>.p3d) in its page's PreviewWindow, on the BackgroundPath
+// scene, instead of the 2D images
+struct PhoneBooth3DConfig
+{
+    bool enabled;
+    char backgroundPath[ 128 ];
+    float radius;
+    bool darkenLockedCars;
+};
+const PhoneBooth3DConfig& GetPhoneBooth3DConfig();
+#endif
+
 class IGuiScreenRewards : public CGuiScreen,
                           public LoadingManager::ProcessRequestsCallback
 {

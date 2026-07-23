@@ -30,6 +30,10 @@
 
 #include <mission/gameplaymanager.h>
 #include <worldsim/character/character.h>
+#ifdef RAD_LINUX
+#include <shar_mods.h>
+#include <ctype.h>
+#endif
 
 //******************************************************************************
 //
@@ -88,7 +92,14 @@ EventTableEntry eventTable[] =
 
 static unsigned int eventTableLength = sizeof( eventTable ) / sizeof( EventTableEntry );
 
+#ifdef RAD_LINUX
+// Linux port: room for characters added by mods (CustomDialogueCharacterCodes.ini [CharacterCodes], see
+// initializeTables); characterTableLength counts the entries in use
+static const unsigned int MOD_CHARACTER_SLOTS = 48;
+CharacterTableEntry characterTable[ 65 + MOD_CHARACTER_SLOTS ] =  // 65 built-in entries
+#else
 CharacterTableEntry characterTable[] =
+#endif
 {
     { 0, "Hom", 0, "homer" },
     { 0, "Mrg", 0, "marge" },
@@ -157,7 +168,11 @@ CharacterTableEntry characterTable[] =
     { 0, "Vm4", 0, "traffic4" }
 };
 
+#ifdef RAD_LINUX
+static unsigned int characterTableLength = 0;     // set by initializeTables: the built-in entries plus mods'
+#else
 static unsigned int characterTableLength = sizeof( characterTable ) / sizeof( CharacterTableEntry );
+#endif
 
 //
 // The food guys
@@ -984,9 +999,80 @@ bool DialogLine::getNameField( const char* filename, int field, char* buffer, in
 // Return:      void 
 //
 //=============================================================================
+#ifdef RAD_LINUX
+// Linux port: Mod Launcher CustomDialogueCharacterCodes.ini, [CharacterCodes] name=code: dialogue files name their
+// speaker by a short code ("C_thunder_1_Convinit_Tcf_L1"), the table maps it to a character. A known code is
+// remapped, a new one appended.
+static void AddModCharacterCodes()
+{
+    char* text = shar_ModConfig( "CustomDialogueCharacterCodes.ini" );
+    if( text == NULL )
+    {
+        return;
+    }
+    bool inSection = false;
+    for( char* line = strtok( text, "\r\n" ); line != NULL; line = strtok( NULL, "\r\n" ) )
+    {
+        while( isspace( static_cast< unsigned char >( *line ) ) ) line++;
+        if( *line == '[' )
+        {
+            inSection = strncasecmp( line, "[CharacterCodes]", 16 ) == 0;
+            continue;
+        }
+        char* eq = strchr( line, '=' );
+        if( !inSection || eq == NULL || *line == ';' || *line == '#' )
+        {
+            continue;
+        }
+        *eq = '\0';
+        char* name = line;
+        char* code = eq + 1;
+        for( char* e = eq - 1; e >= name && isspace( static_cast< unsigned char >( *e ) ); e-- ) *e = '\0';
+        while( isspace( static_cast< unsigned char >( *code ) ) ) code++;
+        for( char* e = code + strlen( code ) - 1; e >= code && isspace( static_cast< unsigned char >( *e ) ); e-- ) *e = '\0';
+        if( *name == '\0' || *code == '\0' )
+        {
+            continue;
+        }
+        unsigned int i;
+        for( i = 0; i < characterTableLength; i++ )
+        {
+            if( strcasecmp( characterTable[i].characterString, code ) == 0 )
+            {
+                break;
+            }
+        }
+        if( i == characterTableLength )
+        {
+            if( characterTableLength == sizeof( characterTable ) / sizeof( characterTable[0] ) )
+            {
+                fprintf( stderr, "mods: CustomDialogueCharacterCodes: no room for %s=%s\n", name, code );
+                continue;
+            }
+            characterTableLength++;
+            characterTable[i].characterString = strdup( code );
+        }
+        characterTable[i].realCharacterName = strdup( name );
+    }
+    free( text );
+}
+#endif
+
 void DialogLine::initializeTables()
 {
     unsigned int i;
+
+#ifdef RAD_LINUX
+    if( characterTableLength == 0 )
+    {
+        while( characterTableLength < sizeof( characterTable ) / sizeof( characterTable[0] ) &&
+               characterTable[ characterTableLength ].characterString != NULL )
+        {
+            characterTableLength++;
+        }
+        AddModCharacterCodes();
+    }
+#endif
 
     for( i = 0; i < eventTableLength; i++ )
     {

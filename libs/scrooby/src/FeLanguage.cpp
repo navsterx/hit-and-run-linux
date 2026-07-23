@@ -79,8 +79,25 @@ unsigned short* FeLanguage::GetString( const char* name )
     return GetString( GetHash( name ) );
 }
 
+#ifdef RAD_LINUX
+namespace Scrooby
+{
+unsigned short* (*g_TextOverride)( unsigned int hash, unsigned int modulo ) = NULL;   // UnicodeChar
+}
+#endif
+
 unsigned short* FeLanguage::GetString( unsigned int hash )
 {
+#ifdef RAD_LINUX
+    if( Scrooby::g_TextOverride != NULL )
+    {
+        unsigned short* text = Scrooby::g_TextOverride( hash, m_modulo );
+        if( text != NULL )
+        {
+            return text;
+        }
+    }
+#endif
     //MIKE IMPROVE : make this hashing actually do something useful, instead of a linear sort
     unsigned int i = 0;
     for( ; i < m_numStrings; i++ )

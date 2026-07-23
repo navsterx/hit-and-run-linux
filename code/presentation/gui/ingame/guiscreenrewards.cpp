@@ -37,6 +37,11 @@
 #include <raddebug.hpp> // Foundation
 
 #include <string.h>
+#ifdef RAD_LINUX
+#include <shar_mods.h>
+#include <stdlib.h>
+#include <strings.h>
+#endif
 
 //===========================================================================
 // Global Data, Local Data, Local Classes
@@ -54,6 +59,67 @@ const float LIGHT_OPEN_CLOSE_TRANSITION_TIME = 500.0f; // in msec
 
 const char* PHONE_BOOTH_3DMODEL_CARS_DIR = "art\\frontend\\dynaload\\cars\\";
 const char* PHONE_BOOTH_2DMODEL_CARS_DIR = "art\\frontend\\dynaload\\images\\cars2D\\";
+
+#ifdef RAD_LINUX
+const PhoneBooth3DConfig& GetPhoneBooth3DConfig()
+{
+    static PhoneBooth3DConfig s_config;
+    static bool s_read = false;
+    if( !s_read )
+    {
+        s_read = true;
+        s_config.enabled = false;
+        strcpy( s_config.backgroundPath, "art\\frontend\\scrooby\\resource\\pure3d\\rewardbg.p3d" );
+        s_config.radius = 3.6f;
+        s_config.darkenLockedCars = false;
+
+        char* text = shar_ModConfig( "3DPhoneBoothPreviewSupport.ini" );
+        if( text != NULL )
+        {
+            s_config.enabled = true;
+            for( char* line = strtok( text, "\r\n" ); line != NULL; line = strtok( NULL, "\r\n" ) )
+            {
+                char* eq = strchr( line, '=' );
+                if( eq == NULL || *line == '[' )
+                {
+                    continue;
+                }
+                *eq = '\0';
+                char* key = line;
+                char* value = eq + 1;
+                while( *key == ' ' || *key == '\t' ) key++;
+                for( char* e = eq - 1; e >= key && ( *e == ' ' || *e == '\t' ); e-- ) *e = '\0';
+                while( *value == ' ' || *value == '\t' ) value++;
+                if( strcasecmp( key, "BackgroundPath" ) == 0 )
+                {
+                    // the docs write the path with doubled backslashes
+                    int n = 0;
+                    for( const char* c = value; *c != '\0' && n < static_cast< int >( sizeof( s_config.backgroundPath ) ) - 1; c++ )
+                    {
+                        if( ( *c == '\\' || *c == '/' ) && n > 0 && s_config.backgroundPath[ n - 1 ] == '\\' )
+                        {
+                            continue;
+                        }
+                        s_config.backgroundPath[ n++ ] = ( *c == '/' ) ? '\\' : *c;
+                    }
+                    while( n > 0 && ( s_config.backgroundPath[ n - 1 ] == ' ' || s_config.backgroundPath[ n - 1 ] == '"' ) ) n--;
+                    s_config.backgroundPath[ n ] = '\0';
+                }
+                else if( strcasecmp( key, "Radius" ) == 0 )
+                {
+                    s_config.radius = static_cast< float >( atof( value ) );
+                }
+                else if( strcasecmp( key, "DarkenLockedCars" ) == 0 )
+                {
+                    s_config.darkenLockedCars = atoi( value ) != 0;
+                }
+            }
+            free( text );
+        }
+    }
+    return s_config;
+}
+#endif
 
 //===========================================================================
 // PhoneBoothStars::
@@ -505,6 +571,18 @@ IGuiScreenRewards::InsertPreviewObject( PreviewObject* previewObjects,
     strncpy( previewObjects[ newSlot ].filename, pReward->GetFile(),
              sizeof( previewObjects[ newSlot ].filename ) );
 
+#ifdef RAD_LINUX
+    if( m_ID == GUI_SCREEN_ID_PHONE_BOOTH && GetPhoneBooth3DConfig().enabled && m_previewWindow != NULL )
+    {
+        // 3D phone booth (mods): the car shop's preview models
+        //
+        strcpy( previewObjects[ newSlot ].nameModel, pReward->GetName() );
+        sprintf( previewObjects[ newSlot ].filenameModel, "%s%s.p3d",
+                 PHONE_BOOTH_3DMODEL_CARS_DIR,
+                 pReward->GetName() );
+    }
+    else
+#endif
     if( m_ID == GUI_SCREEN_ID_PHONE_BOOTH )
     {
         // use 2D images for phone booth
@@ -739,7 +817,11 @@ IGuiScreenRewards::Load3DModel( const PreviewObject* previewObject )
 
     rAssert( previewObject != NULL );
 
+#ifdef RAD_LINUX
+    if( m_ID == GUI_SCREEN_ID_PHONE_BOOTH && !( GetPhoneBooth3DConfig().enabled && m_previewWindow != NULL ) )
+#else
     if( m_ID == GUI_SCREEN_ID_PHONE_BOOTH )
+#endif
     {
         char filename[ 64 ];
 

@@ -110,6 +110,10 @@
 
 #include <contexts/context.h>
 #include <render/DSG/StatePropDSG.h>
+#ifdef RAD_LINUX
+#include <shar_mods.h>
+#include <shar_modxml.h>
+#endif
 
 //******************************************************************************
 //
@@ -136,6 +140,53 @@ static CarPurchaseDialogueStuff s_carPurchaseConvNames[] =
     { ::radMakeKey32( "swine" ),     tEntity::MakeUID( "reward_kearney" ) },
     { 0, tEntity::MakeUID( "zombie" ) }   // No conversation for zombies
 };
+
+#ifdef RAD_LINUX
+// Linux port: Mod Launcher CustomShopSupport.xml, <CarShop Level="1" Character="reward_x" Conversation="y"/>:
+// replaces a level's car seller (Conversation="" for none). Read once, on the first car purchase.
+static void ApplyModCarShops()
+{
+    static bool s_applied = false;
+    if( s_applied )
+    {
+        return;
+    }
+    s_applied = true;
+
+    char* text = shar_ModConfig( "CustomShopSupport.xml" );
+    if( text == NULL )
+    {
+        return;
+    }
+    SharXmlReader reader = { text, 0 };
+    SharXmlElement e;
+    while( shar_XmlNext( &reader, &e ) )
+    {
+        if( !shar_XmlIs( &e, "CarShop" ) )
+        {
+            continue;
+        }
+        char level[ 16 ], character[ 64 ], conversation[ 64 ];
+        if( !shar_XmlAttr( &e, "Level", level, sizeof( level ) ) ||
+            !shar_XmlAttr( &e, "Character", character, sizeof( character ) ) )
+        {
+            continue;
+        }
+        if( !shar_XmlAttr( &e, "Conversation", conversation, sizeof( conversation ) ) )
+        {
+            conversation[ 0 ] = '\0';
+        }
+        int index = atoi( level ) - 1;
+        if( index < 0 || index >= static_cast< int >( sizeof( s_carPurchaseConvNames ) / sizeof( s_carPurchaseConvNames[ 0 ] ) ) )
+        {
+            continue;
+        }
+        s_carPurchaseConvNames[ index ].convName = conversation[ 0 ] != '\0' ? ::radMakeKey32( conversation ) : 0;
+        s_carPurchaseConvNames[ index ].sellerName = tEntity::MakeUID( character );
+    }
+    free( text );
+}
+#endif
 
 struct AnimSwitchSoundData
 {
@@ -4649,6 +4700,9 @@ bool PurchaseCar::OnButtonPressed( Character* pCharacter )
         level = gameplayMgr->GetCurrentLevelIndex() - RenderEnums::L1;
         rAssert( ( level >= 0 ) && ( level <= 7 ) );
 
+#ifdef RAD_LINUX
+        ApplyModCarShops();
+#endif
         if( s_carPurchaseConvNames[level].convName != 0 )
         {
             DialogEventData data;
@@ -4670,7 +4724,10 @@ bool PurchaseCar::OnButtonPressed( Character* pCharacter )
             Character* c1 = GetCharacterManager()->GetCharacterByName( data.charUID2 );
             rAssertMsg( c0 != NULL, "Character's name is incorrect" );
             rAssertMsg( c1 != NULL, "Character's name is incorrect" );
-            GetPresentationManager()->MakeCharactersFaceEachOther( c0, c1 );
+            if( c0 != NULL && c1 != NULL )      // Linux port: a mod's seller may not exist (crashed here)
+            {
+                GetPresentationManager()->MakeCharactersFaceEachOther( c0, c1 );
+            }
 
             CGuiScreenLetterBox::SuppressAcceptCancelButtons();
             CGuiScreenLetterBox::ForceOpen();

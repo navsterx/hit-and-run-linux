@@ -70,7 +70,8 @@ char s_GameRoot[ PATH_MAX ] = "";
 pthread_once_t s_Once = PTHREAD_ONCE_INIT;
 
 // Hacks implemented here; reported by IsHackLoaded and not listed as ignored
-const char* const SUPPORTED_HACKS[] = { "CustomFiles", "CustomLimits", "OggVorbisSupport", "LuaSupport" };
+const char* const SUPPORTED_HACKS[] = { "CustomFiles", "CustomLimits", "OggVorbisSupport", "LuaSupport", "CustomShopSupport",
+                                        "CustomDialogueCharacterCodes", "CustomText", "3DPhoneBoothPreviewSupport" };
 
 void Init( void );
 
@@ -1646,4 +1647,90 @@ extern "C" int shar_ModLimit( const char* section, const char* key, int defaultV
         }
     }
     return defaultValue;
+}
+
+extern "C" char* shar_ModConfig( const char* name )
+{
+    pthread_once( &s_Once, Init );
+    char key[ PATH_MAX ];
+    ModNormalise( name, key, sizeof( key ) );
+    for ( int i = 0; i < g_NumMods; i++ )
+    {
+        char* text = ReadModFile( &g_Mods[ i ], key, NULL );
+        if ( text != NULL )
+        {
+            if ( s_Log )
+            {
+                fprintf( stderr, "mods: %s: %s\n", g_Mods[ i ].name, name );
+            }
+            return text;
+        }
+    }
+    return NULL;
+}
+
+extern "C" int shar_ModConfigFolder( const char* folder, char** texts, size_t* sizes, char** names, int max )
+{
+    pthread_once( &s_Once, Init );
+    char key[ PATH_MAX ];
+    ModNormalise( folder, key, sizeof( key ) );
+    size_t keyLength = strlen( key );
+    for ( int i = 0; i < g_NumMods; i++ )
+    {
+        const Mod* mod = &g_Mods[ i ];
+        int count = 0;
+        if ( mod->packaged )
+        {
+            for ( int e = 0; e < mod->numEntries && count < max; e++ )
+            {
+                const char* rel = mod->entries[ e ].key;
+                if ( strncmp( rel, key, keyLength ) == 0 && rel[ keyLength ] == '/' &&
+                     strchr( rel + keyLength + 1, '/' ) == NULL )
+                {
+                    char* text = ReadModFile( mod, rel, &sizes[ count ] );
+                    if ( text != NULL )
+                    {
+                        texts[ count ] = text;
+                        names[ count ] = strdup( mod->entries[ e ].rel + keyLength + 1 );
+                        count++;
+                    }
+                }
+            }
+        }
+        else
+        {
+            char path[ PATH_MAX ];
+            if ( ResolveNoCase( mod->root, key, path, sizeof( path ) ) )
+            {
+                DIR* d = opendir( path );
+                struct dirent* de;
+                while ( d != NULL && ( de = readdir( d ) ) != NULL && count < max )
+                {
+                    char file[ PATH_MAX ];
+                    struct stat st;
+                    snprintf( file, sizeof( file ), "%s/%s", path, de->d_name );
+                    if ( de->d_name[ 0 ] == '.' || stat( file, &st ) != 0 || !S_ISREG( st.st_mode ) )
+                    {
+                        continue;
+                    }
+                    char* text = ReadWholeFile( file, &sizes[ count ] );
+                    if ( text != NULL )
+                    {
+                        texts[ count ] = text;
+                        names[ count ] = strdup( de->d_name );
+                        count++;
+                    }
+                }
+                if ( d != NULL )
+                {
+                    closedir( d );
+                }
+            }
+        }
+        if ( count > 0 )
+        {
+            return count;
+        }
+    }
+    return 0;
 }

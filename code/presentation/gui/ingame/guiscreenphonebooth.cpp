@@ -68,6 +68,10 @@ const float HUSK_CORRECTION_SCALE = 1.0f / 0.5f;
 
 const float VEHICLE_LOCKED_IMAGE_ALPHA = 0.5f;
 
+#ifdef RAD_LINUX
+const char* PHONE_BOOTH_3D_BGD_SECTION = "FE_PhoneBooth3DBgd";
+#endif
+
 const tUID CHARACTER_VEHICLE_NAMES[] =
 {
     tEntity::MakeUID( "apu_v" ),
@@ -366,8 +370,65 @@ MEMTRACK_PUSH_GROUP( "CGUIScreenPhoneBooth" );
 
     m_menuTeleport = false;
 #endif
+#ifdef RAD_LINUX
+    if( this->Is3D() )
+    {
+        p3d::inventory->AddSection( PHONE_BOOTH_3D_BGD_SECTION );
+    }
+#endif
 MEMTRACK_POP_GROUP("CGUIScreenPhoneBooth");
 }
+
+#ifdef RAD_LINUX
+bool CGuiScreenPhoneBooth::Is3D() const
+{
+    return GetPhoneBooth3DConfig().enabled && m_previewWindow != NULL && m_previewBgd != NULL &&
+           m_previewPedestal != NULL;
+}
+
+void CGuiScreenPhoneBooth::OnProcessRequestsComplete( void* pUserData )
+{
+    if( reinterpret_cast<Scrooby::Pure3dObject*>( pUserData ) != m_previewBgd )
+    {
+        IGuiScreenRewards::OnProcessRequestsComplete( pUserData );
+        return;
+    }
+
+    // the background scene: as CGuiScreenPurchaseRewards
+    //
+    p3d::inventory->PushSection();
+    p3d::inventory->SelectSection( PHONE_BOOTH_3D_BGD_SECTION );
+    bool currentSectionOnly = p3d::inventory->GetCurrentSectionOnly();
+    p3d::inventory->SetCurrentSectionOnly( true );
+
+    tDrawable* drawable = p3d::find<tDrawable>( "Pedestal_Scenegraph" );
+    if( drawable != NULL )
+    {
+        m_previewBgd->SetDrawable( drawable );
+        tCamera* camera = p3d::find<tCamera>( "Pedestal_Camera" );
+        m_previewBgd->SetCamera( camera );
+        m_previewPedestal->SetCamera( camera );
+        m_previewWindow->SetCamera( camera );
+        m_previewBgd->SetMultiController( p3d::find<tMultiController>( "Pedestal_MasterController" ) );
+        if( camera != NULL )
+        {
+            m_previewPedestal->SetVisible( true );
+            m_previewBgd->SetVisible( true );
+        }
+        else
+        {
+            fprintf( stderr, "phone booth: no Pedestal_Camera in %s\n", GetPhoneBooth3DConfig().backgroundPath );
+        }
+    }
+    else
+    {
+        fprintf( stderr, "phone booth: no Pedestal_Scenegraph in %s\n", GetPhoneBooth3DConfig().backgroundPath );
+    }
+
+    p3d::inventory->SetCurrentSectionOnly( currentSectionOnly );
+    p3d::inventory->PopSection();
+}
+#endif
 
 //===========================================================================
 // CGuiScreenPhoneBooth::~CGuiScreenPhoneBooth
@@ -383,6 +444,12 @@ MEMTRACK_POP_GROUP("CGUIScreenPhoneBooth");
 //===========================================================================
 CGuiScreenPhoneBooth::~CGuiScreenPhoneBooth()
 {
+#ifdef RAD_LINUX
+    if( this->Is3D() )
+    {
+        p3d::inventory->DeleteSection( PHONE_BOOTH_3D_BGD_SECTION );
+    }
+#endif
 #ifdef SRR2_OVERRIDE_CAR_SELECTION
     if( m_pMenu != NULL )
     {
@@ -660,6 +727,24 @@ eFEHotspotType CGuiScreenPhoneBooth::CheckCursorAgainstHotspots( float x, float 
 //===========================================================================
 void CGuiScreenPhoneBooth::InitIntro()
 {
+#ifdef RAD_LINUX
+    if( this->Is3D() )
+    {
+        GetLoadingManager()->AddRequest( FILEHANDLER_PURE3D,
+                                         GetPhoneBooth3DConfig().backgroundPath,
+                                         GMA_LEVEL_MISSION,
+                                         PHONE_BOOTH_3D_BGD_SECTION,
+                                         PHONE_BOOTH_3D_BGD_SECTION,
+                                         this,
+                                         reinterpret_cast<void*>( m_previewBgd ) );
+        // the pedestal and background show once the background's camera is in (OnProcessRequestsComplete):
+        // drawn without one, their billboards crashed
+        if( m_previewImage != NULL )
+        {
+            m_previewImage->SetVisible( false );
+        }
+    }
+#endif
     IGuiScreenRewards::InitIntro();
 
     // hide lock by default
@@ -749,6 +834,18 @@ void CGuiScreenPhoneBooth::InitOutro()
 
     CGuiScreenHud::UpdateNumCoinsDisplay( 0, false );
 
+#ifdef RAD_LINUX
+    if( this->Is3D() )
+    {
+        p3d::pddi->DrawSync();
+        m_previewPedestal->SetVisible( false );
+        m_previewBgd->SetVisible( false );
+        m_previewBgd->SetDrawable( NULL );
+        m_previewBgd->SetCamera( NULL );
+        m_previewBgd->SetMultiController( NULL );
+        p3d::inventory->RemoveSectionElements( PHONE_BOOTH_3D_BGD_SECTION );
+    }
+#endif
     IGuiScreenRewards::InitOutro();
 
     // notify sound manager that game is un-paused
@@ -760,6 +857,34 @@ void
 CGuiScreenPhoneBooth::On3DModelLoaded( const PreviewObject* previewObject )
 {
     p3d::pddi->DrawSync();
+
+#ifdef RAD_LINUX
+    if( this->Is3D() )
+    {
+        // 3D phone booth (mods): as the car shop, standing on the pedestal, scaled to the configured radius
+        //
+        tDrawable* drawable = p3d::find<tDrawable>( previewObject->nameModel );
+        if( drawable != NULL )
+        {
+            m_previewWindow->SetDrawable( drawable );
+            rmt::Box3D box3D;
+            drawable->GetBoundingBox( &box3D );
+            m_previewWindow->SetDrawableTranslation( 0.0f, -box3D.low.y, 0.0f );
+            rmt::Sphere sphere;
+            drawable->GetBoundingSphere( &sphere );
+            if( sphere.radius > 0.0f )
+            {
+                m_previewWindow->SetDrawableScale( GetPhoneBooth3DConfig().radius / sphere.radius );
+            }
+        }
+        else
+        {
+            fprintf( stderr, "phone booth: no preview model %s in %s\n", previewObject->nameModel,
+                            previewObject->filenameModel );
+        }
+        return;
+    }
+#endif
 
     rAssert( m_previewImage != NULL );
     m_previewImage->SetVisible( true );
