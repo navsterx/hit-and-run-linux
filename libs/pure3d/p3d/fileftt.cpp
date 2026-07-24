@@ -55,6 +55,9 @@ tFileFTT::tFileFTT(const char* filename, bool synchronous) :
      compressedSize(0),
      nextSize(0),
      bufferSize(0)
+#ifdef RAD_LINUX
+     , m_openFailed(false)
+#endif
 {
     SetFilename(filename);
     rAssert(!synchronous);
@@ -111,6 +114,12 @@ void tFileFTT::SetPosition(int offset)
 void tFileFTT::Advance(unsigned offset)
 {
     OpenFile();
+#ifdef RAD_LINUX
+    if ( m_openFailed )
+    {
+        return;
+    }
+#endif
     if ( offset == 0 )
     {
         return;
@@ -177,6 +186,13 @@ bool tFileFTT::GetData(void* buf, unsigned count, DataType type)
     {
         OpenFile();
     }
+#ifdef RAD_LINUX
+    if( m_openFailed )
+    {
+        memset( buf, 0, count * type );
+        return false;
+    }
+#endif
 
     int numBytes = count * type;
 
@@ -496,6 +512,16 @@ void tFileFTT::OpenFile( void )
         P3DASSERT(m_pIRadFile);
 
         WaitForCompletion( );
+#ifdef RAD_LINUX
+        // Linux port: the file system now fails a missing file instead of retrying forever (OnDriveError); the
+        // original read through the unopened file and overran the caller's buffers. Load it as empty instead.
+        if ( !m_pIRadFile->IsOpen( ) )
+        {
+            m_openFailed = true;
+            fileSize = 0;
+            return;
+        }
+#endif
         P3DASSERT( m_pIRadFile->IsOpen( ));
      
         fileSize = m_pIRadFile->GetSize( );

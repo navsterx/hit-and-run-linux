@@ -60,6 +60,9 @@ protected:
     int compressedSize;
     
     int nextSize;
+#ifdef RAD_LINUX
+    bool m_openFailed;      // Linux port: the file could not be opened; reads give zeros (an empty P3D file)
+#endif
 
     int bufferSize;
     

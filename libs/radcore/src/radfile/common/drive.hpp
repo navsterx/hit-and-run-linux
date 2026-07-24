@@ -79,6 +79,11 @@ public:
     const IRadDrive::MediaInfo* GetMediaInfo( );
 
     radFileError GetLastError( void );
+#ifdef RAD_LINUX
+    // Linux port: for a failure decided outside the drive (a mod occluding a file, requests.cpp): the global error
+    // handler reads the drive's last error, and with Success it retried the request forever
+    void SetLastError( radFileError error ) { m_LastError = error; }
+#endif
 
     //
     // This is called once per radFileService( ) on the user's thread.

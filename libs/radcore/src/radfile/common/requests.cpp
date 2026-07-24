@@ -465,6 +465,7 @@ radDrive::CompletionStatus FileOpenRequest::DoRequest( void )
         switch ( shar_ModResolve( fileName, &modFile, &redirect ) )
         {
         case SHAR_MOD_MISSING:
+            pDrive->SetLastError( FileNotFound );
             return handleError( radDrive::Error, FileNotFound );
         case SHAR_MOD_FILE:
             modOverride = true;

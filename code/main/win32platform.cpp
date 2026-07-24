@@ -876,6 +876,12 @@ bool Win32Platform::OnDriveError( radFileError error, const char* pDriveName, vo
             {
                 return false;
             }
+#ifdef RAD_LINUX
+            // Linux port: fail the request instead of retrying it. The retry is the consoles' "put the disc back"
+            // loop: on a PC (or with a mod lacking a file) the file never appears, and the game hung behind the error
+            // screen, unable to even close its window. The loader gets a failed read, as for an occluded file.
+            return false;
+#endif
 
             char errorString[256];
             sprintf( errorString, "%s:\n%s", ERROR_STRINGS[error], adjustedName );

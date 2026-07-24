@@ -160,6 +160,12 @@ SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1
   Gameplay only captures the pointer when mouse-look is on (`FEMouse::SetupInGameMode`; only PC_CAM reads the mouse).
   The game's own drawn menu cursor hides (and stops hovering) after gamepad input until the mouse moves or clicks
   (`FEMouse::SetHiddenForGamepad`, fed from `PumpEvents`; the revealing click is swallowed).
+- **Missing files**: the original retried a failed read forever behind an error screen (the consoles' "put the disc
+  back" loop), so a missing file hung the game for good. `Win32Platform::OnDriveError` now prints
+  `File not found: <path>` and fails the request; Pure3D's `tFileFTT` loads a file that failed to open as empty
+  (it used to read through it and smash the stack). Files a mod occludes set the drive's error too
+  (`radDrive::SetLastError`): with the drive's error still Success the handler retried. The game carries on when
+  it can do without the file (tested: level01\jumps.p3d); art it needs (art\wrench.p3d) still crashes later.
 - Boot movies only play in release builds (`SHOW_MOVIES` needs `RAD_RELEASE`, `bootupcontext.cpp`): test them with
   `build-linux`, not the debug build.
 - radcore's `radoptions.hpp` enables debug comm / watcher / memory monitor in debug builds: off on Linux.
@@ -190,8 +196,7 @@ SkinShop item lists not yet), CustomDialogueCharacterCodes (only [CharacterCodes
 `dialogline.cpp`'s characterTable; the outfit voice sections not yet), CustomText (`guitextbible.cpp`, through a
 hook in Scrooby's FeLanguage::GetString; global/level/mission sections, $(Variables), \\ = \; English file only, no
 Language setting yet), 3DPhoneBoothPreviewSupport (`guiscreenphonebooth.cpp`: the car shop's 3D preview path;
-DarkenLockedCars/FullScreen not yet). A missing file still hangs the game in OnDriveError's retry loop (the
-original "insert disc" logic): fix pending.
+DarkenLockedCars/FullScreen not yet).
 Fixed on the way (would also hit vanilla data in other cases): GL prim buffers drew all allocated indices instead
 of the count set (uninitialised indices: intermittent crashes inside the GL driver with mod meshes), stream writes
 past the allocation; null merchandise in `CharacterSheetManager::UpdateRewardsManager`; region list overflow.
