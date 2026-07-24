@@ -3,8 +3,9 @@
 Port of the original 2003 source to 32-bit Linux with SDL2 + OpenGL. The untouched original dump is at
 `~/Documents/Decomp/hitnrun_source/game` (never modify it). This repo holds only the files the build uses
 (sources, included headers, the VS project files `gen_cmake.py` reads, and the Win32 originals it swaps for Linux ones).
-Status (2026-10-15): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
+Status (2026-10-16): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
 dialogue, movies, reverb and rumble, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
+Mod Launcher mods partly supported (8 hacks; the Futurama demo plays Level 1 with its shops and phone booth).
 Missing: steering-wheel force feedback. `README.md` has the user-facing status checklist; `RUST.md` holds notes for a
 possible future Rust/Bevy reimplementation (not started).
 

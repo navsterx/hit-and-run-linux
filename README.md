@@ -12,6 +12,7 @@ Linux implementations underneath it.
 
 The game builds, boots, plays through the front end and into gameplay with sound, music, dialogue and
 movies. It works with the retail PC release's data as well as the data from the source dump.
+Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its first level, shops and phone booth.
 
 ### Done
 
@@ -44,6 +45,9 @@ movies. It works with the retail PC release's data as well as the data from the 
 - [x] **Resolution menu** — common PC sizes plus the desktop's own, filtered to what fits the screen;
   any `WxH` set in `simpsons.ini` is accepted
 - [x] **Launcher** — `port/play.sh` builds if needed, sets up the run directory and starts the game
+- [x] **Missing files** — reported (`File not found: …`) instead of hanging behind the original retry screen
+- [x] **Test launch options** — `skipfe demo l<N>` (the AI drives the attract demo), `skipfe incar l<N> m<N>`
+  (start a mission in the car)
 
 ### To do
 
