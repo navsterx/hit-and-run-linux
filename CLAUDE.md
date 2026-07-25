@@ -206,6 +206,26 @@ Level 1 by New Game (5/5 runs) and `skipfe`. Its other 20 hacks are not implemen
 interiors/text, ASF commands, ...), nor its required HoverCarRefraction mod: driving and missions untested.
 Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
 
+## Priorities (2026-10-16)
+
+The base game is feature-complete but not yet verified end to end. In order:
+
+1. **Verify the base game** (user plays; Claude does not script gameplay it can't see): a full playthrough of all
+   seven levels. Riskiest first: save -> quit -> load round trip, the bonus game (Itchy & Scratchy racing) with 2-4
+   pads, street/wager races and time trials, later levels' missions and cutscenes, French/German/Spanish.
+2. **Memcheck coverage** (Claude, unattended; each pass has found real bugs): player driving (`skipfe incar`),
+   a race, other interiors (Kwik-E-Mart, school, ...), later levels, the bonus game. See item 8 below.
+3. **Robustness found along the way**: crashes/asserts from those runs, shutdown paths (window closed in any
+   context), missing-data tolerance where cheap.
+4. **Mods, small to large**: CustomShopSupport item lists (PhoneBooth/SkinShop Free/Included/ExcludedItems),
+   3D phone booth DarkenLockedCars, CustomDialogueCharacterCodes outfit voices, CustomText Language setting; then
+   CustomCarSupport (unblocks the Futurama demo's cars), custom characters, interiors, audio, traffic and the rest
+   of the hacks Futurama lists at startup. Test with the user in the loop (shops, phone booth, dialogue).
+5. **Packaging**: install script or AppImage-style bundle (32-bit runtime libraries, FFmpeg, SDL2).
+6. **Steering-wheel force feedback**: only with a wheel to test on.
+7. **Long term**: 64-bit build (pointer/int casts, fixed-size heaps), modern OpenGL (core profile, shaders), a
+   possible Rust/Bevy reimplementation (`RUST.md`).
+
 ## Known issues / next steps
 
 1. (fixed 2026-10-13) 2D sprites upside down / HUD portraits looking clipped: DXT row order, see lessons.
