@@ -25,10 +25,14 @@ port/                      everything added for the port
   run.sh [secs] [args]     rebuild + run under gdb from the run dir, print backtrace on crash
   play.sh --data DIR       build if needed, set up the run dir from DIR (game data), start the game normally
                            (--debug, --no-build, --mod .lmlm|FOLDER (repeatable); extra args go to the game)
+                           console output -> run/logs/last-session.log; on a crash / non-zero exit / Ctrl+C it is
+                           kept as run/crashes/crash-<date>-<time>.log, backtrace resolved (crash_symbolize.py)
+  crash_symbolize.py BIN [LOG]  resolve a crash report's module+offset frames with addr2line
   memcheck.sh [secs] [args]  run under valgrind memcheck (fetched/set up on first use, no root) and summarise
                            uninitialised reads by origin (memcheck_summary.py); see lessons
   compat/                  force-included msvc_compat.h, types-only windows.h, crtdbg.h, dinput.h,
                            win32_threads.* (threads/sync/fibers/timers on POSIX), win32_misc.* (MessageBox),
+                           shar_crash.* (SIGSEGV/BUS/ILL/FPE/ABRT -> crash report on stderr; SHAR_CRASH_HANDLER=0 off),
                            pddi_heap.cpp (renderer's private heap), valgrind/ (client-request headers),
                            shar_mods.* (Mod Launcher mods, see below)
 mod/tools/                 modding tools: lmlm_extract.py (unpacks Mod Launcher .lmlm "LSPA" packages)

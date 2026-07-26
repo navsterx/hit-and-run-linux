@@ -182,7 +182,8 @@ def main():
             libs.append(name)
     out.append("# Win32 API subset implemented on POSIX (threads/sync/timers); linked after the libraries using it")
     out.append(f"add_library(shar_compat STATIC {COMPAT_DIR}/win32_threads.cpp {COMPAT_DIR}/win32_misc.cpp "
-               f"{COMPAT_DIR}/pddi_heap.cpp {COMPAT_DIR}/shar_mods.cpp {COMPAT_DIR}/shar_modlua.cpp)")
+               f"{COMPAT_DIR}/pddi_heap.cpp {COMPAT_DIR}/shar_mods.cpp {COMPAT_DIR}/shar_modlua.cpp "
+               f"{COMPAT_DIR}/shar_crash.cpp)")
     out.append("# the renderer allocates from its own heap, as pddidx8.dll did on Windows (port/compat/pddi_heap.cpp)")
     out.append("add_custom_command(TARGET pddigl POST_BUILD COMMAND objcopy "
                "--redefine-sym _Znwj=pddi_heap_new --redefine-sym _Znaj=pddi_heap_new_array "

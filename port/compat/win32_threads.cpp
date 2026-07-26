@@ -1,6 +1,7 @@
 // POSIX implementation of the Win32 subset declared in win32_threads.h. See that header for the limits.
 
 #include "windows.h"
+#include "shar_crash.h"
 
 #include <errno.h>
 #include <sched.h>
@@ -124,8 +125,10 @@ namespace
             pthread_cond_wait(&t->cond, &t->lock);
         pthread_mutex_unlock(&t->lock);
 
+        shar_CrashThreadInit();
         if(s_threadStartHook) s_threadStartHook();
         DWORD code = t->start(t->param);
+        shar_CrashThreadExit();
         FinishThread(t, code);
         return NULL;
     }

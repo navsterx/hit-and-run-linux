@@ -96,6 +96,10 @@ port/play.sh --data /path/to/game skipfe       # extra arguments go to the game 
 On first use it creates `run/` with links to the game data and a private copy of `simpsons.ini` and the save
 files, which the game writes to. Boot movies only play in the release build.
 
+Each session's console output is also written to `run/logs/last-session.log`. If the game crashes (or exits with
+an error, or is interrupted with Ctrl+C), the log is kept as `run/crashes/crash-<date>-<time>.log`, ending in a
+crash report with the backtrace resolved to source files and lines. Attach that file when reporting a crash.
+
 ### Debug and test switches
 
 | Variable | Effect |
@@ -110,6 +114,7 @@ files, which the game writes to. Boot movies only play in the release build.
 | `SHAR_INPUT_LOG`, `SHAR_NO_INPUT`, `SHAR_NO_MOUSE`, `SHAR_FORCE_MOUSELOOK` | Input debugging |
 | `SHAR_ASSERT_ABORT=1` | Make failed asserts abort instead of logging |
 | `SHAR_LOAD_BUDGET_MS=n` | Time per frame given to the background loader |
+| `SHAR_CRASH_HANDLER=0` | Don't install the crash-report signal handler |
 
 `port/run.sh [seconds] [args]` rebuilds and runs the game under gdb, printing a backtrace on a crash.
 

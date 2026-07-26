@@ -9,6 +9,9 @@
 # env: SHAR_RUN   run directory (default run/), set up on first use: symlinks to the data,
 #                 private copies of simpsons.ini and Save1-4 (the game writes them)
 #      SHAR_BUILD build dir (overrides --debug)
+# The console output goes to logs/last-session.log in the run dir too. If the game crashes (or exits non-zero, or is
+# interrupted), the log is kept as crashes/crash-<date>-<time>.log with its backtrace resolved to source lines
+# (crash report: port/compat/shar_crash.h).
 # Other SHAR_* variables (SHAR_FPS_CAP, SHAR_VSYNC, SHAR_NO_AUDIO, ...) pass through to the game.
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -69,4 +72,32 @@ fi
 [ -x "$BUILD/srr2" ] || { echo "$BUILD/srr2 not found" >&2; exit 1; }
 
 cd "$RUN"
-exec "$BUILD/srr2" "$@"
+mkdir -p logs
+LOG=$RUN/logs/last-session.log
+{
+    echo "SHAR session $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "build: $BUILD/srr2 ($(git -C "$ROOT" describe --always --dirty 2>/dev/null || echo unknown))"
+    echo "data: $DATA"
+    echo "args: $*"
+    [ -n "$MOD_PATHS" ] && echo "mods: $MOD_PATHS"
+    env | grep -E '^SHAR_' | grep -v '^SHAR_MODS=' | sed 's/^/env: /' || true
+    echo
+} > "$LOG"
+set +e
+# tee -i: a Ctrl+C reaches the game but not tee, so the game's last output still lands in the log
+"$BUILD/srr2" "$@" 2>&1 | tee -i -a "$LOG"
+STATUS=${PIPESTATUS[0]}
+set -e
+[ $STATUS = 0 ] && exit 0
+
+if [ $STATUS -gt 128 ]; then
+    REASON="killed by SIG$(kill -l $((STATUS - 128)) 2>/dev/null || echo $((STATUS - 128)))"
+else
+    REASON="exit status $STATUS"
+fi
+echo "=== game ended abnormally: $REASON ===" >> "$LOG"
+mkdir -p crashes
+CRASH=$RUN/crashes/crash-$(date '+%Y%m%d-%H%M%S').log
+python3 "$ROOT/port/crash_symbolize.py" "$BUILD/srr2" "$LOG" > "$CRASH" 2>/dev/null || cp "$LOG" "$CRASH"
+echo "Game ended abnormally ($REASON). Log saved to $CRASH" >&2
+exit $STATUS

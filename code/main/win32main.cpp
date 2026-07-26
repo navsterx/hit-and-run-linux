@@ -242,8 +242,11 @@ void ProcessCommandLineArgumentsFromFile()
 //=============================================================================
 // Linux entry point: rebuild the Windows command-line string from argv and run the original WinMain.
 //=============================================================================
+extern "C" void shar_CrashInstall( void );    // port/compat/shar_crash.h
+
 int main( int argc, char** argv )
 {
+    shar_CrashInstall();
     static char cmdLine[ 4096 ];
     cmdLine[ 0 ] = '\0';
     for( int i = 1; i < argc; i++ )
