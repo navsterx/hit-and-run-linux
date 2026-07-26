@@ -1823,6 +1823,7 @@ RenderManager::RenderManager() :
    mbLoadZonesDumped = false;
    mbIgnoreVisibilityClear = false;
    mbInVsibilityVolume = false;
+   mbFirstDynamicZone = false; // uninit fix (Linux port): read when a dynamic zone finishes loading
 
    mZELs.Allocate(10);
 

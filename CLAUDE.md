@@ -68,7 +68,9 @@ srr2 skipfe incar l7 m3                   # normal gameplay, but 2 s after loadi
                                           # car wherever it is parked (not from an interior); for player-driven tests
 SHAR_KEY_SCRIPT="17@30000-60000,..."      # scripted input; the retail ini binds Action to E (18), menus take Enter (28)
 SHAR_FILL_ALLOC=0xFF / SHAR_FILL_PDDI=0xFF  # fill new game / renderer allocations to expose uninitialised reads
-SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1 (~4 min to playable), summary at end
+SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1 (~3 min to playable), summary at end
+SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion): under memcheck the world then streams
+                                          # in ahead of the car
 ```
 
 ## Platform model
@@ -263,7 +265,12 @@ The base game is feature-complete but not yet verified end to end. In order:
    clean after fixes to Avatar race data and Character::mbNeedChoreoUpdate; it also found GetTotalMemoryUsed()
    with no return on Linux (GCC traps: SIGILL when the AI reached its last waypoint; a -Wreturn-type scan of every
    source found no other). Under memcheck the world streams in late, so the car often drives over unloaded zones.
-   Not yet covered: player-driven cars, races, other interiors (Kwik-E-Mart, school, ...).
+   2026-10-16: memcheck.sh now runs valgrind with --fair-sched=yes (without it the main/load threads' mutex
+   ping-pong starved the drive thread: Level 1 took 15+ min to load, now ~3) and driving runs use
+   SHAR_MAX_FRAME_MS=33 (else the car outruns streaming onto empty ground; `DSG: Move: can't find` lines came from
+   that). Clean: player driving in Level 1 (`skipfe incar`), `demo l2` and `demo l3` after two fixes
+   (RenderManager::mbFirstDynamicZone, ParkedCarManager::RemoveFreeCarIfClose position).
+   Not yet covered: races, other interiors (Kwik-E-Mart, school, ...), the bonus game.
 9. (done 2026-10-14) Widescreen verified by the user: scales correctly at all ratios, including extreme ones.
    Borderless fullscreen and the runtime resolution list added the same day.
 10. (in progress 2026-10-15) Mods: Futurama: Hit & Run demo 0.1.3 drives in Level 1; the car shop (seller,

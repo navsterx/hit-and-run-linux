@@ -749,7 +749,7 @@ void ParkedCarManager::RemoveFreeCar()
 void ParkedCarManager::RemoveFreeCarIfClose( const rmt::Vector& position )
 {
     // where is the free car?
-    rmt::Vector freeCarPosition;
+    rmt::Vector freeCarPosition( 0.0f, 0.0f, 0.0f ); // uninit fix (Linux port): read below with no free car
     if ( mFreeCar.mCar != NULL )
     {
         if(mFreeCar.mCar == GetAvatarManager()->GetAvatarForPlayer(0)->GetVehicle())

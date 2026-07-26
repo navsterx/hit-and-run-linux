@@ -5,8 +5,10 @@
 # env:   SHAR_RUN    run directory (default run/; use a scratch one with display=window, resolution=640x480)
 #        SHAR_BUILD  build dir (default build-linux: -O0 -g, which keeps memcheck's line numbers exact)
 #        VG_TOOLS    where valgrind and its helpers are unpacked (default ~/.cache/shar-memcheck)
+#        VG_OPTS     extra valgrind options
 # Output: $RUN/memcheck.log (raw), $RUN/memcheck.txt (summary). Other SHAR_* variables pass through to the game,
-# e.g. SHAR_KEY_SCRIPT to move around (SDL_GetTicks times; under memcheck Level 1 is playable after ~4 minutes).
+# e.g. SHAR_KEY_SCRIPT to move around (SDL_GetTicks times; under memcheck Level 1 is playable after ~3 minutes),
+# SHAR_MAX_FRAME_MS=33 for driving (slow motion, so the world streams in ahead of the car).
 #
 # Every allocation from the game's heaps and FBMemoryPool is marked undefined (memorymanager.cpp, memorypool.cpp),
 # so recycled memory counts as uninitialised too. Known noise: SDL/X11/udev/dbus during window creation, and
@@ -39,10 +41,12 @@ LD_LIBRARY_PATH="$T/tools/usr/lib/x86_64-linux-gnu" "$T/tools/usr/bin/patchelf" 
 
 cd "$RUN"
 set +e
-# nouserintercepts: the game replaces operator new/delete itself; memcheck must not swap in its own
+# nouserintercepts: the game replaces operator new/delete itself; memcheck must not swap in its own.
+# fair-sched: valgrind runs one thread at a time; without it the main and load threads handing the load mutex
+# back and forth starved the drive thread, and Level 1 took over 15 minutes to load instead of ~3.
 VALGRIND_LIB="$T/vg/usr/libexec/valgrind" SDL_AUDIODRIVER=${SDL_AUDIODRIVER:-dummy} \
-timeout -s INT "$SECS" "$T/vg/usr/bin/valgrind" --tool=memcheck --error-limit=no --num-callers=24 --track-origins=yes \
-    --leak-check=no --soname-synonyms=somalloc=nouserintercepts --log-file="$RUN/memcheck.log" "$T/srr2" "$@" \
+timeout -s INT "$SECS" "$T/vg/usr/bin/valgrind" --tool=memcheck --error-limit=no --num-callers=24 --track-origins=yes --fair-sched=yes \
+    --leak-check=no --soname-synonyms=somalloc=nouserintercepts $VG_OPTS --log-file="$RUN/memcheck.log" "$T/srr2" "$@" \
     > "$RUN/memcheck.out" 2>&1
 python3 "$ROOT/port/memcheck_summary.py" "$RUN/memcheck.log" > "$RUN/memcheck.txt"
 grep "^###" "$RUN/memcheck.txt" | cut -c1-200

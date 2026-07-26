@@ -521,6 +521,15 @@ void Game::Run()
         unsigned elapsed = newTime - time;
         time = newTime;
 #ifdef RAD_LINUX
+        {
+            // Test aid: SHAR_MAX_FRAME_MS=n caps the time the game sees per frame (slow motion when frames are
+            // slower, e.g. ~33 under valgrind, where the world otherwise streams in long after the car passes).
+            static unsigned s_maxFrameMs = getenv( "SHAR_MAX_FRAME_MS" ) ? (unsigned)atoi( getenv( "SHAR_MAX_FRAME_MS" ) ) : 0;
+            if( s_maxFrameMs > 0 && elapsed > s_maxFrameMs )
+            {
+                elapsed = s_maxFrameMs;
+            }
+        }
         if( getenv( "SHAR_FRAME_LOG" ) )        // debug: frame-time histogram every 5 s
         {
             static unsigned hist[ 6 ] = { 0 }, start = newTime;
