@@ -141,6 +141,13 @@ void BootupContext::StartMovies()
         //
         GetCheatInputSystem()->SetCheatEnabled( CHEAT_ID_UNLOCK_MISSIONS, true );
 
+#ifdef RAD_WIN32
+        // Linux port: the front end's memory card check is what selects the save drive on PC
+        // (CGuiScreenMemCardCheck::OnMemoryCardCheckDone); without it Save Game backed straight out
+        //
+        GetMemoryCardManager()->SetCurrentDrive( static_cast<unsigned int>( 0 ) );
+#endif
+
         short levelIndex = CommandLineOptions::GetDefaultLevel();
 
         if( levelIndex == -1 ) // L0 = minigame
