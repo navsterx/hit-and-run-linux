@@ -3,7 +3,7 @@
 Port of the original 2003 source to 32-bit Linux with SDL2 + OpenGL. The untouched original dump is at
 `~/Documents/Decomp/hitnrun_source/game` (never modify it). This repo holds only the files the build uses
 (sources, included headers, the VS project files `gen_cmake.py` reads, and the Win32 originals it swaps for Linux ones).
-Status (2026-10-16): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
+Status (2026-10-17): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
 dialogue, movies, reverb and rumble, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
 Mod Launcher mods partly supported (8 hacks; the Futurama demo plays Level 1 with its shops and phone booth).
 Missing: steering-wheel force feedback. `README.md` has the user-facing status checklist; `RUST.md` holds notes for a
@@ -124,6 +124,10 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   mutex hand-off per frame, and it hands back after every file read), so at 60 fps boot stalled on the legal
   screen. `radLoadManager::Service` now keeps handing off for up to 8 ms per frame (`SHAR_LOAD_BUDGET_MS`).
   `SHAR_VSYNC=0` turns vsync off for testing.
+  Hidden window: the NVIDIA driver throttles presenting a minimised window (or one on a sleeping display) to ~1
+  swap/s, and loads advance once per frame, so a load left in the background crawled (boot sat on the legal screen).
+  `gldisplay.cpp` (`SwapWithVsync`) pauses vsync when swaps are throttled and retries after 5 s, backing off to
+  30 s (XWayland does not report minimising reliably). Test: `SHAR_MINIMIZE_SCRIPT="startms-endms,..."`.
 - **GCC 15 libstdc++ asserts in unoptimised builds**: `vector::operator[]` past the end aborts (EventManager read
   `listeners[i]` after removal). Disabled outside the debug build (`-D_GLIBCXX_NO_ASSERTIONS`), like MSVC release.
 - **Line endings**: most original sources are CRLF. Edit with tools that keep them (Python: `open(f, newline='')`
@@ -212,17 +216,19 @@ Level 1 by New Game (5/5 runs) and `skipfe`. Its other 20 hacks are not implemen
 interiors/text, ASF commands, ...), nor its required HoverCarRefraction mod: driving and missions untested.
 Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
 
-## Priorities (2026-10-16)
+## Priorities (2026-10-17)
 
 The base game is feature-complete but not yet verified end to end. In order:
 
 1. **Verify the base game** (user plays; Claude does not script gameplay it can't see): a full playthrough of all
-   seven levels. Riskiest first: save -> quit -> load round trip, the bonus game (Itchy & Scratchy racing) with 2-4
-   pads, street/wager races and time trials, later levels' missions and cutscenes, French/German/Spanish.
-2. **Memcheck coverage** (Claude, unattended; each pass has found real bugs): player driving (`skipfe incar`),
-   a race, other interiors (Kwik-E-Mart, school, ...), later levels, the bonus game. See item 8 below.
+   seven levels. Riskiest first: save -> quit -> load round trip (saving from a `skipfe` session works since
+   2026-10-17: on PC only the front end's memory card check selected the save drive), the bonus game (Itchy &
+   Scratchy racing) with 2-4 pads, street/wager races and time trials, later levels' missions and cutscenes, French/German/Spanish.
+2. **Memcheck coverage** (Claude, unattended; each pass has found real bugs): a race, other interiors
+   (Kwik-E-Mart, school, ...), later levels, the bonus game. See item 8 below.
 3. **Robustness found along the way**: crashes/asserts from those runs, shutdown paths (window closed in any
-   context), missing-data tolerance where cheap.
+   context), missing-data tolerance where cheap. Seen once (2026-10-16, not reproduced): quitting during a level
+   load spun in `LoadingManager::CancelPendingRequests` waiting for the current load.
 4. **Mods, small to large**: CustomShopSupport item lists (PhoneBooth/SkinShop Free/Included/ExcludedItems),
    3D phone booth DarkenLockedCars, CustomDialogueCharacterCodes outfit voices, CustomText Language setting; then
    CustomCarSupport (unblocks the Futurama demo's cars), custom characters, interiors, audio, traffic and the rest

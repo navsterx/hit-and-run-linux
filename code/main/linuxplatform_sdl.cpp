@@ -281,6 +281,25 @@ bool Win32Platform::PumpEvents()
         c = strchr( c, ',' );
         if( c ) c++;
     }
+    // debug: SHAR_MINIMIZE_SCRIPT="startms-endms,..." minimises the window for those times (tests hidden windows)
+    static const char* s_minimizeScript = getenv( "SHAR_MINIMIZE_SCRIPT" );
+    static bool s_minimized = false;
+    bool minimize = false;
+    for( const char* c = s_minimizeScript; c && *c; )
+    {
+        unsigned int from = 0, to = 0;
+        if( sscanf( c, "%u-%u", &from, &to ) == 2 && SDL_GetTicks() >= from && SDL_GetTicks() < to )
+        {
+            minimize = true;
+        }
+        c = strchr( c, ',' );
+        if( c ) c++;
+    }
+    if( s_minimizeScript && minimize != s_minimized )
+    {
+        if( minimize ) SDL_MinimizeWindow( (SDL_Window*) mhWnd ); else SDL_RestoreWindow( (SDL_Window*) mhWnd );
+        s_minimized = minimize;
+    }
     while( SDL_PollEvent( &e ) )
     {
         radControllerSDLHandleEvent( &e );                 // wheel + controller hot-plug for radcore input

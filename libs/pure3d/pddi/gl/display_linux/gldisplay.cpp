@@ -26,6 +26,14 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+// vsync state, see SwapWithVsync
+static bool s_vsync = false;            // wanted: on unless SHAR_VSYNC=0 or unsupported
+static bool s_vsyncPaused = false;
+static Uint32 s_vsyncProbeUntil = 0;    // just turned back on: until then one slow swap pauses it again
+static int s_slowSwaps = 0;
+static Uint32 s_nextVsyncProbe = 0;
+static Uint32 s_vsyncProbeInterval = 0;  // doubles while retries fail
+
 bool pglDisplay::CheckExtension( char *extName )
 {
     char *p = (char *) glGetString(GL_EXTENSIONS);
@@ -173,8 +181,13 @@ bool pglDisplay::InitDisplay(const pddiDisplayInit* init)
     // were tuned for 30-60 fps; unsynced it ran at thousands of fps with 0 ms frames (NaN traffic, unstable cars).
     // The main loop also caps the frame rate (game.cpp) in case the driver ignores this.
     const char* vs = getenv( "SHAR_VSYNC" );            // SHAR_VSYNC=0 turns it off (debugging)
-    if( SDL_GL_SetSwapInterval( ( vs && vs[0] == '0' ) ? 0 : 1 ) != 0 )
+    s_vsync = !( vs && vs[0] == '0' );
+    s_vsyncPaused = false;
+    if( SDL_GL_SetSwapInterval( s_vsync ? 1 : 0 ) != 0 )
+    {
         fprintf(stderr, "PDDI: vsync unavailable (%s); relying on the frame cap\n", SDL_GetError());
+        s_vsync = false;
+    }
 
     extern int g_pglMaxTextureSize;          // cached for texture creation on loader threads (gltex.cpp)
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &g_pglMaxTextureSize);
@@ -356,10 +369,62 @@ static void MaybeScreenshot(int w, int h)
     free(px);
 }
 
+// Vsync on a window nobody can see: the driver throttles presenting a minimised window (or one on a sleeping
+// display) to about one swap a second, and the game's loads advance once per frame, so a load started or left
+// running in the background stalled. When swaps keep taking that long, vsync is paused and the main loop's frame
+// cap (game.cpp) paces the game; it comes back as soon as a minimised window is restored, and otherwise (sleeping
+// display, covered window: SDL reports neither; under XWayland not even minimising, reliably) by retrying after
+// 5 s, then less often (up to every 30 s) while it stays hidden. Test: SHAR_MINIMIZE_SCRIPT, SHAR_FRAME_LOG=1.
+
+static void SwapWithVsync( SDL_Window* window )
+{
+    const Uint32 SLOW_SWAP_MS = 100, THROTTLED_SWAP_MS = 500, PROBE_MS = 3000;
+    const Uint32 FIRST_RETRY_MS = 5000, MAX_RETRY_MS = 30000;
+    bool minimised = ( SDL_GetWindowFlags( window ) & ( SDL_WINDOW_MINIMIZED | SDL_WINDOW_HIDDEN ) ) != 0;
+    if( s_vsyncPaused )
+    {
+        if( minimised )
+        {
+            s_nextVsyncProbe = 0;                           // retry as soon as it is restored
+        }
+        else if( SDL_GetTicks( ) >= s_nextVsyncProbe )
+        {
+            SDL_GL_SetSwapInterval( 1 );
+            s_vsyncPaused = false;
+            s_vsyncProbeUntil = SDL_GetTicks( ) + PROBE_MS;
+        }
+    }
+
+    Uint32 start = SDL_GetTicks( );
+    SDL_GL_SwapWindow( window );
+    Uint32 took = SDL_GetTicks( ) - start;
+
+    if( s_vsync && !s_vsyncPaused )
+    {
+        s_slowSwaps = ( took > SLOW_SWAP_MS ) ? s_slowSwaps + 1 : 0;
+        bool probing = SDL_GetTicks( ) < s_vsyncProbeUntil;
+        if( s_slowSwaps >= 2 || took >= THROTTLED_SWAP_MS || ( s_slowSwaps >= 1 && ( probing || minimised ) ) )
+        {
+            static bool s_reported = false;
+            if( !s_reported )
+            {
+                fprintf( stderr, "PDDI: presenting is throttled (window hidden?): vsync paused, the frame cap paces the game\n" );
+                s_reported = true;
+            }
+            SDL_GL_SetSwapInterval( 0 );
+            s_vsyncPaused = true;
+            s_vsyncProbeInterval = ( probing && s_vsyncProbeInterval > 0 ) ? s_vsyncProbeInterval * 2 : FIRST_RETRY_MS;
+            if( s_vsyncProbeInterval > MAX_RETRY_MS ) s_vsyncProbeInterval = MAX_RETRY_MS;
+            s_nextVsyncProbe = SDL_GetTicks( ) + s_vsyncProbeInterval;
+            s_slowSwaps = 0;
+        }
+    }
+}
+
 void pglDisplay ::SwapBuffers()
 {
     MaybeScreenshot( winWidth, winHeight );
-    SDL_GL_SwapWindow( window );
+    SwapWithVsync( window );
     reset = false;      // as the Win32 display: otherwise every BeginFrame treats the device as reset and
                         // re-uploads (and leaks) every texture
 
