@@ -115,6 +115,8 @@ class CommandLineOptions
 
         inline static short GetDefaultLevel() { return s_defaultLevel; }
         inline static short GetDefaultMission() { return s_defaultMission; }
+        // Linux port: "race<N>" with skipfe: start the level's bonus mission N-1 (1-3 street races, 4 wager race)
+        inline static short GetDefaultRace() { return s_defaultRace; }
 
     private:
 
@@ -128,6 +130,7 @@ class CommandLineOptions
         //
         static short s_defaultLevel;
         static short s_defaultMission;
+        static short s_defaultRace;
 
 };
 

@@ -46,6 +46,7 @@ simpsonsUInt64 CommandLineOptions::sOptions = 0;
 
 short CommandLineOptions::s_defaultLevel = 0;
 short CommandLineOptions::s_defaultMission = 0;
+short CommandLineOptions::s_defaultRace = -1;
 
 //******************************************************************************
 //
@@ -368,6 +369,10 @@ void CommandLineOptions::HandleOption( const char* const optionIn )
         else if( strcmp( strupr(option), "M" ) == 0 )
         {
             s_defaultMission = lastChar - '1';
+        }
+        else if( strcmp( strupr(option), "RACE" ) == 0 )
+        {
+            s_defaultRace = lastChar - '1';
         }
     }
 

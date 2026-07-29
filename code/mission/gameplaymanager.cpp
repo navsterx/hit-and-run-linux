@@ -73,6 +73,7 @@
 #include <render/Culling/WorldScene.h>
 
 #include <main/commandlineoptions.h>
+#include <loading/loadingmanager.h>
 #include <worldsim/harass/chasemanager.h>
 
 #include <ai/actionbuttonhandler.h>
@@ -496,6 +497,39 @@ void GameplayManager::Update( int elapsedTime )
     }
 
     bool isWager = false;
+
+#ifdef RAD_LINUX
+    // Linux port: "race<N>" test option: two seconds into the Sunday drive, jump into the level's race N
+    // (its bonus mission, as the NPC's conversation would), so races can be tested without driving to them; waits
+    // for the HUD (under the level's opening letterbox, the mission load's outro read the not-yet-loaded race's stage)
+    if ( CommandLineOptions::GetDefaultRace() >= 0 && !mIsDemo )
+    {
+        static int s_raceWait = 2000;
+        Mission* sundayDrive = GetCurrentMission();
+        CGuiManagerInGame* inGameGui = GetGuiSystem()->GetInGameManager();
+        if ( s_raceWait > 0 && sundayDrive != NULL && sundayDrive->IsSundayDrive() &&
+             !GetLoadingManager()->IsLoading() && inGameGui != NULL &&
+             inGameGui->GetCurrentScreen() == CGuiWindow::GUI_SCREEN_ID_HUD )
+        {
+            s_raceWait -= static_cast< int >( elapsedTime );
+            if ( s_raceWait <= 0 )
+            {
+                int race = CommandLineOptions::GetDefaultRace();
+                if ( race < mNumBonusMissions )
+                {
+                    rReleasePrintf( "race: starting bonus mission %d\n", race );
+                    mDesiredBonusMission = race + MAX_MISSIONS;
+                    GetBonusMissionInfo( race )->ResetCharacterPositions();
+                    mJumpToBonusMission = true;
+                }
+                else
+                {
+                    rReleasePrintf( "race: the level has no bonus mission %d\n", race );
+                }
+            }
+        }
+    }
+#endif
 
     if ( mFireBonusMissionDialogue )
     {

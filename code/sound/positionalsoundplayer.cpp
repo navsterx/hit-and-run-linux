@@ -98,7 +98,10 @@ PositionalSoundPlayer::PositionalSoundPlayer( ) :
 //=============================================================================
 PositionalSoundPlayer::~PositionalSoundPlayer()
 {
-    delete m_positionCarrier;
+    // Linux port: the carrier is the object that holds this player as a member (SetPositionCarrier( *this )),
+    // never owned: deleting it destroyed the owner, whose member destroyed it again, without end (stack overflow
+    // at shutdown while a vehicle sound was still playing)
+    m_positionCarrier = NULL;
 
     if( m_positionalSettings != NULL )
     {

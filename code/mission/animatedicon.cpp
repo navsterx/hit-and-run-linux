@@ -723,6 +723,7 @@ void AnimatedIcon::AttachWatcherVariables()
 #endif
 
 AnimatedIcon::AnimIconDSG::AnimIconDSG():
+m_Visible( false ), // uninit fix (Linux port): set by Update, read by a Display before the first update
 m_ScalingEnabled( false )
 {
     

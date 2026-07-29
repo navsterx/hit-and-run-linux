@@ -40,6 +40,30 @@ const int* VirtualJoyKeyToIndex = &s_VirtualKeyToIndex[ -48 ];
 
 static radMemoryAllocator g_ControllerSystemAllocator = RADMEMORY_ALLOC_DEFAULT;
 
+// debug: SHAR_KEY_SCRIPT="code@startms-endms,..." holds DIK key codes (1000+n = mouse button n) during time windows.
+// Parsed once: rescanning the string for every key on every poll starved the load thread under valgrind.
+static bool KeyScriptHolds( int code, unsigned int now )
+{
+    struct Window { int code; unsigned int from, to; };
+    static Window s_windows[ 1024 ];
+    static int s_count = -1;
+    if ( s_count < 0 )
+    {
+        s_count = 0;
+        for ( const char* c = getenv( "SHAR_KEY_SCRIPT" ); c && *c && s_count < 1024; )
+        {
+            Window& w = s_windows[ s_count ];
+            if ( sscanf( c, "%d@%u-%u", &w.code, &w.from, &w.to ) == 3 ) s_count++;
+            c = strchr( c, ',' ); if ( c ) c++;
+        }
+    }
+    for ( int i = 0; i < s_count; i++ )
+    {
+        if ( s_windows[ i ].code == code && now >= s_windows[ i ].from && now < s_windows[ i ].to ) return true;
+    }
+    return false;
+}
+
 struct DikToScancode { int dik; SDL_Scancode sc; };
 
 static const DikToScancode s_KeyTable[] =
@@ -376,19 +400,11 @@ public:
         if ( m_Classification == Keyboard )
         {
             static const bool s_noInput = getenv( "SHAR_NO_INPUT" ) != NULL;   // debug: ignore the keyboard
-            // debug: SHAR_KEY_SCRIPT="dik@startms-endms,..." holds DIK key codes during time windows
-            static const char* s_script = getenv( "SHAR_KEY_SCRIPT" );
             unsigned int now = SDL_GetTicks( );
             const Uint8* keys = SDL_GetKeyboardState( NULL );
             for ( unsigned int i = 0; i < m_Points.size( ); i++ )
             {
-                bool down = !s_noInput && keys[ s_KeyTable[ i ].sc ];
-                for ( const char* c = s_script; c && *c; )
-                {
-                    int dik = 0; unsigned a0 = 0, a1 = 0;
-                    if ( sscanf( c, "%d@%u-%u", &dik, &a0, &a1 ) == 3 && dik == s_KeyTable[ i ].dik && now >= a0 && now < a1 ) down = true;
-                    c = strchr( c, ',' ); if ( c ) c++;
-                }
+                bool down = ( !s_noInput && keys[ s_KeyTable[ i ].sc ] ) || KeyScriptHolds( s_KeyTable[ i ].dik, now );
                 m_Points[ i ]->Update( down ? 0x80 : 0 );
             }
         }
@@ -403,17 +419,10 @@ public:
             m_MotionX = m_MotionY = m_WheelAccum = 0;
             static const int sdlButton[ 5 ] = { SDL_BUTTON_LEFT, SDL_BUTTON_RIGHT, SDL_BUTTON_MIDDLE, SDL_BUTTON_X1, SDL_BUTTON_X2 };
             static const bool s_noInput = getenv( "SHAR_NO_INPUT" ) != NULL;
-            static const char* s_script = getenv( "SHAR_KEY_SCRIPT" );      // codes 1000+n = mouse button n
             unsigned int now = SDL_GetTicks( );
             for ( int b = 0; b < 5; b++ )
             {
-                bool down = !s_noInput && ( buttons & SDL_BUTTON( sdlButton[ b ] ) );
-                for ( const char* c = s_script; c && *c; )
-                {
-                    int code = 0; unsigned a0 = 0, a1 = 0;
-                    if ( sscanf( c, "%d@%u-%u", &code, &a0, &a1 ) == 3 && code == 1000 + b && now >= a0 && now < a1 ) down = true;
-                    c = strchr( c, ',' ); if ( c ) c++;
-                }
+                bool down = ( !s_noInput && ( buttons & SDL_BUTTON( sdlButton[ b ] ) ) ) || KeyScriptHolds( 1000 + b, now );
                 m_Points[ 3 + b ]->Update( down ? 0x80 : 0 );
             }
         }

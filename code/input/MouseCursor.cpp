@@ -87,7 +87,7 @@ static void DrawSquare(rmt::Vector v1, rmt::Vector v2,
 
 MouseCursor::MouseCursor()
 :  m_bVisible(false),
-   m_position(),
+   m_position( 0.0f, 0.0f, 0.0f ), // uninit fix (Linux port): rmt::Vector() leaves it unset; menu hotspots read it before the mouse moves
    m_pCursorIcon(NULL),
    m_width(10),
    m_height(10)
