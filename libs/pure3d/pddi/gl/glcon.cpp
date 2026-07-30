@@ -946,7 +946,9 @@ int pglContext::GetMaxTextureDimension(void)
 {
 #ifdef RAD_LINUX
     extern int g_pglMaxTextureSize;      // cached on the render thread (may be called from loader threads)
-    if(g_pglMaxTextureSize) return g_pglMaxTextureSize;
+    // never query GL here: on a loader thread there is no current context, and glvnd's dispatch crashed
+    // (tSprite::SetBlitBorder) when the cache was empty, as when display init ran out of video memory
+    return g_pglMaxTextureSize > 0 ? g_pglMaxTextureSize : 2048;
 #endif
     int size;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE,&size);

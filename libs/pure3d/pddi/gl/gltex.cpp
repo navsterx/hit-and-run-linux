@@ -84,6 +84,22 @@ void pglTexture::SetGLState(void)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, xSize,
                 ySize, 0, lock.native ? GL_BGRA_EXT : GL_RGBA, GL_UNSIGNED_BYTE,
                 (GLvoid *)bits[0]);
+#ifdef RAD_LINUX
+            // Linux port: out of video memory the upload fails and the texture drew black for good. Say so once
+            // and retry on the next use, so textures appear once memory is freed.
+            if(glGetError() == GL_OUT_OF_MEMORY)
+            {
+                static bool s_reported = false;
+                if(!s_reported)
+                {
+                    fprintf(stderr, "PDDI: out of video memory: textures are missing (close other programs using "
+                                    "the GPU or lower the resolution)\n");
+                    s_reported = true;
+                }
+                glDeleteTextures(1, &gltexture);
+                gltexture = 0;
+            }
+#endif
         }
         /*
         else

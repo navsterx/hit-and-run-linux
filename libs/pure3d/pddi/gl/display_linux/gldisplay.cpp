@@ -100,7 +100,8 @@ void* pglDisplay::GetWindowHandle()
 static const int kWorkerContexts = 6;
 static SDL_Window*   s_WorkerWindow = NULL;
 static SDL_GLContext s_WorkerContexts[ kWorkerContexts ];
-static int           s_WorkerContextCount = 0;
+static int           s_WorkerContextCount = 0;     // left in the pool
+static int           s_WorkerContextsCreated = 0;
 static pthread_mutex_t s_WorkerLock = PTHREAD_MUTEX_INITIALIZER;
 
 static void AttachWorkerContext( void )
@@ -110,7 +111,13 @@ static void AttachWorkerContext( void )
     SDL_GLContext ctx = s_WorkerContextCount > 0 ? s_WorkerContexts[ --s_WorkerContextCount ] : NULL;
     pthread_mutex_unlock( &s_WorkerLock );
     if( ctx != NULL )
+    {
         SDL_GL_MakeCurrent( s_WorkerWindow, ctx );
+    }
+    else
+    {
+        fprintf( stderr, "PDDI: no GL context left for a worker thread; its GL calls will fail\n" );
+    }
 }
 
 static void CreateWorkerContexts( SDL_Window* window, SDL_GLContext mainContext )
@@ -121,8 +128,13 @@ static void CreateWorkerContexts( SDL_Window* window, SDL_GLContext mainContext 
     for( int i = 0; i < kWorkerContexts; i++ )
     {
         SDL_GLContext ctx = SDL_GL_CreateContext( window );     // shares with the current (main) context
-        if( ctx == NULL ) break;
+        if( ctx == NULL )
+        {
+            fprintf( stderr, "PDDI: created %d of %d worker GL contexts: %s\n", i, kWorkerContexts, SDL_GetError( ) );
+            break;
+        }
         s_WorkerContexts[ s_WorkerContextCount++ ] = ctx;
+        s_WorkerContextsCreated++;
         SDL_GL_MakeCurrent( window, mainContext );
     }
     SDL_GL_SetAttribute( SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0 );
@@ -177,7 +189,11 @@ bool pglDisplay::InitDisplay(const pddiDisplayInit* init)
             return false;
         }
     }
-    SDL_GL_MakeCurrent(window, glContext);
+    if(SDL_GL_MakeCurrent(window, glContext) != 0)
+    {
+        fprintf(stderr, "PDDI: SDL_GL_MakeCurrent failed: %s\n", SDL_GetError());
+        return false;
+    }
     // Linux port: always sync to the display (as the D3D8 build effectively did). The game's physics and AI
     // were tuned for 30-60 fps; unsynced it ran at thousands of fps with 0 ms frames (NaN traffic, unstable cars).
     // The main loop also caps the frame rate (game.cpp) in case the driver ignores this.
@@ -191,9 +207,20 @@ bool pglDisplay::InitDisplay(const pddiDisplayInit* init)
     }
 
     extern int g_pglMaxTextureSize;          // cached for texture creation on loader threads (gltex.cpp)
+    g_pglMaxTextureSize = 0;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &g_pglMaxTextureSize);
+    if(g_pglMaxTextureSize <= 0)
+    {
+        // seen with the GPU's memory nearly full: the context exists but answers nothing
+        fprintf(stderr, "PDDI: the GL context gave no max texture size (out of video memory?); assuming 2048\n");
+        g_pglMaxTextureSize = 2048;
+    }
 
     CreateWorkerContexts(window, glContext);
+    if(s_WorkerContextsCreated == 0)
+    {
+        return false;       // loader threads would make GL calls with no context (crashes inside libGL)
+    }
 
     int w = init->xsize, h = init->ysize;
     if(mode == PDDI_DISPLAY_FULLSCREEN || mode == PDDI_DISPLAY_FULLSCREEN_DESKTOP)

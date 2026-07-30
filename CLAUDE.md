@@ -187,8 +187,12 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   `build-linux`, not the debug build.
 - **A black or frozen window at large sizes may be out of VRAM, not a game bug**: on 2026-10-17 gnome-shell had leaked
   ~7 GB of the 8 GB card after a day of test runs; at 2560x1600 the game showed a stuck legal screen / black frames
-  (sound still playing; once a crash in `tSprite::SetBlitBorder` while loading), 640x480 worked and older builds
-  "broke" too. Logging out and in fixed it. Check `nvidia-smi` before bisecting.
+  (sound still playing; crashes inside libGL from loader threads), 640x480 worked and older builds "broke" too.
+  Logging out and in fixed it. Check `nvidia-smi` before bisecting. The crashes: `InitDisplay`'s result was ignored
+  (`p3d/platform/linux/platform.cpp`), so a failed context (BadAlloc) or no worker contexts left loader threads
+  making GL calls without a context. Now an error dialog and exit; `GetMaxTextureDimension` never calls GL; a texture
+  upload failing with GL_OUT_OF_MEMORY is reported once and retried. Reproduce with a VRAM filler (a GL program
+  allocating 4096x4096 textures until ~450 MB are left).
 - radcore's `radoptions.hpp` enables debug comm / watcher / memory monitor in debug builds: off on Linux.
 
 ## Mods (Lucas' Mod Launcher format)

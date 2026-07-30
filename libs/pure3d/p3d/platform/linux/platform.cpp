@@ -93,7 +93,17 @@ tContext* tPlatform::CreateContext(tContextInitData* d)
 
     display = device->NewDisplay(d->adapterID);
     display->SetWindowHandle(d->hwnd);
-    display->InitDisplay( d );
+    if( !display->InitDisplay( d ) )
+    {
+        // Linux port: without a GL context every later GL call (loader threads included) crashed inside libGL.
+        // Seen when the GPU's video memory was nearly full. Stop with a message instead.
+        const char* msg = "The Simpsons: Hit & Run could not create its OpenGL context.\n\n"
+                          "The graphics card may be out of video memory: close other programs using the GPU, "
+                          "log out and back in, or lower the resolution in simpsons.ini.";
+        fprintf( stderr, "%s\n", msg );
+        SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "The Simpsons: Hit & Run", msg, NULL );
+        exit( 1 );
+    }
 
     context = device->NewRenderContext(display);
     P3DVERIFY(context != NULL, "NewRenderContext() failed");

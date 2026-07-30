@@ -7,4 +7,5 @@ run/
 __pycache__/
 .git-accesstoken
 simpsons.sh
+simpsons-skipfe.sh
 mod/lmlm
