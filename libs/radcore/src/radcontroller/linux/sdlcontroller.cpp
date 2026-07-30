@@ -593,6 +593,18 @@ public:
         {
             return;
         }
+        // SDL also sends SDL_CONTROLLERDEVICEADDED for the pads already present at startup (opened above):
+        // opening those again made a second Joystick<n> for the same pad, and the front end, which listens to
+        // every controller, moved two menu items per press
+        SDL_JoystickID deviceId = SDL_JoystickGetDeviceInstanceID( deviceIndex );
+        for ( unsigned int i = 0; i < m_Controllers.size( ); i++ )
+        {
+            if ( m_Controllers[ i ]->m_Classification == radControllerSDL::Joystick && m_Controllers[ i ]->m_Connected &&
+                 m_Controllers[ i ]->m_InstanceId == deviceId )
+            {
+                return;
+            }
+        }
         SDL_GameController* gc = SDL_GameControllerOpen( deviceIndex );
         if ( gc == NULL )
         {

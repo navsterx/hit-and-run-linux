@@ -22,6 +22,7 @@
 #include <SDL2/SDL.h>
 #include <GL/gl.h>
 #include <assert.h>
+#include <math.h>
 
 #include <unistd.h>
 #include <sys/time.h>
@@ -346,6 +347,141 @@ static void SavePNG(const char* path, int w, int h, const unsigned char* rgbaBot
     free(raw);
 }
 
+// Linux port: gamma. The D3D8 display set the video card's gamma ramp (out = in^(1/gamma); the display menu's slider
+// gives 0.5-2.5). SDL's gamma ramp does nothing under (X)Wayland and in a window would recolour the whole desktop, so a
+// last pass before each swap copies the back buffer to a texture and draws it back through a small shader. Skipped at
+// gamma 1. GL state is saved and restored around it, so the pddi's cached state still matches.
+static PFNGLCREATESHADERPROC        s_glCreateShader;
+static PFNGLSHADERSOURCEPROC        s_glShaderSource;
+static PFNGLCOMPILESHADERPROC       s_glCompileShader;
+static PFNGLGETSHADERIVPROC         s_glGetShaderiv;
+static PFNGLCREATEPROGRAMPROC       s_glCreateProgram;
+static PFNGLATTACHSHADERPROC        s_glAttachShader;
+static PFNGLLINKPROGRAMPROC         s_glLinkProgram;
+static PFNGLGETPROGRAMIVPROC        s_glGetProgramiv;
+static PFNGLUSEPROGRAMPROC          s_glUseProgram;
+static PFNGLGETUNIFORMLOCATIONPROC  s_glGetUniformLocation;
+static PFNGLUNIFORM1FPROC           s_glUniform1f;
+static PFNGLUNIFORM1IPROC           s_glUniform1i;
+
+static GLuint s_gammaProgram = 0;
+static GLint  s_gammaInvLoc = -1;
+static GLuint s_gammaTexture = 0;
+static int    s_gammaTexW = 0, s_gammaTexH = 0;
+
+static bool InitGammaPass()
+{
+#define GAMMA_PROC( name, type ) s_##name = (type)SDL_GL_GetProcAddress( #name ); if( !s_##name ) return false;
+    GAMMA_PROC( glCreateShader, PFNGLCREATESHADERPROC )
+    GAMMA_PROC( glShaderSource, PFNGLSHADERSOURCEPROC )
+    GAMMA_PROC( glCompileShader, PFNGLCOMPILESHADERPROC )
+    GAMMA_PROC( glGetShaderiv, PFNGLGETSHADERIVPROC )
+    GAMMA_PROC( glCreateProgram, PFNGLCREATEPROGRAMPROC )
+    GAMMA_PROC( glAttachShader, PFNGLATTACHSHADERPROC )
+    GAMMA_PROC( glLinkProgram, PFNGLLINKPROGRAMPROC )
+    GAMMA_PROC( glGetProgramiv, PFNGLGETPROGRAMIVPROC )
+    GAMMA_PROC( glUseProgram, PFNGLUSEPROGRAMPROC )
+    GAMMA_PROC( glGetUniformLocation, PFNGLGETUNIFORMLOCATIONPROC )
+    GAMMA_PROC( glUniform1f, PFNGLUNIFORM1FPROC )
+    GAMMA_PROC( glUniform1i, PFNGLUNIFORM1IPROC )
+#undef GAMMA_PROC
+
+    static const char* source =
+        "uniform sampler2D image;\n"
+        "uniform float invGamma;\n"
+        "void main()\n"
+        "{\n"
+        "    vec3 c = texture2D( image, gl_TexCoord[ 0 ].xy ).rgb;\n"
+        "    gl_FragColor = vec4( pow( c, vec3( invGamma ) ), 1.0 );\n"
+        "}\n";
+    GLuint shader = s_glCreateShader( GL_FRAGMENT_SHADER );
+    s_glShaderSource( shader, 1, &source, NULL );
+    s_glCompileShader( shader );
+    GLint ok = 0;
+    s_glGetShaderiv( shader, GL_COMPILE_STATUS, &ok );
+    if( !ok ) return false;
+    s_gammaProgram = s_glCreateProgram( );
+    s_glAttachShader( s_gammaProgram, shader );
+    s_glLinkProgram( s_gammaProgram );
+    s_glGetProgramiv( s_gammaProgram, GL_LINK_STATUS, &ok );
+    if( !ok ) return false;
+    s_glUseProgram( s_gammaProgram );
+    s_glUniform1i( s_glGetUniformLocation( s_gammaProgram, "image" ), 0 );
+    s_gammaInvLoc = s_glGetUniformLocation( s_gammaProgram, "invGamma" );
+    s_glUseProgram( 0 );
+    glGenTextures( 1, &s_gammaTexture );
+    return true;
+}
+
+static void ApplyGamma( float gamma, int w, int h )
+{
+    if( gamma <= 0.0f || fabsf( gamma - 1.0f ) < 0.001f || w <= 0 || h <= 0 )
+    {
+        return;
+    }
+    static int s_ready = 0;     // 1 ready, -1 unavailable
+    if( s_ready == 0 )
+    {
+        s_ready = InitGammaPass( ) ? 1 : -1;
+        if( s_ready < 0 )
+        {
+            fprintf( stderr, "PDDI: no GLSL shaders: the gamma setting has no effect\n" );
+        }
+    }
+    if( s_ready < 0 )
+    {
+        return;
+    }
+
+    glPushAttrib( GL_ALL_ATTRIB_BITS );
+    glMatrixMode( GL_TEXTURE );    glPushMatrix( ); glLoadIdentity( );
+    glMatrixMode( GL_PROJECTION ); glPushMatrix( ); glLoadIdentity( );
+    glMatrixMode( GL_MODELVIEW );  glPushMatrix( ); glLoadIdentity( );
+
+    glDisable( GL_DEPTH_TEST );
+    glDisable( GL_STENCIL_TEST );
+    glDisable( GL_BLEND );
+    glDisable( GL_ALPHA_TEST );
+    glDisable( GL_CULL_FACE );
+    glDisable( GL_SCISSOR_TEST );
+    glDisable( GL_FOG );
+    glDisable( GL_LIGHTING );
+    glDisable( GL_TEXTURE_GEN_S );
+    glDisable( GL_TEXTURE_GEN_T );
+    glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
+    glViewport( 0, 0, w, h );
+
+    glEnable( GL_TEXTURE_2D );
+    glBindTexture( GL_TEXTURE_2D, s_gammaTexture );
+    if( w != s_gammaTexW || h != s_gammaTexH )
+    {
+        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+        s_gammaTexW = w;
+        s_gammaTexH = h;
+    }
+    glReadBuffer( GL_BACK );
+    glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h );
+
+    s_glUseProgram( s_gammaProgram );
+    s_glUniform1f( s_gammaInvLoc, 1.0f / gamma );
+    glBegin( GL_QUADS );
+    glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f, -1.0f );
+    glTexCoord2f( 1.0f, 0.0f ); glVertex2f(  1.0f, -1.0f );
+    glTexCoord2f( 1.0f, 1.0f ); glVertex2f(  1.0f,  1.0f );
+    glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f,  1.0f );
+    glEnd( );
+    s_glUseProgram( 0 );
+
+    glMatrixMode( GL_TEXTURE );    glPopMatrix( );
+    glMatrixMode( GL_PROJECTION ); glPopMatrix( );
+    glMatrixMode( GL_MODELVIEW );  glPopMatrix( );
+    glPopAttrib( );
+}
+
 static void MaybeScreenshot(int w, int h)
 {
     static int every = -1;
@@ -423,6 +559,7 @@ static void SwapWithVsync( SDL_Window* window )
 
 void pglDisplay ::SwapBuffers()
 {
+    ApplyGamma( gammaR, winWidth, winHeight );
     MaybeScreenshot( winWidth, winHeight );
     SwapWithVsync( window );
     reset = false;      // as the Win32 display: otherwise every BeginFrame treats the device as reset and

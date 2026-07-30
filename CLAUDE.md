@@ -158,6 +158,9 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   `glClear` honours write masks while D3D's Clear does not (`pglContext::Clear` opens them); `alphaRef` was never
   initialised and `PDDI_SP_ALPHACOMPARE_THRESHOLD` not handled, so alpha-tested objects (chain-link fences, grated
   ramps) vanished per session while their collision stayed (default 0.5, clamped, as `dx8/shaders/shader.cpp`).
+  Gamma (2026-10-17) was stored and never applied: D3D8 set the card's gamma ramp; `gldisplay.cpp` (`ApplyGamma`)
+  now draws the back buffer through a GLSL pass before each swap (all window modes; skipped at gamma 1), as SDL's
+  ramp does nothing under (X)Wayland and would recolour the desktop in a window.
   When something renders wrong, compare with the D3D8 pddi in the original dump (`libs/pure3d/pddi/dx8`).
 - **Retail PC data differs from the dump's**: music split into `music00-03.rcf` (registered on PC, slot count 10 =
   loading manager's max); dialogue is Radical ADPCM ("RADP"), which the game never decoded outside radmusic because
@@ -182,6 +185,10 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   it can do without the file (tested: level01\jumps.p3d); art it needs (art\wrench.p3d) still crashes later.
 - Boot movies only play in release builds (`SHOW_MOVIES` needs `RAD_RELEASE`, `bootupcontext.cpp`): test them with
   `build-linux`, not the debug build.
+- **A black or frozen window at large sizes may be out of VRAM, not a game bug**: on 2026-10-17 gnome-shell had leaked
+  ~7 GB of the 8 GB card after a day of test runs; at 2560x1600 the game showed a stuck legal screen / black frames
+  (sound still playing; once a crash in `tSprite::SetBlitBorder` while loading), 640x480 worked and older builds
+  "broke" too. Logging out and in fixed it. Check `nvidia-smi` before bisecting.
 - radcore's `radoptions.hpp` enables debug comm / watcher / memory monitor in debug builds: off on Linux.
 
 ## Mods (Lucas' Mod Launcher format)
@@ -261,6 +268,9 @@ The base game is feature-complete but not yet verified end to end. In order:
    Gamepad Start pauses/resumes (new front-end input `feStart` on button 7; Win32 paused only with Escape).
    Linux gamepad defaults (`UserController::LoadDefaults`) follow the console layout in SDL's button order (the
    DirectInput defaults put Sprint/Accelerate on Start): the user's own PS4 mapping.
+   Fixed 2026-10-17: SDL sends SDL_CONTROLLERDEVICEADDED for pads already present at startup too, so a plugged-in pad
+   was opened twice (Joystick0 and Joystick1); the front end listens to every controller and moved two menu items per
+   press (in-game menus read only player 1). `OpenGameController` now skips a device already open.
 6. (done 2026-10-14) Release build used throughout testing. 64-bit later (a -m64 syntax survey found ~80
    pointer-to-int casts, ~35 int-to-pointer casts; fixed-size game heaps would need enlarging); modern GL later.
 7. (done 2026-10-14) Missing fences/ramps in Level 7: alphaRef fix above; HUD and level transparency confirmed
