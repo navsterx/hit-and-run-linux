@@ -914,6 +914,25 @@ UnicodeChar* FeTextChildTextBibleString::GetStringBuffer()
 	return ret;
 }
 
+//===========================================================================
+// GetStringId
+//===========================================================================
+// Description: text bible string ID of one of the multi-text's strings
+//              (Linux port)
+//
+// Return:      the ID, or NULL for a hard-coded string or a bad index
+//
+//===========================================================================
+const char* FeText::GetStringId( const int index )
+{
+    if( index < 0 || index >= FeParent::GetChildrenCount() )
+    {
+        return NULL;
+    }
+    FeTextChildTextBibleString* text = dynamic_cast< FeTextChildTextBibleString* >( FeParent::GetChildIndex( index ) );
+    return text != NULL ? text->GetStringId() : NULL;
+}
+
 unsigned int FeTextChildTextBibleString::GetTextBibleResourceId() const
 {
     return mTextBibleResourceID;

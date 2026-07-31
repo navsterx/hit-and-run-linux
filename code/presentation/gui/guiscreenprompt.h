@@ -146,6 +146,7 @@ private:
     Scrooby::Group* m_xboxDashboardLabel;
 
     Scrooby::Text* m_promptMessage;
+    int m_messageIndex; // ePromptQuestion (+ in-game message) shown; the page's string index may differ
     static int s_messageIndex;
     static int s_numResponses;
     static CGuiMenuPrompt::ePromptResponse s_responses[ CGuiMenuPrompt::MAX_NUM_RESPONSES ];

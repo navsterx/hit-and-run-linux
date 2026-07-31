@@ -58,6 +58,9 @@ class Text
         virtual UnicodeChar* GetStringBuffer() = 0;
         virtual UnicodeChar* GetStringBuffer( const int index ) = 0;
 
+        // Text bible string ID at an index, NULL for a hard-coded string (Linux port)
+        virtual const char* GetStringId( const int index ) = 0;
+
         // If a text bible is specified, then string is used as an index into the text bible.  otherwise
         // string is the new value of the string.
         virtual void SetString( int index, const char* string, const char* textBibleName ) = 0;

@@ -48,6 +48,100 @@ bool CGuiScreenPrompt::s_defaultToNo = true;
 
 const float ERROR_PROMPT_FADE_TIME = 100.0f;
 
+// Linux port: the GenericPrompt pages compiled into the PC data (retail and the dump's) are older than
+// ePromptQuestion: strings are missing (overwrite, delete corrupt, progressive scan, ...) and the retail
+// one has two resolution prompts more, so an enum value picked the wrong string (a bonus mission's
+// "unlocked <car>" showed another message). Look each string up by its text bible ID instead.
+static const char* const PROMPT_STRING_IDS[] =
+{
+    "MSG_CONFIRM_QUIT",
+    "MSG_CONFIRM_SAVE_BEFORE_QUIT",
+    "MSG_CONFIRM_RESTART",
+    "MSG_CONFIRM_ABORT",
+    "MSG_CONFIRM_RACE_AGAIN",
+    "MSG_CONFIRM_NEW_GAME",
+    "MSG_CONFIRM_START_MISSION",
+    "MSG_LOAD_CONFIRM_(GC)",
+    "MSG_LOAD_CONFIRM_(PS2)",
+    "MSG_LOAD_CONFIRM_(XBOX)",
+    "MSG_SAVE_CONFIRM_(GC)",
+    "MSG_SAVE_CONFIRM_(PS2)",
+    "MSG_SAVE_CONFIRM_(XBOX)",
+    "MSG_SAVE_CONFIRM_OVERWRITE_(GC)",
+    "MSG_SAVE_CONFIRM_OVERWRITE_(PS2)",
+    "MSG_SAVE_CONFIRM_OVERWRITE_(XBOX)",
+    "MSG_LOAD_SUCCESSFUL",
+    "MSG_SAVE_SUCCESSFUL",
+    "MSG_FORMAT_CONFIRM_(GC)",
+    "MSG_FORMAT_CONFIRM_(PS2)",
+    "MSG_FORMAT_CONFIRM_(XBOX)",
+    "MSG_FORMAT_CONFIRM2_(GC)",
+    "MSG_FORMAT_CONFIRM2_(PS2)",
+    "MSG_FORMAT_CONFIRM2_(XBOX)",
+    "MSG_FORMAT_SUCCESS_(GC)",
+    "MSG_FORMAT_SUCCESS_(PS2)",
+    "MSG_FORMAT_SUCCESS_(XBOX)",
+    "MSG_FORMAT_FAIL_(GC)",
+    "MSG_FORMAT_FAIL_(PS2)",
+    "MSG_FORMAT_FAIL_(XBOX)",
+    "MSG_DELETE_CORRUPT_SUCCESS_(GC)",
+    "MSG_DELETE_CORRUPT_SUCCESS_(PS2)",
+    "MSG_DELETE_CORRUPT_SUCCESS_(XBOX)",
+    "MSG_DELETE_CORRUPT_FAIL_(GC)",
+    "MSG_DELETE_CORRUPT_FAIL_(PS2)",
+    "MSG_DELETE_CORRUPT_FAIL_(XBOX)",
+    "MSG_LOAD_CARD_EMPTY_(GC)",
+    "MSG_LOAD_CARD_EMPTY_(PS2)",
+    "MSG_LOAD_CARD_EMPTY_(XBOX)",
+    "MSG_LOAD_CARD_EMPTY_(XBOX_HD)",
+#ifdef RAD_WIN32
+    "MSG_LOAD_CARD_EMPTY_(PC)",
+#endif
+    "MSG_DISPLAY_PROGRESSIVE_SCAN",
+    "MSG_DISPLAY_PROGRESSIVE_SCAN_PS2",
+    "MSG_DISPLAY_PROGRESSIVE_SCAN_CONFIRM",
+    "MSG_DISPLAY_PROGRESSIVE_SCAN_TEST",
+    "MSG_DELETE_CORRUPT_(GC)",
+    "MSG_DELETE_CORRUPT_(PS2)",
+    "MSG_DELETE_CORRUPT_(XBOX)",
+    "MSG_DELETE_CORRUPT_(XBOX_HD)",
+    "MSG_HARDDISK_FULL_(XBOX)",
+#ifdef RAD_WIN32
+    "MSG_CONFIRM_RESTOREALLDEFAULTS",
+    "MSG_CONFIRM_QUIT_TO_SYSTEM",
+    "MSG_CONFIRM_SAVE_BEFORE_QUIT", // PROMPT_CONFIRM_SAVE_BEFORE_QUITTOSYSTEM
+#endif
+};
+// PROMPT_STRING_IDS must follow ePromptQuestion
+typedef char PromptStringIdsMatchEnum[ sizeof( PROMPT_STRING_IDS ) / sizeof( PROMPT_STRING_IDS[ 0 ] ) == NUM_PROMPT_QUESTIONS ? 1 : -1 ];
+
+// page string index for a prompt (or, past NUM_PROMPT_QUESTIONS, an in-game message); unchanged if
+// the page lacks that string
+static int FindPromptString( Scrooby::Text* text, int messageIndex )
+{
+    char ingameId[ 32 ];
+    const char* id = NULL;
+    if( messageIndex < NUM_PROMPT_QUESTIONS )
+    {
+        id = PROMPT_STRING_IDS[ messageIndex ];
+    }
+    else
+    {
+        sprintf( ingameId, "INGAME_MESSAGE_%02d", messageIndex - NUM_PROMPT_QUESTIONS );
+        id = ingameId;
+    }
+
+    for( int i = 0; i < text->GetNumOfStrings(); i++ )
+    {
+        const char* pageId = text->GetStringId( i );
+        if( pageId != NULL && strcmp( pageId, id ) == 0 )
+        {
+            return i;
+        }
+    }
+    return messageIndex;
+}
+
 //===========================================================================
 // Public Member Functions
 //===========================================================================
@@ -76,6 +170,7 @@ CGuiScreenPrompt::CGuiScreenPrompt
     m_elapsedTime( 0 ),
     m_xboxDashboardLabel( NULL ),
     m_promptMessage( NULL ),
+    m_messageIndex( 0 ),
     m_tvFrame( NULL )
 {
 MEMTRACK_PUSH_GROUP( "GUIScreenPrompt" );
@@ -286,7 +381,7 @@ void CGuiScreenPrompt::HandleMessage
                     rTuneAssert(!"not reached");
                 }
                 s_pPromptCallback->HandleMessage( message,
-                                                  m_promptMessage->GetIndex(),
+                                                  m_messageIndex,
                                                   response );
 
                 break;
@@ -420,8 +515,14 @@ void CGuiScreenPrompt::Display( int messageIndex,
 void CGuiScreenPrompt::InitIntro()
 {
     rAssert( m_promptMessage );
-    rAssert( s_messageIndex >= 0 &&
-             s_messageIndex < m_promptMessage->GetNumOfStrings() );
+    m_messageIndex = s_messageIndex;
+    int stringIndex = s_messageIndex;
+    if( m_ID != GUI_SCREEN_ID_ERROR_PROMPT )
+    {
+        stringIndex = FindPromptString( m_promptMessage, s_messageIndex );
+    }
+    rAssert( stringIndex >= 0 &&
+             stringIndex < m_promptMessage->GetNumOfStrings() );
 
 #ifdef RAD_XBOX
     if( m_ID == GUI_SCREEN_ID_ERROR_PROMPT )
@@ -434,7 +535,7 @@ void CGuiScreenPrompt::InitIntro()
     }
 #endif
 
-    m_promptMessage->SetIndex( s_messageIndex );
+    m_promptMessage->SetIndex( stringIndex );
 
     CGuiScreenMessage::FormatMessage( m_promptMessage,
                                         m_originalStringBuffer,

@@ -69,6 +69,7 @@ class FeText
         //allows access to any of the individual strings in the text object
         virtual UnicodeString GetString( const int index );
         UnicodeChar* GetStringBuffer( const int index );
+        virtual const char* GetStringId( const int index );
 
         // this will default to setting it as a hard coded string
         virtual void SetString( int index, const char* string, const char* textBibleName = NULL );
@@ -203,6 +204,7 @@ class FeTextChildTextBibleString : public FeTextChildString
         virtual UnicodeChar* GetStringBuffer();
 
         virtual unsigned int GetTextBibleResourceId() const;
+        const char* GetStringId() const { return mStringID; }
 
         bool IsValid();
 
