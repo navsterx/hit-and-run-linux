@@ -9,7 +9,8 @@
 
 #include <sys/time.h>
 #include <SDL2/SDL.h>
-#include <GL/gl.h>
+#include <pddi/gl/display_linux/gl.hpp>
+#include <pddi/gl/glpipeline.hpp>
 
 class pglContext;
 class pglWrapper;
@@ -50,6 +51,7 @@ public:
     float EndTiming();
 
     void SetContext(pglContext* c) {context = c;}
+    pglPipeline* GetPipeline(void) { return &pipeline; }
     bool ExtBGRA(void) { return extBGRA;}
     bool CheckExtension(char*);
     bool HasReset(void) { return reset; }
@@ -76,7 +78,8 @@ private:
 
     SDL_Window*   window;
     SDL_GLContext glContext;
-    
+    pglPipeline   pipeline;     // the GL context's program, vertex array and stream buffer, and the state they draw with
+
     bool extBGRA;
     bool reset;
 

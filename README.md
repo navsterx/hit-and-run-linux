@@ -26,6 +26,7 @@ Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its f
   - [x] texture clamping matching Direct3D (no dark seams)
   - [x] vsync plus a 60 fps cap (physics and AI break at thousands of fps)
   - [x] colour-write masks and alpha testing matching Direct3D (HUD map, see-through fences and ramps)
+  - [x] OpenGL 3.3 core profile (shaders and GPU vertex buffers in place of fixed-function GL 1.x)
 - [x] **Gameplay** — loads levels and plays; uninitialised reads that were zero by luck under MSVC fixed
 - [x] **Input** — keyboard and mouse (mouse look via relative mode), wired and wireless gamepads through SDL;
   verified in play; Start pauses; the menu cursor hides while a gamepad is in use
@@ -56,7 +57,9 @@ Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its f
   cover: player driving (`incar`), races, the bonus game, other interiors and later levels
 - [ ] **Steering-wheel force feedback** — wheel effects (springs, dampers) are not wired up; needs a wheel to test
 - [ ] **64-bit build** — the code assumes 32-bit pointers in places
-- [ ] **Modern OpenGL** — replace the fixed-function GL 1.x renderer (core profile, shaders)
+- [ ] **Modern OpenGL** — the renderer runs on an OpenGL 3.3 core context: GLSL shaders reproduce the
+  fixed-function pipeline, geometry lives in GPU buffers (done); still to do: the original's other material
+  shaders (environment maps, lightmaps, layered textures, ...), native DXT textures, custom shaders
 - [ ] **Mods** — Mod Launcher mods load (custom files, Lua, Ogg audio, HD movies, custom text, car shop sellers,
   new dialogue characters, 3D phone booth); custom cars, characters, interiors and the other hacks are not
   implemented yet

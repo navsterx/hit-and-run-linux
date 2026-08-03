@@ -83,7 +83,7 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
 - Generator rules (`gen_cmake.py`): `win32/` sources replaced by a `linux/` sibling (`win32drive.cpp` ->
   `linux/linuxdrive.cpp`) or excluded; `LINUX_EXCLUDE` / `LINUX_EXTRA` per target; DX8 pddi replaced by GL pddi;
   bundled Windows SDK include dirs dropped.
-- Ported subsystems: Pure3D platform + GL display on SDL2; radcore drive (POSIX, case-insensitive paths, every
+- Ported subsystems: Pure3D platform + GL display on SDL2 (OpenGL 3.3 core, see lessons); radcore drive (POSIX, case-insensitive paths, every
   drive letter = game dir), controllers (SDL2, DirectInput-compatible points), platform, stack trace; game
   window/event loop (`code/main/linuxplatform_sdl.cpp`, `Win32Platform::PumpEvents`); radsound HAL
   (`hal/linux/linuxhal.cpp`, SDL audio-callback mixer + software 3D listener); movies: the original
@@ -194,6 +194,21 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   upload failing with GL_OUT_OF_MEMORY is reported once and retried. Reproduce with a VRAM filler (a GL program
   allocating 4096x4096 textures until ~450 MB are left).
 - radcore's `radoptions.hpp` enables debug comm / watcher / memory monitor in debug builds: off on Linux.
+- **OpenGL 3.3 core renderer** (2026-10-17, branch dev): the GL pddi was fixed-function GL 1.x. Now
+  `pddi/gl/glpipeline.cpp` keeps that state on the CPU (matrices, 8 lights, fog, material, the "current"
+  colour/normal/uv) and draws through one GLSL program reproducing what fixed function computed with the pddi's
+  settings: per-vertex lighting, separate specular, normals not renormalised (GL_NORMALIZE was never on), GL_MODULATE,
+  linear fog on |eye z|, alpha test. Light positions are transformed by the model-view loaded when they are set, as
+  glLightfv did. Prim buffers upload to GPU buffers lazily in `Display` (loader threads fill them); glBegin-style
+  streams go through a ring buffer. `display_linux/gl.hpp` includes `GL/glcorearb.h`, so a call to a removed GL
+  function does not compile; glvnd's libGL exports all entry points (no loader). `pglProgram` is the shader wrapper
+  for further shaders; the gamma pass uses it. Every shader name still maps to the "simple" material (D3D8 had 12:
+  environment, lightmap, layered, projtex, pointsprite, toon...). Verified against the GL 1.x build by screenshots
+  (legal screen identical, flat areas within 1 level; movies, front end, L1, L7 in/outdoors, L3 demo) and equal speed
+  (~490 fps uncapped in L1). Uniforms are re-sent only when values change (the game sets the same material ~250x a
+  frame; resending all of it cost 30%). `SHAR_GL_DEBUG=1` debug context, driver messages on stderr;
+  `SHAR_GL_STATS=1` per-frame draws/uploads and CPU/GPU render time every 5 s. `perf` is not permitted on this machine.
+  Also fixed: `~pglTexture` never freed its GL texture (VRAM leaked on every level change).
 
 ## Mods (Lucas' Mod Launcher format)
 
@@ -250,8 +265,11 @@ The base game is feature-complete but not yet verified end to end. In order:
    of the hacks Futurama lists at startup. Test with the user in the loop (shops, phone booth, dialogue).
 5. **Packaging**: install script or AppImage-style bundle (32-bit runtime libraries, FFmpeg, SDL2).
 6. **Steering-wheel force feedback**: only with a wheel to test on.
-7. **Long term**: 64-bit build (pointer/int casts, fixed-size heaps), modern OpenGL (core profile, shaders), a
-   possible Rust/Bevy reimplementation (`RUST.md`).
+7. **Modern OpenGL** (in progress on `dev`): core profile done (see lessons); next the D3D8 pddi's other material
+   shaders (`libs/pure3d/pddi/dx8/shaders` in the dump; `pglDevice::NewShader` ignores the name), native DXT
+   textures, then custom shader support.
+8. **Long term**: 64-bit build (pointer/int casts, fixed-size heaps), a possible Rust/Bevy reimplementation
+   (`RUST.md`).
 
 ## Known issues / next steps
 

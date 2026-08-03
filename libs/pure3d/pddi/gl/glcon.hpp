@@ -13,6 +13,7 @@
 
 class pglDisplay;
 class pglDevice;
+class pglPipeline;
 
 class pglExtContext;
 class pglExtGamma;
@@ -94,6 +95,7 @@ protected:
 
     pglDevice* device;
     pglDisplay* display;
+    pglPipeline* pipeline;      // Linux port: the display's (OpenGL 3.3 core: glpipeline.hpp)
 
     pglExtContext* extContext;
     pglExtGamma* extGamma;
@@ -144,6 +146,8 @@ public:
     void Display(void);
 
 protected:
+    void Upload(void);
+
     friend class pglPrimBufferStream;
     pglPrimBufferStream* stream;
     pglContext* context;
@@ -174,6 +178,15 @@ protected:
     float* normalBase;
     float* uvBase;
     unsigned char* colourBase;
+
+    // Linux port: GPU copies of the arrays (all attributes in one buffer, at these offsets) and the indices,
+    // uploaded by Display when changed
+    unsigned vertexBuffer;
+    unsigned indexBuffer;
+    unsigned normalOffset, uvOffset, colourOffset;
+    bool verticesChanged;
+    bool indicesChanged;
+    unsigned uploads;
 
     float mem;
 };

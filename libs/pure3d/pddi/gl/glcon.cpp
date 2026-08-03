@@ -20,9 +20,11 @@
 #include <pddi/gl/gldev.hpp>
 #include <pddi/gl/gltex.hpp>
 #include <pddi/gl/glmat.hpp>
+#include <pddi/gl/glpipeline.hpp>
 
 #include <pddi/base/debug.hpp>
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 
 // vertex arrays rendering
@@ -73,6 +75,7 @@ pglContext::pglContext(pglDevice* dev, pglDisplay* disp) : pddiBaseContext((pddi
 {
     device = dev;
     display = disp;
+    pipeline = disp->GetPipeline();
 
     device->AddRef();
     display->AddRef();
@@ -109,34 +112,26 @@ void pglContext::BeginFrame()
     {
         contextID++;
 
-        glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
-        glEnableClientState(GL_VERTEX_ARRAY);
+        // Linux port: the perspective hint, vertex array client state, current colour and separate specular
+        // colour of the fixed-function setup are the pipeline's (glpipeline.cpp)
         glEnable(GL_CULL_FACE);
         glCullFace(GL_FRONT);
-        glColor3f(1,1,1);
+        pipeline->current.colour[0] = pipeline->current.colour[1] = pipeline->current.colour[2] = pipeline->current.colour[3] = 255;
 
         glEnable(GL_DITHER);
-
-        if(display->CheckExtension("GL_EXT_separate_specular_color"))
-        {
-            glLightModeli(LIGHT_MODEL_COLOR_CONTROL_EXT,SEPARATE_SPECULAR_COLOR_EXT);
-        }
 
         SyncState(0xffffffff);
     }
 
-    glMatrixMode( GL_MODELVIEW );
-    glLoadIdentity();
-
-    glMatrixMode( GL_PROJECTION );
-    glLoadIdentity();
-
-    glMatrixMode( GL_MODELVIEW );
+    pglFlushPendingDeletes();
+    pipeline->LoadIdentity();
+    pipeline->FrameStats();
 }
 
 void pglContext::EndFrame()
 {
      pddiBaseContext::EndFrame();
+     pipeline->FrameEnd();
 }
 
 // buffer clearing
@@ -168,31 +163,53 @@ void pglContext::Clear(unsigned bufferMask)
     glStencilMask(state.stencilState->writeMask);
 }
 
+// Linux port: glOrtho and glFrustum (applied to an identity matrix), column-major
+static void Ortho(float* m, float l, float r, float b, float t, float n, float f)
+{
+    memset(m, 0, 16 * sizeof(float));
+    m[0] = 2.0f / (r - l);
+    m[5] = 2.0f / (t - b);
+    m[10] = -2.0f / (f - n);
+    m[12] = -(r + l) / (r - l);
+    m[13] = -(t + b) / (t - b);
+    m[14] = -(f + n) / (f - n);
+    m[15] = 1.0f;
+}
+
+static void Frustum(float* m, float l, float r, float b, float t, float n, float f)
+{
+    memset(m, 0, 16 * sizeof(float));
+    m[0] = 2.0f * n / (r - l);
+    m[5] = 2.0f * n / (t - b);
+    m[8] = (r + l) / (r - l);
+    m[9] = (t + b) / (t - b);
+    m[10] = -(f + n) / (f - n);
+    m[11] = -1.0f;
+    m[14] = -2.0f * f * n / (f - n);
+}
+
 void pglContext::SetupHardwareProjection(void)
 {
+    float m[16];
     switch(state.viewState->projectionMode)
     {
         case PDDI_PROJECTION_DEVICE :
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            glOrtho(0, display->GetWidth(),
+            Ortho(m, 0, display->GetWidth(),
                       display->GetHeight(), 0,
                       (state.viewState->camera.nearPlane),(state.viewState->camera.farPlane));
+            pipeline->SetProjection(m);
             glViewport(0, 0, display->GetWidth(), display->GetHeight());
-            glMatrixMode( GL_MODELVIEW );
             break;
 
         case PDDI_PROJECTION_ORTHOGRAPHIC :
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            glOrtho(-0.5,  0.5,
+            Ortho(m, -0.5,  0.5,
                       -((1/state.viewState->camera.aspect)/2),  ((1/state.viewState->camera.aspect)/2),
                       (state.viewState->camera.nearPlane),(state.viewState->camera.farPlane));
+            pipeline->SetProjection(m);
             glViewport(int(state.viewState->viewWindow.left * display->GetWidth()), 
                               int((1.0f - state.viewState->viewWindow.bottom) * display->GetHeight() ),
                               int((state.viewState->viewWindow.right - state.viewState->viewWindow.left) * display->GetWidth()), 
                               int((state.viewState->viewWindow.bottom - state.viewState->viewWindow.top) * display->GetHeight()));
-            glMatrixMode( GL_MODELVIEW );
             break;
 
         case PDDI_PROJECTION_PERSPECTIVE :
@@ -200,14 +217,12 @@ void pglContext::SetupHardwareProjection(void)
                 float halfX = (float)tan(double(state.viewState->camera.fov * 0.5)) * state.viewState->camera.nearPlane;
                 float halfY = halfX / state.viewState->camera.aspect;
 
-                glMatrixMode( GL_PROJECTION );
-                glLoadIdentity();
-                glFrustum(-halfX,halfX,-halfY,halfY,state.viewState->camera.nearPlane,state.viewState->camera.farPlane);
-                glViewport(int(state.viewState->viewWindow.left * display->GetWidth()), 
+                Frustum(m, -halfX,halfX,-halfY,halfY,state.viewState->camera.nearPlane,state.viewState->camera.farPlane);
+                pipeline->SetProjection(m);
+                glViewport(int(state.viewState->viewWindow.left * display->GetWidth()),
                               int((1.0f - state.viewState->viewWindow.bottom) * display->GetHeight() ),
-                              int((state.viewState->viewWindow.right - state.viewState->viewWindow.left) * display->GetWidth()), 
+                              int((state.viewState->viewWindow.right - state.viewState->viewWindow.left) * display->GetWidth()),
                               int((state.viewState->viewWindow.bottom - state.viewState->viewWindow.top) * display->GetHeight()));
-                glMatrixMode( GL_MODELVIEW );
             }
             break;
         default:
@@ -223,14 +238,13 @@ void pglContext::LoadHardwareMatrix(pddiMatrixType id)
     {
         case PDDI_MATRIX_MODELVIEW :
         {
-            
-            glMatrixMode( GL_MODELVIEW );
+
             pddiMatrix tmp = *state.matrixStack[id]->Top();
             tmp.m[0][2] = -tmp.m[0][2];
             tmp.m[1][2] = -tmp.m[1][2];
             tmp.m[2][2] = -tmp.m[2][2];
             tmp.m[3][2] = -tmp.m[3][2];
-            glLoadMatrixf((float*)&tmp);
+            pipeline->SetModelView((float*)&tmp);
         }
         break;
         default :
@@ -254,30 +268,55 @@ void pglContext::SetScissor(pddiRect* rect)
     }
 }
 
+// Linux port: immediate mode without glBegin/glEnd. As in OpenGL, Colour/Normal/UV set the current values and each
+// coordinate emits a vertex with them; EndPrims draws the lot (glpipeline.cpp).
 class pglPrimStream : public pddiPrimStream
 {
 public:
+    pglPipeline* pipe;
+
+    void SetColour(pddiColour c)
+    {
+        pipe->current.colour[0] = c.Red();
+        pipe->current.colour[1] = c.Green();
+        pipe->current.colour[2] = c.Blue();
+        pipe->current.colour[3] = c.Alpha();
+    }
+
+    void SetNormal(float x, float y, float z)
+    {
+        pipe->current.normal[0] = x;
+        pipe->current.normal[1] = y;
+        pipe->current.normal[2] = z;
+    }
+
+    void SetUV(float u, float v)
+    {
+        pipe->current.uv[0] = u;
+        pipe->current.uv[1] = v;
+    }
+
     void Coord(float x, float y, float z)  
     { 
-        glVertex3f(x,y,z); 
+        pipe->Emit(x,y,z); 
     }
 
     void Normal(float x, float y, float z) 
     { 
-        glNormal3f(x,y,z); 
+        SetNormal(x,y,z); 
     }
 
     void Colour(pddiColour colour, int channel = 0)
     {        
         // HBW: Multiple CBVs not yet implemented.  For now just ignore channel.
-        glColor4ub(colour.Red(), colour.Green(), colour.Blue(), colour.Alpha()); 
+        SetColour(colour); 
     }
 
     void UV(float u, float v, int channel = 0) 
     { 
         if(channel == 0)
         {
-            glTexCoord2f(u,v); 
+            SetUV(u,v); 
         }
     }
 
@@ -288,34 +327,34 @@ public:
 
     void Vertex(pddiVector* v, pddiColour c) 
     {
-        glColor4ub(c.Red(), c.Green(), c.Blue(), c.Alpha());
-        glVertex3f(v->x,v->y,v->z);
+        SetColour(c);
+        pipe->Emit(v->x,v->y,v->z);
     }
 
     void Vertex(pddiVector* v, pddiVector* n)
     {
-        glNormal3f(n->x,n->y,n->z);
-        glVertex3f(v->x,v->y,v->z);
+        SetNormal(n->x,n->y,n->z);
+        pipe->Emit(v->x,v->y,v->z);
     }
 
     void Vertex(pddiVector* v, pddiVector2* uv)
     {
-        glTexCoord2f(uv->u, uv->v);
-        glVertex3f(v->x,v->y,v->z);
+        SetUV(uv->u, uv->v);
+        pipe->Emit(v->x,v->y,v->z);
     }
 
     void Vertex(pddiVector* v, pddiColour c, pddiVector2* uv)
     {
-        glColor4ub(c.Red(), c.Green(), c.Blue(), c.Alpha());
-        glTexCoord2f(uv->u, uv->v);
-        glVertex3f(v->x,v->y,v->z);
+        SetColour(c);
+        SetUV(uv->u, uv->v);
+        pipe->Emit(v->x,v->y,v->z);
     }
 
     void Vertex(pddiVector* v, pddiVector* n, pddiVector2* uv)
     {
-        glNormal3f(n->x,n->y,n->z);
-        glTexCoord2f(uv->u, uv->v);
-        glVertex3f(v->x,v->y,v->z);
+        SetNormal(n->x,n->y,n->z);
+        SetUV(uv->u, uv->v);
+        pipe->Emit(v->x,v->y,v->z);
     }
 
 } thePrimStream;
@@ -329,14 +368,15 @@ pddiPrimStream* pglContext::BeginPrims(pddiShader* mat, pddiPrimType primType, u
     pddiBaseShader* material = (pddiBaseShader*)mat;
     ADD_STAT(PDDI_STAT_MATERIAL_OPS, !material->IsCurrent());
     material->SetMaterial();
-    glBegin(primTypeTable[primType]);
+    thePrimStream.pipe = pipeline;
+    pipeline->BeginStream(primTypeTable[primType]);
     return &thePrimStream;
 }
 
 void pglContext::EndPrims(pddiPrimStream* stream)
 {
     pddiBaseContext::EndPrims(stream);
-    glEnd();
+    pipeline->EndStream();
 }
 
 
@@ -551,6 +591,10 @@ pglPrimBuffer::pglPrimBuffer(pglContext* c, pddiPrimType type, unsigned vertexFo
     nStrips = 0;
     strips = NULL;
 
+    vertexBuffer = indexBuffer = 0;
+    verticesChanged = indicesChanged = true;
+    uploads = 0;
+
     mem /= 1024.0f;
 
     context->ADD_STAT(PDDI_STAT_BUFFERED_COUNT, 1);
@@ -567,6 +611,9 @@ pglPrimBuffer::~pglPrimBuffer()
     delete [] normalBase;
     delete [] uvBase;
     delete [] colourBase;
+
+    pglDeleteBuffer(vertexBuffer);
+    pglDeleteBuffer(indexBuffer);
 
     context->ADD_STAT(PDDI_STAT_BUFFERED_COUNT, -1);
     context->ADD_STAT(PDDI_STAT_BUFFERED_ALLOC, -mem);
@@ -592,6 +639,7 @@ void pglPrimBuffer::Unlock(pddiPrimBufferStream* stream)
             fprintf(stderr, "pddigl: prim buffer filled with %u vertices, has room for %u; the rest dropped\n", total, allocated);
         total = allocated;
     }
+    verticesChanged = true;     // uploaded by Display, on the render thread (this may be a loader thread)
 }
 
 unsigned char* pglPrimBuffer::LockIndexBuffer()
@@ -616,6 +664,7 @@ void pglPrimBuffer::SetIndices(unsigned short* i, int count)
         count = indexCount;
     memcpy(indices, i, count * sizeof(unsigned short));
     indexUsed = count;
+    indicesChanged = true;
     int bad = 0;
     for(int n = 0; n < count; n++)
     {
@@ -633,44 +682,90 @@ void pglPrimBuffer::SetIndices(unsigned short* i, int count)
     }
 }
 
+// Linux port: the arrays live in GPU buffers (one for the vertex attributes, one for the indices), uploaded here
+// when they changed. Attributes the format lacks take the current values, as fixed-function OpenGL did.
+void pglPrimBuffer::Upload(void)
+{
+    if(!vertexBuffer)
+        glGenBuffers(1, &vertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    if(verticesChanged)
+    {
+        // a buffer refilled after its first upload (particles, software skinning) is probably refilled every frame
+        GLenum usage = uploads++ ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
+        unsigned n = allocated;
+        normalOffset = n * 12;
+        uvOffset = normalOffset + (normal ? n * 12 : 0);
+        colourOffset = uvOffset + (uv ? n * 8 : 0);
+        unsigned size = colourOffset + (colour ? n * 4 : 0);
+        glBufferData(GL_ARRAY_BUFFER, size, NULL, usage);
+        context->GetDisplay()->GetPipeline()->stats.bufferUploads++;
+        context->GetDisplay()->GetPipeline()->stats.bufferBytes += size;
+        glBufferSubData(GL_ARRAY_BUFFER, 0, n * 12, coordBase);
+        if(normal)
+            glBufferSubData(GL_ARRAY_BUFFER, normalOffset, n * 12, normalBase);
+        if(uv)
+            glBufferSubData(GL_ARRAY_BUFFER, uvOffset, n * 8, uvBase);
+        if(colour)
+            glBufferSubData(GL_ARRAY_BUFFER, colourOffset, n * 4, colourBase);
+        verticesChanged = false;
+    }
+
+    if(indexCount && indices)
+    {
+        if(!indexBuffer)
+            glGenBuffers(1, &indexBuffer);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+        if(indicesChanged)
+        {
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexCount * sizeof(unsigned short), indices, GL_STATIC_DRAW);
+            indicesChanged = false;
+        }
+    }
+}
+
 void pglPrimBuffer::Display(void)
 {
-    glVertexPointer(3,GL_FLOAT,0,coord);
+    pglPipeline* pipeline = context->GetDisplay()->GetPipeline();
+    pipeline->Prepare();
+    Upload();
+
+    glVertexAttribPointer(PGL_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
     if(vertexType & PDDI_V_NORMAL)
     {
-        glEnableClientState(GL_NORMAL_ARRAY);
-        glNormalPointer(GL_FLOAT,0,normal);
+        glEnableVertexAttribArray(PGL_ATTRIB_NORMAL);
+        glVertexAttribPointer(PGL_ATTRIB_NORMAL, 3, GL_FLOAT, GL_FALSE, 0, (void*)(size_t)normalOffset);
     }
     else
     {
-        glDisableClientState(GL_NORMAL_ARRAY);
+        pipeline->UseCurrent(PGL_ATTRIB_NORMAL);
     }
 
     if(vertexType & PDDI_V_COLOUR)
     {
-        glEnableClientState(GL_COLOR_ARRAY);
-        glColorPointer(4,GL_UNSIGNED_BYTE,0,colour);
+        glEnableVertexAttribArray(PGL_ATTRIB_COLOUR);
+        glVertexAttribPointer(PGL_ATTRIB_COLOUR, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, (void*)(size_t)colourOffset);
     }
     else
     {
-        glDisableClientState(GL_COLOR_ARRAY);
+        pipeline->UseCurrent(PGL_ATTRIB_COLOUR);
     }
 
     if(vertexType & 0xf)
     {
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        glTexCoordPointer(2,GL_FLOAT,0, uv);
+        glEnableVertexAttribArray(PGL_ATTRIB_UV);
+        glVertexAttribPointer(PGL_ATTRIB_UV, 2, GL_FLOAT, GL_FALSE, 0, (void*)(size_t)uvOffset);
     }
     else
     {
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+        pipeline->UseCurrent(PGL_ATTRIB_UV);
     }
 
     if(indexCount && indices)
     {
         unsigned count = (useSize && useSize < indexUsed) ? useSize : indexUsed;
-        glDrawElements(primTypeTable[primType],count,GL_UNSIGNED_SHORT,indices);
+        glDrawElements(primTypeTable[primType],count,GL_UNSIGNED_SHORT,(void*)0);
     }
     else
     {
@@ -707,44 +802,30 @@ void pglContext::DrawPrimBuffer(pddiShader* mat, pddiPrimBuffer* buffer)
 
 int pglContext::GetMaxLights(void)
 {
-    int tmp;
-    glGetIntegerv(GL_MAX_LIGHTS, &tmp);
-    return tmp;
+    return pglMaxLights;    // Linux port: GL_MAX_LIGHTS was 8; the pipeline's shader has as many
 }
 
 void pglContext::SetupHardwareLight(int handle)
 {
-    GLenum h = GLenum(GL_LIGHT0 + handle);
-    
-    if(state.lightingState->light[handle].enabled)
-        glEnable(h);
-    else
-        glDisable(h);
-
-    glLightf(h, GL_CONSTANT_ATTENUATION, state.lightingState->light[handle].attenA);
-    glLightf(h, GL_LINEAR_ATTENUATION, state.lightingState->light[handle].attenB);
-    glLightf(h, GL_QUADRATIC_ATTENUATION, state.lightingState->light[handle].attenC);
-    
+    pddiLight& light = state.lightingState->light[handle];
 
     float c[4];
-    FillGLColour(state.lightingState->light[handle].colour, c);
-    glLightfv(h, GL_DIFFUSE, c);
-    glLightfv(h, GL_SPECULAR, c);
+    FillGLColour(light.colour, c);
     
-    float dir[4];
-    switch(state.lightingState->light[handle].type)
+    float dir[4] = { 0.0f, 0.0f, 1.0f, 0.0f };
+    switch(light.type)
     {
         case PDDI_LIGHT_DIRECTIONAL :
-            dir[0] = -state.lightingState->light[handle].worldDirection.x;
-            dir[1] = -state.lightingState->light[handle].worldDirection.y;
-            dir[2] = -state.lightingState->light[handle].worldDirection.z;
+            dir[0] = -light.worldDirection.x;
+            dir[1] = -light.worldDirection.y;
+            dir[2] = -light.worldDirection.z;
             dir[3] = 0.0f;
             break;
 
         case PDDI_LIGHT_POINT :
-            dir[0] = state.lightingState->light[handle].worldPosition.x;
-            dir[1] = state.lightingState->light[handle].worldPosition.y;
-            dir[2] = state.lightingState->light[handle].worldPosition.z;
+            dir[0] = light.worldPosition.x;
+            dir[1] = light.worldPosition.y;
+            dir[2] = light.worldPosition.z;
             dir[3] = 1.0f;
             break;
 
@@ -752,7 +833,7 @@ void pglContext::SetupHardwareLight(int handle)
             PDDIASSERT(0);
             break;
     }
-    glLightfv(h, GL_POSITION, dir);
+    pipeline->SetLight(handle, light.enabled, dir, c, light.attenA, light.attenB, light.attenC);
 }
 
 void pglContext::SetAmbientLight(pddiColour col)
@@ -760,7 +841,7 @@ void pglContext::SetAmbientLight(pddiColour col)
     pddiBaseContext::SetAmbientLight(col);
     float ambient[4];
     FillGLColour(col,ambient);
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient);
+    pipeline->SetAmbient(ambient);
 }
 
 
@@ -911,34 +992,16 @@ void pglContext::SetFillMode(pddiFillMode mode)
 void pglContext::EnableFog(bool enable)
 {
     pddiBaseContext::EnableFog(enable);
-    if(enable)
-        glEnable(GL_FOG);
-    else
-        glDisable(GL_FOG);
+    pipeline->EnableFog(enable);
 }
-
-// pddiFogMode
-static GLenum fogTable[] =
-{
-    GL_LINEAR,
-    GL_EXP,
-    GL_EXP2
-};
 
 void pglContext::SetFog(pddiColour colour, float start, float end)
 {
     pddiBaseContext::SetFog(colour,start,end);
 
     float fog[4];
-    fog[0] = float(colour.Red()) / 255;
-    fog[1] = float(colour.Green()) / 255;
-    fog[2] = float(colour.Blue()) / 255;
-    fog[3] = float(colour.Alpha()) / 255;
-
-    glFogi(GL_FOG_MODE, GL_LINEAR);
-    glFogfv(GL_FOG_COLOR, fog);
-    glFogf(GL_FOG_START, start);
-    glFogf(GL_FOG_END, end);
+    FillGLColour(colour, fog);
+    pipeline->SetFog(fog, start, end);     // linear, the only mode the pddi used
 }
 
 

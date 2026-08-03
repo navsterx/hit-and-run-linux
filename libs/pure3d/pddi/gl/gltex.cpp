@@ -21,59 +21,23 @@
 #include <stdio.h>
 
 #ifdef RAD_LINUX
-// Pure3D creates and edits textures on its loader thread (fine with Direct3D 8). OpenGL calls need a current
-// context, which only the render thread has; uploads already happen lazily in SetGLState (render thread),
-// so off-thread code must just avoid GL: the max texture size is cached at display init, and deletions of
-// stale GL textures are queued for the render thread.
+// Pure3D creates and edits textures on its loader thread (fine with Direct3D 8). Uploads happen lazily in SetGLState
+// (render thread); the max texture size is cached at display init; stale GL textures are deleted through
+// pglDeleteTexture, which queues them for the render thread where no context is current (glpipeline.cpp).
+#include <pddi/gl/glpipeline.hpp>
 #include <SDL2/SDL.h>
-#include <pthread.h>
 
 int g_pglMaxTextureSize = 0;                  // set by pglDisplay::InitDisplay on the render thread
-
-static pthread_mutex_t s_PendingDeleteLock = PTHREAD_MUTEX_INITIALIZER;
-static unsigned int s_PendingDelete[ 1024 ];
-static int s_PendingDeleteCount = 0;
-
-static bool HaveGLContext( void ) { return SDL_GL_GetCurrentContext( ) != NULL; }
-
-static void DeleteGLTexture( unsigned int tex )
-{
-    if( !tex ) return;
-    if( HaveGLContext( ) )
-    {
-        glDeleteTextures( 1, &tex );
-        return;
-    }
-    pthread_mutex_lock( &s_PendingDeleteLock );
-    if( s_PendingDeleteCount < 1024 )
-        s_PendingDelete[ s_PendingDeleteCount++ ] = tex;
-    pthread_mutex_unlock( &s_PendingDeleteLock );
-}
-
-static void FlushPendingDeletes( void )      // render thread only
-{
-    pthread_mutex_lock( &s_PendingDeleteLock );
-    if( s_PendingDeleteCount )
-    {
-        glDeleteTextures( s_PendingDeleteCount, s_PendingDelete );
-        s_PendingDeleteCount = 0;
-    }
-    pthread_mutex_unlock( &s_PendingDeleteLock );
-}
 #endif
 
 void pglTexture::SetGLState(void)
 {
-#ifdef RAD_LINUX
-    FlushPendingDeletes();
-#endif
     if(context->contextID != contextID)
     {
         contextID = context->contextID;
         gltexture = 0;
     }
 
-    glEnable(GL_TEXTURE_2D);
     if(!gltexture)
     {
         glGenTextures(1,&gltexture);
@@ -82,7 +46,7 @@ void pglTexture::SetGLState(void)
 //      if(nMipMap == 0)
         {
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, xSize,
-                ySize, 0, lock.native ? GL_BGRA_EXT : GL_RGBA, GL_UNSIGNED_BYTE,
+                ySize, 0, lock.native ? GL_BGRA : GL_RGBA, GL_UNSIGNED_BYTE,
                 (GLvoid *)bits[0]);
 #ifdef RAD_LINUX
             // Linux port: out of video memory the upload fails and the texture drew black for good. Say so once
@@ -123,7 +87,7 @@ void pglTexture::SetGLState(void)
                     data = bits[tmpMipMap];
 
                 glTexImage2D(GL_TEXTURE_2D, i, GL_RGBA8, xSize >> i,
-                    ySize >> i, 0, lock.native ? GL_BGRA_EXT : GL_RGBA, GL_UNSIGNED_BYTE,
+                    ySize >> i, 0, lock.native ? GL_BGRA : GL_RGBA, GL_UNSIGNED_BYTE,
                     (GLvoid *)data);
 
                 done = (width == 1) || (height == 1);
@@ -260,6 +224,13 @@ pglTexture::~pglTexture()
 
     if(bits) delete [] bits;
 
+#ifdef RAD_LINUX
+    // Linux port: the GL copy was never freed, so every texture unloaded (e.g. on a level change) kept its video
+    // memory until exit. A gltexture from before a display reset belongs to no one (SetGLState dropped it).
+    if(contextID == context->contextID)
+        pglDeleteTexture(gltexture);
+#endif
+
     context->ADD_STAT(PDDI_STAT_TEXTURE_ALLOC_32BIT, -(float)((xSize * ySize * 4) / 1024));
     context->ADD_STAT(PDDI_STAT_TEXTURE_COUNT_32BIT, -1);
 }
@@ -309,7 +280,7 @@ pddiLockInfo* pglTexture::Lock(int mipMap, pddiRect* rect)
 void pglTexture::Unlock(int mipLevel)
 {
 #ifdef RAD_LINUX
-    DeleteGLTexture(gltexture);         // re-uploaded from bits[] by SetGLState on the render thread
+    pglDeleteTexture(gltexture);        // re-uploaded from bits[] by SetGLState on the render thread
 #else
     glDeleteTextures(1,&gltexture);
 #endif
@@ -319,11 +290,10 @@ void pglTexture::Unlock(int mipLevel)
 void pglTexture::SetPriority(int p)
 {
     priority = p;
+#ifndef RAD_LINUX
     float fpriority = float(p) / 31.0f;
-#ifdef RAD_LINUX
-    if(gltexture && HaveGLContext())
+    glPrioritizeTextures(1,&gltexture,&fpriority);  // Linux port: not in core OpenGL (drivers ignored it anyway)
 #endif
-    glPrioritizeTextures(1,&gltexture,&fpriority);
 }
 
 int pglTexture::GetPriority(void)

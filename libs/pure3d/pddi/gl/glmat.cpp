@@ -4,6 +4,7 @@
 
 
 #include <pddi/gl/glmat.hpp>
+#include <string.h>
 #include <pddi/gl/gltex.hpp>
 #include <pddi/gl/glcon.hpp>
 
@@ -13,6 +14,8 @@
 
 #ifdef RAD_LINUX
     #include <pddi/gl/display_linux/gl.hpp>
+    #include <pddi/gl/display_linux/gldisplay.hpp>
+    #include <pddi/gl/glpipeline.hpp>
 #endif
 
 
@@ -69,33 +72,11 @@ GLenum filterMinTable[5] =
     GL_LINEAR,//GL_LINEAR_MIPMAP_LINEAR
 };
 
-GLenum texBlendTable[6] =
-{
-    GL_REPLACE,
-    GL_DECAL,
-    GL_MODULATE,
-    GL_MODULATE, // MODULATEALPHA not supported
-    GL_REPLACE,  // ADD - Not supported
-    GL_MODULATE, // MODULATEINTENSITY
-};
-
 GLenum uvTable[3] =
 {
     GL_REPEAT,
     GL_CLAMP_TO_EDGE,   // Linux port: D3D clamp = clamp to edge; GL_CLAMP blends in the (black) border
     GL_CLAMP_TO_EDGE
-};
-
-GLenum alphaCompareTable[8] =
-{
-    GL_NEVER,
-    GL_ALWAYS,
-    GL_LESS,
-    GL_LEQUAL,
-    GL_GREATER,
-    GL_GEQUAL,
-    GL_EQUAL,
-    GL_NOTEQUAL
 };
 
 GLenum alphaBlendTable[8][2] =
@@ -263,10 +244,16 @@ int pglMat::CountDevPasses(void)
 
 void pglMat::SetDevPass(unsigned pass)
 {
-    glColor3ub(255,255,255);//PDDI_GETR(diffuse),PDDI_GETG(diffuse),PDDI_GETB(diffuse));
+    // Linux port: the lighting, texturing and alpha-test settings go to the pipeline's shader (glpipeline.cpp);
+    // blending and texture parameters are still GL state
+    pglPipeline* pipeline = context->GetDisplay()->GetPipeline();
+    pipeline->current.colour[0] = pipeline->current.colour[1] = pipeline->current.colour[2] = pipeline->current.colour[3] = 255;
 
     int i = 0;
+    pglPipeline::Material m;
+    memset(&m, 0, sizeof(m));       // compared whole by SetMaterial
 
+    m.textured = texEnv[i].texture != NULL;
     if(texEnv[i].texture)
     {
         texEnv[i].texture->SetGLState();
@@ -275,23 +262,10 @@ void pglMat::SetDevPass(unsigned pass)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMinTable[texEnv[i].filterMode]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, uvTable[texEnv[i].uvMode]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, uvTable[texEnv[i].uvMode]);
-        glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-    }
-    else
-    {
-        glDisable(GL_TEXTURE_2D);
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     }
 
-    if(texEnv[i].alphaTest)
-    {
-        glEnable(GL_ALPHA_TEST);
-        glAlphaFunc(alphaCompareTable[texEnv[i].alphaCompareMode],texEnv[i].alphaRef);
-    }
-    else
-    {
-        glDisable(GL_ALPHA_TEST);
-    }
+    m.alphaCompare = texEnv[i].alphaTest ? (int)texEnv[i].alphaCompareMode : -1;
+    m.alphaRef = texEnv[i].alphaRef;
 
     if(texEnv[i].alphaBlendMode == PDDI_BLEND_NONE)
     {
@@ -303,32 +277,14 @@ void pglMat::SetDevPass(unsigned pass)
         glBlendFunc(alphaBlendTable[texEnv[i].alphaBlendMode][0],alphaBlendTable[texEnv[i].alphaBlendMode][1]);
     }
  
-    if(texEnv[i].lit)
-    {
-        float c[4];
+    m.lit = texEnv[i].lit;
+    m.shininess = texEnv[i].shininess;
+    FillGLColour(texEnv[i].ambient, m.ambient);
+    FillGLColour(texEnv[i].emissive, m.emissive);
+    FillGLColour(texEnv[i].diffuse, m.diffuse);
+    FillGLColour(texEnv[i].specular, m.specular);
 
-        glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS, texEnv[i].shininess);
-
-        FillGLColour(texEnv[i].ambient, c);
-        glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT, c);
-
-        FillGLColour(texEnv[i].emissive, c);
-        glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION, c);
-
-        FillGLColour(texEnv[i].diffuse, c);
-        glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE, c);
-
-        FillGLColour(texEnv[i].specular, c);
-        glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR, c);
-
-        glEnable(GL_LIGHTING);
-        glDisableClientState(GL_COLOR_ARRAY);
-    }
-    else
-    {
-        glDisable(GL_LIGHTING);
-        glDisableClientState(GL_NORMAL_ARRAY);
-    }
+    pipeline->SetMaterial(m);
 }
 
 
