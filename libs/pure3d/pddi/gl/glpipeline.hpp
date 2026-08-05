@@ -4,9 +4,9 @@
 
 // The GL pddi was written for fixed-function OpenGL 1.x (built-in lights, materials, fog, matrix stacks, client-side
 // vertex arrays, glBegin/glEnd). In a core profile none of that exists: pglPipeline keeps the same state on the CPU
-// and draws through a GLSL program that computes what the fixed-function pipeline computed with the settings the pddi
-// used (per-vertex lighting with separate specular, GL_MODULATE texturing, linear fog, alpha test). pglProgram is
-// the general compile/link wrapper, for further shaders.
+// and draws through GLSL programs that compute what Direct3D 8's fixed-function pipeline computed with the settings
+// the D3D8 pddi (the one the game shipped with) used: per-vertex lighting, texture stages, linear fog, alpha test.
+// There is one program per kind of pddi shader (pglProgramType); pglProgram is the general compile/link wrapper.
 
 #ifndef _GLPIPELINE_HPP_
 #define _GLPIPELINE_HPP_
@@ -19,8 +19,9 @@ public:
     pglProgram();
     ~pglProgram();
 
-    // compiles and links; on failure prints the driver's log (prefixed with name) and returns false
-    bool Build(const char* name, const char* vertexSource, const char* fragmentSource);
+    // compiles and links; on failure prints the driver's log (prefixed with name) and returns false. header, if
+    // given, goes before both sources (then they leave out the #version line).
+    bool Build(const char* name, const char* vertexSource, const char* fragmentSource, const char* header = 0);
     GLint Uniform(const char* name) const;
     GLuint Handle() const { return program; }
 
@@ -48,13 +49,23 @@ struct pglVertex
 
 const int pglMaxLights = 8;
 
+// the programs, one per kind of pddi shader (glmat.cpp)
+enum pglProgramType
+{
+    PGL_PROGRAM_SIMPLE,         // "simple": diffuse * texture
+    PGL_PROGRAM_REFLECTION,     // "environment", "spheremap": diffuse * texture + envBlend * reflection map
+    PGL_PROGRAM_COUNT
+};
+
 class pglPipeline
 {
 public:
-    // what pglMat::SetDevPass used to hand to glMaterial/glAlphaFunc/glEnable(GL_TEXTURE_2D)
+    // what the material sets for a draw (pglMat::SetDevPass); textures are bound to units 0 and 1 by the material
     struct Material
     {
+        int program;                // pglProgramType
         bool textured;
+        bool reflectionTextured;    // a reflection map on unit 1
         bool lit;
         int alphaCompare;           // pddiCompareMode, or -1 for no alpha test
         float alphaRef;
@@ -62,7 +73,8 @@ public:
         float diffuse[4];
         float specular[4];
         float emissive[4];
-        float shininess;
+        float shininess;            // 0: no specular, as D3D8 (SPECULARENABLE = shininess > 0)
+        float envBlend[4];          // reflection map multiplier
     };
 
     pglPipeline();
@@ -78,7 +90,8 @@ public:
 
     // lights: position (w = 0: direction towards the light) in the coordinates of the model-view loaded now, which
     // transforms it to eye space as glLightfv(GL_POSITION) did
-    void SetLight(int i, bool enabled, const float* position, const float* colour, float attenA, float attenB, float attenC);
+    void SetLight(int i, bool enabled, const float* position, const float* colour, float attenA, float attenB, float attenC,
+                  float range);
     void SetAmbient(const float* colour);
 
     void EnableFog(bool enable);
@@ -94,11 +107,11 @@ public:
     void Emit(float x, float y, float z);
     void EndStream();
 
-    // before drawing anything: binds the program and vertex array object, uploads changed uniforms
+    // before drawing anything: binds the material's program and the vertex array object, uploads changed uniforms
     void Prepare();
 
     // after GL calls outside the pipeline that change the program or vertex array object (the gamma pass)
-    void Unbind() { bound = false; }
+    void Unbind() { bound = 0; }
 
     // for a draw without an array for attrib (prim buffers): use the current value instead
     void UseCurrent(GLuint attrib);
@@ -110,11 +123,33 @@ public:
                    double gpuMs, cpuMs; unsigned gpuFrames; } stats;
 
 private:
-    void UploadUniforms();
+    // state groups; each program keeps the version of each it last received
+    enum { GROUP_MATRICES, GROUP_LIGHTS, GROUP_FOG, GROUP_MATERIAL, GROUP_COUNT };
+
+    enum
+    {
+        U_PROJECTION, U_MODELVIEW, U_NORMALMATRIX,
+        U_LIT, U_MATAMBIENT, U_MATDIFFUSE, U_MATSPECULAR, U_MATEMISSIVE, U_SHININESS,
+        U_GLOBALAMBIENT, U_LIGHTCOUNT, U_LIGHTPOSITION, U_LIGHTCOLOUR, U_LIGHTATTEN, U_LIGHTRANGE,
+        U_TEXTURED, U_TEXTURE, U_FOG, U_FOGCOLOUR, U_FOGEND, U_FOGSCALE, U_ALPHACOMPARE, U_ALPHAREF,
+        U_REFLECTIONTEXTURED, U_REFLECTION, U_ENVBLEND,
+        U_COUNT
+    };
+
+    struct Program
+    {
+        pglProgram program;
+        GLint uniform[U_COUNT];
+        unsigned uploaded[GROUP_COUNT];
+    };
+
+    void Changed(int group) { version[group]++; }
+    void UploadUniforms(Program& p);
 
     bool ready;
-    bool bound;
-    pglProgram fixedProgram;
+    Program programs[PGL_PROGRAM_COUNT];
+    Program* bound;             // the program in use, NULL when unknown
+    unsigned version[GROUP_COUNT];
     GLuint vao;
 
     // streamed vertices: CPU staging, then a ring buffer on the GPU
@@ -123,10 +158,6 @@ private:
     GLenum streamPrim;
     GLuint streamBuffer;
     unsigned streamBufferSize, streamOffset;
-
-    // state, and what changed since the last upload
-    enum { DIRTY_MATRICES = 1, DIRTY_LIGHTS = 2, DIRTY_FOG = 4, DIRTY_MATERIAL = 8, DIRTY_ALL = 15 };
-    unsigned dirty;
 
     float projection[16];
     float modelView[16];
@@ -137,6 +168,7 @@ private:
         float position[4];      // eye space
         float colour[3];
         float atten[3];
+        float range;
     } lights[pglMaxLights];
     float ambient[4];
 
@@ -145,12 +177,6 @@ private:
     float fogStart, fogEnd;
 
     Material material;
-
-    // uniform locations
-    GLint uProjection, uModelView, uNormalMatrix;
-    GLint uLit, uMatAmbient, uMatDiffuse, uMatSpecular, uMatEmissive, uShininess;
-    GLint uGlobalAmbient, uLightCount, uLightPosition, uLightColour, uLightAtten;
-    GLint uTextured, uTexture, uFog, uFogColour, uFogEnd, uFogScale, uAlphaCompare, uAlphaRef;
 };
 
 // GL object deletion from any thread: deleted at once where a context is current, else queued for the render thread

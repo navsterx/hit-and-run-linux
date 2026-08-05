@@ -76,6 +76,7 @@ pglContext::pglContext(pglDevice* dev, pglDisplay* disp) : pddiBaseContext((pddi
     device = dev;
     display = disp;
     pipeline = disp->GetPipeline();
+    materialTwoSided = false;
 
     device->AddRef();
     display->AddRef();
@@ -833,7 +834,7 @@ void pglContext::SetupHardwareLight(int handle)
             PDDIASSERT(0);
             break;
     }
-    pipeline->SetLight(handle, light.enabled, dir, c, light.attenA, light.attenB, light.attenC);
+    pipeline->SetLight(handle, light.enabled, dir, c, light.attenA, light.attenB, light.attenC, light.range);
 }
 
 void pglContext::SetAmbientLight(pddiColour col)
@@ -856,7 +857,13 @@ GLenum cullModeTable[3] =
 void pglContext::SetCullMode(pddiCullMode mode)
 {
     pddiBaseContext::SetCullMode(mode);
+    if(!materialTwoSided)
+        ApplyCull();
+}
 
+void pglContext::ApplyCull(void)
+{
+    pddiCullMode mode = materialTwoSided ? PDDI_CULL_NONE : state.renderState->cullMode;
     if(mode == PDDI_CULL_NONE)
     {
         glDisable(GL_CULL_FACE);
@@ -866,6 +873,14 @@ void pglContext::SetCullMode(pddiCullMode mode)
         glEnable(GL_CULL_FACE);
         glCullFace(cullModeTable[mode]);
     }
+}
+
+void pglContext::SetMaterialTwoSided(bool twoSided)
+{
+    if(twoSided == materialTwoSided)
+        return;
+    materialTwoSided = twoSided;
+    ApplyCull();
 }
 
 // z-buffer control

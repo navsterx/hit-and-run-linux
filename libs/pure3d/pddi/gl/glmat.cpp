@@ -19,12 +19,16 @@
 #endif
 
 
+// Linux port: the parameters the D3D8 pddi's shaders take (dx8/shaders/shader.hpp PDDID3D_STDSHADERPARAM_*)
+#define PGL_STDSHADERPARAM_COLOUR \
+    {PDDI_SP_AMBIENT  , SHADE_COLOUR(&pglMat::SetAmbient)},\
+    {PDDI_SP_DIFFUSE  , SHADE_COLOUR(&pglMat::SetDiffuse)},\
+    {PDDI_SP_EMISSIVE , SHADE_COLOUR(&pglMat::SetEmissive)},\
+    {PDDI_SP_SPECULAR , SHADE_COLOUR(&pglMat::SetSpecular)}
+
 pddiShadeColourTable pglMat::colourTable[] = 
 {
-    {PDDI_SP_AMBIENT  , SHADE_COLOUR(&pglMat::SetAmbient)},
-    {PDDI_SP_DIFFUSE  , SHADE_COLOUR(&pglMat::SetDiffuse)},
-    {PDDI_SP_EMISSIVE , SHADE_COLOUR(&pglMat::SetEmissive)},
-    {PDDI_SP_SPECULAR , SHADE_COLOUR(&pglMat::SetSpecular)},
+    PGL_STDSHADERPARAM_COLOUR,
     {PDDI_SP_NULL , NULL}
 };
 
@@ -43,6 +47,8 @@ pddiShadeIntTable pglMat::intTable[] =
     {PDDI_SP_BLENDMODE , SHADE_INT(&pglMat::SetBlendMode)},
     {PDDI_SP_ALPHATEST , SHADE_INT(&pglMat::EnableAlphaTest)},
     {PDDI_SP_ALPHACOMPARE , SHADE_INT(&pglMat::SetAlphaCompare)},
+    {PDDI_SP_TWOSIDED , SHADE_INT(&pglMat::SetTwoSided)},              // Linux port: as the D3D8 pddi
+    {PDDI_SP_EMISSIVEALPHA , SHADE_INT(&pglMat::SetEmissiveAlpha)},    // Linux port: fades (traffic, characters)
     {PDDI_SP_NULL , NULL}
 };
 
@@ -50,6 +56,20 @@ pddiShadeFloatTable pglMat::floatTable[] =
 {
     {PDDI_SP_SHININESS , SHADE_FLOAT(&pglMat::SetShininess)},
     {PDDI_SP_ALPHACOMPARE_THRESHOLD , SHADE_FLOAT(&pglMat::SetAlphaRef)},   // Linux port: as the D3D8 pddi
+    {PDDI_SP_NULL , NULL}
+};
+
+pddiShadeColourTable pglReflectionMat::colourTable[] = 
+{
+    PGL_STDSHADERPARAM_COLOUR,
+    {PDDI_SP_ENVBLEND , SHADE_COLOUR(&pglReflectionMat::SetEnvBlend)},
+    {PDDI_SP_NULL , NULL}
+};
+
+pddiShadeTextureTable pglReflectionMat::textureTable[] = 
+{
+    {PDDI_SP_BASETEX , SHADE_TEXTURE(&pglMat::SetTexture)},
+    {PDDI_SP_REFLMAP , SHADE_TEXTURE(&pglReflectionMat::SetReflectionMap)},
     {PDDI_SP_NULL , NULL}
 };
 
@@ -79,16 +99,18 @@ GLenum uvTable[3] =
     GL_CLAMP_TO_EDGE
 };
 
-GLenum alphaBlendTable[8][2] =
+// Linux port: Direct3D 8's (dx8/state.cpp alphaBlendTable): the GL pddi had no blend equations, so subtract drew
+// opaque and the modulate-alpha modes were wrong
+static const struct { GLenum equation, src, dest; } alphaBlendTable[8] =
 {
-    { GL_ONE, GL_ZERO },                       //PDDI_BLEND_NONE,
-    { GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA },  //PDDI_BLEND_ALPHA
-    { GL_ONE, GL_ONE },                        //PDDI_BLEND_ADD
-    { GL_ONE, GL_ZERO },                       //PDDI_BLEND_SUBTRACT
-    { GL_DST_COLOR, GL_ZERO },                 //PDDI_BLEND_MODULATE,
-    { GL_DST_COLOR, GL_SRC_COLOR},             //PDDI_BLEND_MODULATE2,
-    { GL_ONE, GL_SRC_ALPHA},                   //PDDI_BLEND_ADDMODULATEALPHA,
-    { GL_SRC_ALPHA, GL_SRC_ALPHA}              //PDDI_BLEND_SUBMODULATEALPHA - won't work! no sub blending
+    { GL_FUNC_ADD,              GL_ONE,       GL_ZERO },                //PDDI_BLEND_NONE (blending off)
+    { GL_FUNC_ADD,              GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA }, //PDDI_BLEND_ALPHA
+    { GL_FUNC_ADD,              GL_ONE,       GL_ONE },                 //PDDI_BLEND_ADD
+    { GL_FUNC_REVERSE_SUBTRACT, GL_ONE,       GL_ONE },                 //PDDI_BLEND_SUBTRACT
+    { GL_FUNC_ADD,              GL_DST_COLOR, GL_ZERO },                //PDDI_BLEND_MODULATE
+    { GL_FUNC_ADD,              GL_DST_COLOR, GL_SRC_COLOR },           //PDDI_BLEND_MODULATE2
+    { GL_FUNC_ADD,              GL_DST_COLOR, GL_SRC_ALPHA },           //PDDI_BLEND_ADDMODULATEALPHA
+    { GL_FUNC_REVERSE_SUBTRACT, GL_SRC_ALPHA, GL_SRC_ALPHA }            //PDDI_BLEND_SUBMODULATEALPHA
 };
 
 static inline void FillGLColour(pddiColour c, float* f)
@@ -99,9 +121,10 @@ static inline void FillGLColour(pddiColour c, float* f)
     f[3] = float(c.Alpha()) / 255;
 }
 
-pglMat::pglMat(pglContext* c) 
+pglMat::pglMat(pglContext* c, int prog) 
 {
     context = c;
+    program = prog;
 
     for(int i = 0; i < pglMaxPasses; i++)
     {
@@ -112,10 +135,12 @@ pglMat::pglMat(pglContext* c)
         texEnv[i].uvMode = PDDI_UV_CLAMP;
         texEnv[i].filterMode = PDDI_FILTER_BILINEAR;
 
+        // Linux port: the D3D8 pddi's defaults (d3dShader): black diffuse (the GL pddi had white)
         texEnv[i].lit = false;
+        texEnv[i].twoSided = false;
         texEnv[i].shadeMode = PDDI_SHADE_GOURAUD;
         texEnv[i].ambient.Set(255,255,255);
-        texEnv[i].diffuse.Set(255,255,255);
+        texEnv[i].diffuse.Set(0,0,0);
         texEnv[i].specular.Set(0,0,0);
         texEnv[i].emissive.Set(0,0,0);
         texEnv[i].shininess = 0.0f;
@@ -124,7 +149,7 @@ pglMat::pglMat(pglContext* c)
     //   destBlend = PDDI_BF_ZERO;
 
         texEnv[i].alphaTest = false;
-        texEnv[i].alphaCompareMode = PDDI_COMPARE_GREATER;
+        texEnv[i].alphaCompareMode = PDDI_COMPARE_GREATEREQUAL;
         texEnv[i].alphaBlendMode = PDDI_BLEND_NONE;
         // uninit fix (Linux port): glAlphaFunc got leftover memory as the cut-off, so alpha-tested objects
         // (fences, grated ramps) vanished when it was >= 1 or NaN. 0.5 is the D3D8 pddi's default.
@@ -210,6 +235,22 @@ void pglMat::SetSpecular(pddiColour c)
 void pglMat::SetEmissive(pddiColour c) 
 {
     texEnv[pass].emissive = c;
+    SetEmissiveAlpha(c.Alpha());
+}
+
+// Linux port: as the D3D8 pddi, the emissive alpha is the material's alpha (the diffuse one): fading objects set it
+void pglMat::SetEmissiveAlpha(int alpha)
+{
+    texEnv[pass].diffuse.SetAlpha(alpha);
+    int others = alpha < 255 ? 0 : 255;
+    texEnv[pass].specular.SetAlpha(others);
+    texEnv[pass].ambient.SetAlpha(others);
+    texEnv[pass].emissive.SetAlpha(others);
+}
+
+void pglMat::SetTwoSided(int twoSided)
+{
+    texEnv[pass].twoSided = twoSided != 0;
 }
 
 void pglMat::SetShininess(float power) 
@@ -244,14 +285,21 @@ int pglMat::CountDevPasses(void)
 
 void pglMat::SetDevPass(unsigned pass)
 {
-    // Linux port: the lighting, texturing and alpha-test settings go to the pipeline's shader (glpipeline.cpp);
-    // blending and texture parameters are still GL state
+    pglPipeline::Material m;
+    SetupStandard(m);
+    context->GetDisplay()->GetPipeline()->SetMaterial(m);
+}
+
+void pglMat::SetupStandard(pglPipeline::Material& m)
+{
+    // Linux port: the lighting, texturing and alpha-test settings go to the pipeline's programs (glpipeline.cpp);
+    // blending, culling and texture parameters are still GL state
     pglPipeline* pipeline = context->GetDisplay()->GetPipeline();
     pipeline->current.colour[0] = pipeline->current.colour[1] = pipeline->current.colour[2] = pipeline->current.colour[3] = 255;
 
     int i = 0;
-    pglPipeline::Material m;
     memset(&m, 0, sizeof(m));       // compared whole by SetMaterial
+    m.program = program;
 
     m.textured = texEnv[i].texture != NULL;
     if(texEnv[i].texture)
@@ -274,8 +322,11 @@ void pglMat::SetDevPass(unsigned pass)
     else
     {
         glEnable(GL_BLEND);
-        glBlendFunc(alphaBlendTable[texEnv[i].alphaBlendMode][0],alphaBlendTable[texEnv[i].alphaBlendMode][1]);
+        glBlendEquation(alphaBlendTable[texEnv[i].alphaBlendMode].equation);
+        glBlendFunc(alphaBlendTable[texEnv[i].alphaBlendMode].src, alphaBlendTable[texEnv[i].alphaBlendMode].dest);
     }
+
+    context->SetMaterialTwoSided(texEnv[i].twoSided);
  
     m.lit = texEnv[i].lit;
     m.shininess = texEnv[i].shininess;
@@ -283,9 +334,93 @@ void pglMat::SetDevPass(unsigned pass)
     FillGLColour(texEnv[i].emissive, m.emissive);
     FillGLColour(texEnv[i].diffuse, m.diffuse);
     FillGLColour(texEnv[i].specular, m.specular);
-
-    pipeline->SetMaterial(m);
 }
 
+//-------------------------------------------------------------------
+// reflection (d3dReflShader)
+//-------------------------------------------------------------------
 
+pglReflectionMat::pglReflectionMat(pglContext* c) : pglMat(c, PGL_PROGRAM_REFLECTION)
+{
+    reflectionMap = NULL;
+    envBlend.Set(128,128,128,128);
+}
 
+pglReflectionMat::~pglReflectionMat()
+{
+    if(reflectionMap)
+        reflectionMap->Release();
+}
+
+const char* pglReflectionMat::GetType(void)
+{
+    static char type[] = "reflection";
+    return type;
+}
+
+void pglReflectionMat::SetReflectionMap(pddiTexture* t)
+{
+    if(t == reflectionMap)
+        return;
+    if(t)
+        t->AddRef();
+    if(reflectionMap)
+        reflectionMap->Release();
+    reflectionMap = (pglTexture*)t;
+}
+
+void pglReflectionMat::SetEnvBlend(pddiColour c)
+{
+    envBlend = c;
+}
+
+void pglReflectionMat::SetDevPass(unsigned pass)
+{
+    pglPipeline::Material m;
+    SetupStandard(m);
+
+    // stage 1: the reflection map, sampled like the base texture
+    m.reflectionTextured = reflectionMap != NULL;
+    if(reflectionMap)
+    {
+        glActiveTexture(GL_TEXTURE1);
+        reflectionMap->SetGLState();
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterMagTable[texEnv[0].filterMode]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMinTable[texEnv[0].filterMode]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, uvTable[texEnv[0].uvMode]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, uvTable[texEnv[0].uvMode]);
+        glActiveTexture(GL_TEXTURE0);
+    }
+    FillGLColour(envBlend, m.envBlend);
+
+    context->GetDisplay()->GetPipeline()->SetMaterial(m);
+}
+
+//-------------------------------------------------------------------
+// error (d3dErrorShader)
+//-------------------------------------------------------------------
+
+pglErrorMat::pglErrorMat(pglContext* c) : pglMat(c)
+{
+    texEnv[0].lit = true;
+    texEnv[0].ambient.Set(0,0,0);
+    texEnv[0].diffuse.Set(0,0,0);
+    texEnv[0].specular.Set(0,0,0);
+    texEnv[0].emissive.Set(255,128,255);
+}
+
+const char* pglErrorMat::GetType(void)
+{
+    static char type[] = "error";
+    return type;
+}
+
+void pglErrorMat::SetDevPass(unsigned pass)
+{
+    pglPipeline::Material m;
+    pglTexture* texture = texEnv[0].texture;
+    texEnv[0].texture = NULL;           // no texture stage
+    SetupStandard(m);
+    texEnv[0].texture = texture;
+    context->GetDisplay()->GetPipeline()->SetMaterial(m);
+}

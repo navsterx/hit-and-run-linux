@@ -24,10 +24,14 @@ pglProgram::~pglProgram()
     // the context is gone by the time the display is destroyed; the driver frees the program with it
 }
 
-static GLuint CompileShader(const char* name, GLenum type, const char* source)
+static GLuint CompileShader(const char* name, GLenum type, const char* header, const char* source)
 {
     GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, NULL);
+    const char* sources[2] = { header, source };
+    if(header)
+        glShaderSource(shader, 2, sources, NULL);
+    else
+        glShaderSource(shader, 1, &source, NULL);
     glCompileShader(shader);
     GLint ok = 0;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
@@ -43,10 +47,10 @@ static GLuint CompileShader(const char* name, GLenum type, const char* source)
     return shader;
 }
 
-bool pglProgram::Build(const char* name, const char* vertexSource, const char* fragmentSource)
+bool pglProgram::Build(const char* name, const char* vertexSource, const char* fragmentSource, const char* header)
 {
-    GLuint vs = CompileShader(name, GL_VERTEX_SHADER, vertexSource);
-    GLuint fs = CompileShader(name, GL_FRAGMENT_SHADER, fragmentSource);
+    GLuint vs = CompileShader(name, GL_VERTEX_SHADER, header, vertexSource);
+    GLuint fs = CompileShader(name, GL_FRAGMENT_SHADER, header, fragmentSource);
     if(!vs || !fs)
     {
         if(vs) glDeleteShader(vs);
@@ -85,14 +89,17 @@ GLint pglProgram::Uniform(const char* name) const
 }
 
 //-----------------------------------------------------------------------------
-// The fixed-function pipeline as the pddi configured it
+// Direct3D 8's fixed-function pipeline as the D3D8 pddi configured it
 //-----------------------------------------------------------------------------
 
-// Lighting follows the OpenGL 1.x equations: per vertex, in eye space, an infinite viewer, light ambient terms 0
-// (GL_AMBIENT was never set), separate specular (GL_EXT_separate_specular_color). Normals are transformed but not
-// renormalised: GL_NORMALIZE was never enabled. Fog distance is |eye z|, as the drivers computed it.
-static const char* s_fixedVertexSource =
-    "#version 330 core\n"
+// Lighting follows Direct3D 8's equations: per vertex, in eye space, normals renormalised (NORMALIZENORMALS), a local
+// viewer (LOCALVIEWER's default), light ambient terms 0 (the pddi's lights have none; the ambient is global), material
+// colours from the material, never the vertex (COLORVERTEX with every source D3DMCS_MATERIAL), specular only with a
+// shininess > 0 (SPECULARENABLE), point lights cut off at their range. Eye space here is OpenGL's (z negated, see
+// pglContext::LoadHardwareMatrix): x and y, and so lighting and the reflection vector's x and y, are D3D's.
+// Fog distance is |eye z|, as D3D's linear table fog. Each program's source is compiled with a header defining
+// REFLECTION 0 or 1.
+static const char* s_vertexSource =
     "in vec3 aPosition;\n"
     "in vec3 aNormal;\n"
     "in vec4 aColour;\n"
@@ -111,9 +118,13 @@ static const char* s_fixedVertexSource =
     "uniform vec4 uLightPosition[8];\n"
     "uniform vec3 uLightColour[8];\n"
     "uniform vec3 uLightAtten[8];\n"
+    "uniform float uLightRange[8];\n"
     "out vec4 vColour;\n"
     "out vec3 vSpecular;\n"
     "out vec2 vUV;\n"
+    "#if REFLECTION\n"
+    "out vec2 vReflectionUV;\n"
+    "#endif\n"
     "out float vFogDistance;\n"
     "void main()\n"
     "{\n"
@@ -121,14 +132,23 @@ static const char* s_fixedVertexSource =
     "    gl_Position = uProjection * eye;\n"
     "    vUV = aUV;\n"
     "    vFogDistance = abs(eye.z);\n"
+    "    vec3 v = eye.xyz / eye.w;\n"
+    "    vec3 n = uNormalMatrix * aNormal;\n"
+    "    float nLength = length(n);\n"
+    "    if(nLength > 0.0)\n"
+    "        n /= nLength;\n"
+    "#if REFLECTION\n"
+    "    // D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR through the shader's texture matrix: (0.5 x + 0.5, 0.5 - 0.5 y)\n"
+    "    vec3 r = reflect(normalize(v), n);\n"
+    "    vReflectionUV = vec2(0.5 * r.x + 0.5, 0.5 - 0.5 * r.y);\n"
+    "#endif\n"
     "    if(!uLit)\n"
     "    {\n"
     "        vColour = aColour;\n"
     "        vSpecular = vec3(0.0);\n"
     "        return;\n"
     "    }\n"
-    "    vec3 n = uNormalMatrix * aNormal;\n"
-    "    vec3 v = eye.xyz / eye.w;\n"
+    "    vec3 toEye = -normalize(v);\n"
     "    vec3 colour = uMatEmissive.rgb + uMatAmbient.rgb * uGlobalAmbient.rgb;\n"
     "    vec3 specular = vec3(0.0);\n"
     "    for(int i = 0; i < uLightCount; i++)\n"
@@ -143,28 +163,36 @@ static const char* s_fixedVertexSource =
     "        {\n"
     "            vec3 d = uLightPosition[i].xyz / uLightPosition[i].w - v;\n"
     "            float distance = length(d);\n"
+    "            if(distance > uLightRange[i])\n"
+    "                continue;\n"
     "            l = d / distance;\n"
     "            attenuation = 1.0 / (uLightAtten[i].x + uLightAtten[i].y * distance + uLightAtten[i].z * distance * distance);\n"
     "        }\n"
     "        float nl = dot(n, l);\n"
     "        colour += attenuation * max(nl, 0.0) * uMatDiffuse.rgb * uLightColour[i];\n"
-    "        if(nl > 0.0)\n"
+    "        if(uShininess > 0.0 && nl > 0.0)\n"
     "        {\n"
-    "            float nh = max(dot(n, normalize(l + vec3(0.0, 0.0, 1.0))), 0.0);\n"
-    "            float s = uShininess > 0.0 ? pow(nh, uShininess) : 1.0;\n"
-    "            specular += attenuation * s * uMatSpecular.rgb * uLightColour[i];\n"
+    "            float nh = max(dot(n, normalize(l + toEye)), 0.0);\n"
+    "            specular += attenuation * pow(nh, uShininess) * uMatSpecular.rgb * uLightColour[i];\n"
     "        }\n"
     "    }\n"
     "    vColour = clamp(vec4(colour, uMatDiffuse.a), 0.0, 1.0);\n"
     "    vSpecular = clamp(specular, 0.0, 1.0);\n"
     "}\n";
 
-// GL_MODULATE texturing, colour sum, linear fog (RGB only), then the alpha test (pddiCompareMode order)
-static const char* s_fixedFragmentSource =
-    "#version 330 core\n"
+// The texture stages (simple: diffuse * texture; reflection: that plus envBlend * reflection map, saturated), then
+// the specular sum, linear fog (RGB only) and the alpha test (pddiCompareMode order). A stage without a texture
+// passes its colour through, as D3D's did.
+static const char* s_fragmentSource =
     "in vec4 vColour;\n"
     "in vec3 vSpecular;\n"
     "in vec2 vUV;\n"
+    "#if REFLECTION\n"
+    "in vec2 vReflectionUV;\n"
+    "uniform bool uReflectionTextured;\n"
+    "uniform sampler2D uReflection;\n"
+    "uniform vec4 uEnvBlend;\n"
+    "#endif\n"
     "in float vFogDistance;\n"
     "uniform bool uTextured;\n"
     "uniform sampler2D uTexture;\n"
@@ -180,6 +208,12 @@ static const char* s_fixedFragmentSource =
     "    vec4 c = vColour;\n"
     "    if(uTextured)\n"
     "        c *= texture(uTexture, vUV);\n"
+    "#if REFLECTION\n"
+    "    vec4 e = uEnvBlend;\n"
+    "    if(uReflectionTextured)\n"
+    "        e *= texture(uReflection, vReflectionUV);\n"
+    "    c = min(c + e, 1.0);\n"
+    "#endif\n"
     "    c.rgb = min(c.rgb + vSpecular, 1.0);\n"
     "    if(uFog)\n"
     "        c.rgb = mix(uFogColour, c.rgb, clamp((uFogEnd - vFogDistance) * uFogScale, 0.0, 1.0));\n"
@@ -196,6 +230,21 @@ static const char* s_fixedFragmentSource =
     "    fragColour = c;\n"
     "}\n";
 
+static const struct { const char* name; const char* header; } s_programs[PGL_PROGRAM_COUNT] =
+{
+    { "simple",     "#version 330 core\n#define REFLECTION 0\n" },
+    { "reflection", "#version 330 core\n#define REFLECTION 1\n" },
+};
+
+static const char* s_uniformNames[] =
+{
+    "uProjection", "uModelView", "uNormalMatrix",
+    "uLit", "uMatAmbient", "uMatDiffuse", "uMatSpecular", "uMatEmissive", "uShininess",
+    "uGlobalAmbient", "uLightCount", "uLightPosition", "uLightColour", "uLightAtten", "uLightRange",
+    "uTextured", "uTexture", "uFog", "uFogColour", "uFogEnd", "uFogScale", "uAlphaCompare", "uAlphaRef",
+    "uReflectionTextured", "uReflection", "uEnvBlend",
+};
+
 static void Identity(float* m)
 {
     memset(m, 0, 16 * sizeof(float));
@@ -211,21 +260,24 @@ static void SetColour(float* d, const float* s, int n)
 pglPipeline::pglPipeline()
 {
     ready = false;
-    bound = false;
+    bound = NULL;
     vao = 0;
     streamVerts = NULL;
     streamCount = streamCapacity = 0;
     streamPrim = GL_TRIANGLES;
     streamBuffer = 0;
     streamBufferSize = streamOffset = 0;
-    dirty = DIRTY_ALL;
+    memset(version, 0, sizeof(version));
 
-    // the initial GL state
+    // the initial state
     Identity(projection);
     Identity(modelView);
     memset(lights, 0, sizeof(lights));
     for(int i = 0; i < pglMaxLights; i++)
+    {
         lights[i].atten[0] = 1.0f;
+        lights[i].range = 1000000.0f;
+    }
     ambient[0] = ambient[1] = ambient[2] = 0.2f;
     ambient[3] = 1.0f;
     fogEnabled = false;
@@ -252,34 +304,20 @@ bool pglPipeline::Init()
     if(ready)
         return true;
 
-    if(!fixedProgram.Build("fixed-function", s_fixedVertexSource, s_fixedFragmentSource))
-        return false;
-
-    GLuint p = fixedProgram.Handle();
-    glUseProgram(p);
-    uProjection = fixedProgram.Uniform("uProjection");
-    uModelView = fixedProgram.Uniform("uModelView");
-    uNormalMatrix = fixedProgram.Uniform("uNormalMatrix");
-    uLit = fixedProgram.Uniform("uLit");
-    uMatAmbient = fixedProgram.Uniform("uMatAmbient");
-    uMatDiffuse = fixedProgram.Uniform("uMatDiffuse");
-    uMatSpecular = fixedProgram.Uniform("uMatSpecular");
-    uMatEmissive = fixedProgram.Uniform("uMatEmissive");
-    uShininess = fixedProgram.Uniform("uShininess");
-    uGlobalAmbient = fixedProgram.Uniform("uGlobalAmbient");
-    uLightCount = fixedProgram.Uniform("uLightCount");
-    uLightPosition = fixedProgram.Uniform("uLightPosition");
-    uLightColour = fixedProgram.Uniform("uLightColour");
-    uLightAtten = fixedProgram.Uniform("uLightAtten");
-    uTextured = fixedProgram.Uniform("uTextured");
-    uTexture = fixedProgram.Uniform("uTexture");
-    uFog = fixedProgram.Uniform("uFog");
-    uFogColour = fixedProgram.Uniform("uFogColour");
-    uFogEnd = fixedProgram.Uniform("uFogEnd");
-    uFogScale = fixedProgram.Uniform("uFogScale");
-    uAlphaCompare = fixedProgram.Uniform("uAlphaCompare");
-    uAlphaRef = fixedProgram.Uniform("uAlphaRef");
-    glUniform1i(uTexture, 0);
+    for(int i = 0; i < PGL_PROGRAM_COUNT; i++)
+    {
+        Program& p = programs[i];
+        if(!p.program.Build(s_programs[i].name, s_vertexSource, s_fragmentSource, s_programs[i].header))
+            return false;
+        glUseProgram(p.program.Handle());
+        for(int u = 0; u < U_COUNT; u++)
+            p.uniform[u] = p.program.Uniform(s_uniformNames[u]);
+        glUniform1i(p.uniform[U_TEXTURE], 0);
+        glUniform1i(p.uniform[U_REFLECTION], 1);
+        for(int g = 0; g < GROUP_COUNT; g++)
+            p.uploaded[g] = version[g] - 1;     // everything to upload
+    }
+    bound = NULL;
 
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -291,7 +329,6 @@ bool pglPipeline::Init()
     glBufferData(GL_ARRAY_BUFFER, streamBufferSize, NULL, GL_STREAM_DRAW);
     streamOffset = 0;
 
-    dirty = DIRTY_ALL;
     ready = true;
     return true;
 }
@@ -302,7 +339,7 @@ void pglPipeline::SetProjection(const float* m)
     if(memcmp(projection, m, sizeof(projection)) == 0)
         return;
     memcpy(projection, m, sizeof(projection));
-    dirty |= DIRTY_MATRICES;
+    Changed(GROUP_MATRICES);
 }
 
 void pglPipeline::SetModelView(const float* m)
@@ -310,17 +347,18 @@ void pglPipeline::SetModelView(const float* m)
     if(memcmp(modelView, m, sizeof(modelView)) == 0)
         return;
     memcpy(modelView, m, sizeof(modelView));
-    dirty |= DIRTY_MATRICES;
+    Changed(GROUP_MATRICES);
 }
 
 void pglPipeline::LoadIdentity()
 {
     Identity(projection);
     Identity(modelView);
-    dirty |= DIRTY_MATRICES;
+    Changed(GROUP_MATRICES);
 }
 
-void pglPipeline::SetLight(int i, bool enabled, const float* p, const float* colour, float attenA, float attenB, float attenC)
+void pglPipeline::SetLight(int i, bool enabled, const float* p, const float* colour, float attenA, float attenB, float attenC,
+                           float range)
 {
     if(i < 0 || i >= pglMaxLights)
         return;
@@ -332,19 +370,20 @@ void pglPipeline::SetLight(int i, bool enabled, const float* p, const float* col
     l.atten[0] = attenA;
     l.atten[1] = attenB;
     l.atten[2] = attenC;
-    dirty |= DIRTY_LIGHTS;
+    l.range = range;
+    Changed(GROUP_LIGHTS);
 }
 
 void pglPipeline::SetAmbient(const float* colour)
 {
     SetColour(ambient, colour, 4);
-    dirty |= DIRTY_LIGHTS;
+    Changed(GROUP_LIGHTS);
 }
 
 void pglPipeline::EnableFog(bool enable)
 {
     fogEnabled = enable;
-    dirty |= DIRTY_FOG;
+    Changed(GROUP_FOG);
 }
 
 void pglPipeline::SetFog(const float* colour, float start, float end)
@@ -352,7 +391,7 @@ void pglPipeline::SetFog(const float* colour, float start, float end)
     SetColour(fogColour, colour, 3);
     fogStart = start;
     fogEnd = end;
-    dirty |= DIRTY_FOG;
+    Changed(GROUP_FOG);
 }
 
 void pglPipeline::SetMaterial(const Material& m)      // m fully initialised (memset), padding included
@@ -360,19 +399,18 @@ void pglPipeline::SetMaterial(const Material& m)      // m fully initialised (me
     if(memcmp(&material, &m, sizeof(material)) == 0)
         return;
     material = m;
-    dirty |= DIRTY_MATERIAL;
+    Changed(GROUP_MATERIAL);
 }
 
-void pglPipeline::UploadUniforms()
+void pglPipeline::UploadUniforms(Program& p)
 {
-    stats.matrixUploads += (dirty & DIRTY_MATRICES) != 0;
-    stats.lightUploads += (dirty & DIRTY_LIGHTS) != 0;
-    stats.materialUploads += (dirty & DIRTY_MATERIAL) != 0;
+    const GLint* u = p.uniform;
 
-    if(dirty & DIRTY_MATRICES)
+    if(p.uploaded[GROUP_MATRICES] != version[GROUP_MATRICES])
     {
-        glUniformMatrix4fv(uProjection, 1, GL_FALSE, projection);
-        glUniformMatrix4fv(uModelView, 1, GL_FALSE, modelView);
+        stats.matrixUploads++;
+        glUniformMatrix4fv(u[U_PROJECTION], 1, GL_FALSE, projection);
+        glUniformMatrix4fv(u[U_MODELVIEW], 1, GL_FALSE, modelView);
 
         // normals go through the inverse transpose of the model-view's upper 3x3: its columns are the cross
         // products of the matrix's columns, over the determinant
@@ -395,12 +433,14 @@ void pglPipeline::UploadUniforms()
             for(int i = 0; i < 9; i++)
                 n[i] /= det;
         }
-        glUniformMatrix3fv(uNormalMatrix, 1, GL_FALSE, n);
+        glUniformMatrix3fv(u[U_NORMALMATRIX], 1, GL_FALSE, n);
+        p.uploaded[GROUP_MATRICES] = version[GROUP_MATRICES];
     }
 
-    if(dirty & DIRTY_LIGHTS)
+    if(p.uploaded[GROUP_LIGHTS] != version[GROUP_LIGHTS])
     {
-        float position[pglMaxLights][4], colour[pglMaxLights][3], atten[pglMaxLights][3];
+        stats.lightUploads++;
+        float position[pglMaxLights][4], colour[pglMaxLights][3], atten[pglMaxLights][3], range[pglMaxLights];
         int count = 0;
         for(int i = 0; i < pglMaxLights; i++)
         {
@@ -409,52 +449,63 @@ void pglPipeline::UploadUniforms()
             memcpy(position[count], lights[i].position, sizeof(position[0]));
             memcpy(colour[count], lights[i].colour, sizeof(colour[0]));
             memcpy(atten[count], lights[i].atten, sizeof(atten[0]));
+            range[count] = lights[i].range;
             count++;
         }
-        glUniform1i(uLightCount, count);
+        glUniform1i(u[U_LIGHTCOUNT], count);
         if(count)
         {
-            glUniform4fv(uLightPosition, count, &position[0][0]);
-            glUniform3fv(uLightColour, count, &colour[0][0]);
-            glUniform3fv(uLightAtten, count, &atten[0][0]);
+            glUniform4fv(u[U_LIGHTPOSITION], count, &position[0][0]);
+            glUniform3fv(u[U_LIGHTCOLOUR], count, &colour[0][0]);
+            glUniform3fv(u[U_LIGHTATTEN], count, &atten[0][0]);
+            glUniform1fv(u[U_LIGHTRANGE], count, range);
         }
-        glUniform4fv(uGlobalAmbient, 1, ambient);
+        glUniform4fv(u[U_GLOBALAMBIENT], 1, ambient);
+        p.uploaded[GROUP_LIGHTS] = version[GROUP_LIGHTS];
     }
 
-    if(dirty & DIRTY_FOG)
+    if(p.uploaded[GROUP_FOG] != version[GROUP_FOG])
     {
-        glUniform1i(uFog, fogEnabled);
-        glUniform3fv(uFogColour, 1, fogColour);
-        glUniform1f(uFogEnd, fogEnd);
-        glUniform1f(uFogScale, fogEnd != fogStart ? 1.0f / (fogEnd - fogStart) : 1.0f);
+        glUniform1i(u[U_FOG], fogEnabled);
+        glUniform3fv(u[U_FOGCOLOUR], 1, fogColour);
+        glUniform1f(u[U_FOGEND], fogEnd);
+        glUniform1f(u[U_FOGSCALE], fogEnd != fogStart ? 1.0f / (fogEnd - fogStart) : 1.0f);
+        p.uploaded[GROUP_FOG] = version[GROUP_FOG];
     }
 
-    if(dirty & DIRTY_MATERIAL)
+    if(p.uploaded[GROUP_MATERIAL] != version[GROUP_MATERIAL])
     {
-        glUniform1i(uTextured, material.textured);
-        glUniform1i(uLit, material.lit);
-        glUniform4fv(uMatAmbient, 1, material.ambient);
-        glUniform4fv(uMatDiffuse, 1, material.diffuse);
-        glUniform4fv(uMatSpecular, 1, material.specular);
-        glUniform4fv(uMatEmissive, 1, material.emissive);
-        glUniform1f(uShininess, material.shininess);
-        glUniform1i(uAlphaCompare, material.alphaCompare < 0 ? 1 : material.alphaCompare);    // 1: always
-        glUniform1f(uAlphaRef, material.alphaRef);
+        stats.materialUploads++;
+        glUniform1i(u[U_TEXTURED], material.textured);
+        glUniform1i(u[U_LIT], material.lit);
+        glUniform4fv(u[U_MATAMBIENT], 1, material.ambient);
+        glUniform4fv(u[U_MATDIFFUSE], 1, material.diffuse);
+        glUniform4fv(u[U_MATSPECULAR], 1, material.specular);
+        glUniform4fv(u[U_MATEMISSIVE], 1, material.emissive);
+        glUniform1f(u[U_SHININESS], material.shininess);
+        glUniform1i(u[U_ALPHACOMPARE], material.alphaCompare < 0 ? 1 : material.alphaCompare);    // 1: always
+        glUniform1f(u[U_ALPHAREF], material.alphaRef);
+        if(u[U_ENVBLEND] >= 0)
+        {
+            glUniform1i(u[U_REFLECTIONTEXTURED], material.reflectionTextured);
+            glUniform4fv(u[U_ENVBLEND], 1, material.envBlend);
+        }
+        p.uploaded[GROUP_MATERIAL] = version[GROUP_MATERIAL];
     }
-
-    dirty = 0;
 }
 
 void pglPipeline::Prepare()
 {
-    if(!bound)
+    int index = material.program >= 0 && material.program < PGL_PROGRAM_COUNT ? material.program : PGL_PROGRAM_SIMPLE;
+    Program& p = programs[index];
+    if(bound != &p)
     {
-        glUseProgram(fixedProgram.Handle());
-        glBindVertexArray(vao);
-        bound = true;
+        if(!bound)
+            glBindVertexArray(vao);
+        glUseProgram(p.program.Handle());
+        bound = &p;
     }
-    if(dirty)
-        UploadUniforms();
+    UploadUniforms(p);
     stats.draws++;
 }
 

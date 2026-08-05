@@ -9,6 +9,7 @@
 #include <pddi/pddi.hpp>
 #include <pddi/base/baseshader.hpp>
 #include <pddi/gl/glcon.hpp>
+#include <pddi/gl/glpipeline.hpp>
 class pglTexture;
 
 const int pglMaxPasses = 1;
@@ -29,6 +30,7 @@ struct pglTextureEnv
     float alphaRef;
 
     bool lit;
+    bool twoSided;
     pddiShadeMode shadeMode;
     pddiColour diffuse;
     pddiColour specular;
@@ -37,10 +39,12 @@ struct pglTextureEnv
     float shininess;
 };
 
+// Linux port: the shader names map to these classes as in the D3D8 pddi (pglInstallShaders, gldev.cpp); each draws
+// with one of the pipeline's programs (pglProgramType, glpipeline.hpp)
 class pglMat : public pddiBaseShader
 {
 public:
-    pglMat(pglContext*);
+    pglMat(pglContext*, int program = 0);
     ~pglMat();
 
     static pddiShadeColourTable colourTable[];
@@ -64,6 +68,7 @@ public:
 
     // shading
     void SetShadeMode(int shade);
+    void SetTwoSided(int twoSided);
 
     // lighting
     void EnableLighting(int);
@@ -71,6 +76,7 @@ public:
     void SetDiffuse(pddiColour colour);
     void SetAmbient(pddiColour colour);
     void SetEmissive(pddiColour);
+    void SetEmissiveAlpha(int alpha);
     void SetSpecular(pddiColour);
     void SetShininess(float power);
 
@@ -81,14 +87,50 @@ public:
     void SetAlphaRef(float ref);
 
     int  CountDevPasses(void);
-    void SetDevPass(unsigned);
+    virtual void SetDevPass(unsigned);
 
-private:
-   
+protected:
+    // the pipeline material and GL state for a draw (the standard part; shader kinds add theirs and set it)
+    void SetupStandard(pglPipeline::Material& m);
+
     pglContext* context;
+    int program;
     int pass;
     pglTextureEnv texEnv[pglMaxPasses];
 };
 
-#endif
+// "environment", "spheremap" (d3dReflShader): the base texture plus a reflection map looked up with the camera-space
+// reflection vector, scaled by the environment blend colour
+class pglReflectionMat : public pglMat
+{
+public:
+    pglReflectionMat(pglContext*);
+    ~pglReflectionMat();
 
+    static pddiShadeColourTable colourTable[];
+    static pddiShadeTextureTable textureTable[];
+
+    const char* GetType(void);
+    pddiShadeTextureTable* GetTextureTable(void) { return textureTable;}
+    pddiShadeColourTable*  GetColourTable(void)  { return colourTable;}
+
+    void SetReflectionMap(pddiTexture* texture);
+    void SetEnvBlend(pddiColour colour);
+
+    void SetDevPass(unsigned);
+
+private:
+    pglTexture* reflectionMap;
+    pddiColour envBlend;
+};
+
+// "error" (d3dErrorShader): drawn for shaders a file names but does not contain; lit, pink emissive, no texture
+class pglErrorMat : public pglMat
+{
+public:
+    pglErrorMat(pglContext*);
+    const char* GetType(void);
+    void SetDevPass(unsigned);
+};
+
+#endif

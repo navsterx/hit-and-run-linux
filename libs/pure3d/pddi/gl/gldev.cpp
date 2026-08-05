@@ -155,9 +155,31 @@ pddiTexture* pglDevice::NewTexture(pddiTextureDesc* desc)
     return tex;
 }
 //--------------------------------------------------------------
-pddiShader *pglDevice::NewShader(const char* name, const char*) 
+// Linux port: shader names map to shader kinds as in the D3D8 pddi (dx8/shaders/shadersetup.cpp), which installed
+// them in pddiBaseShader's table; an unknown name gets the first one ("simple"). The retail data uses simple,
+// spheremap (car paint) and environment. The D3D8 pddi's lightmap, layered, layeredlmap, projtex, pointsprite and
+// toon/hctune shaders are not ported (nothing in the game's data or code asks for them): they draw as simple.
+static pddiBaseShader* AllocSimpleShader(pddiRenderContext* c, const char*, const char*)     { return new pglMat((pglContext*)c); }
+static pddiBaseShader* AllocReflectionShader(pddiRenderContext* c, const char*, const char*) { return new pglReflectionMat((pglContext*)c); }
+static pddiBaseShader* AllocErrorShader(pddiRenderContext* c, const char*, const char*)      { return new pglErrorMat((pglContext*)c); }
+
+static void pglInstallShaders()
+{
+    static bool installed = false;
+    if(installed)
+        return;
+    installed = true;
+    pddiBaseShader::InstallShader("simple",      AllocSimpleShader, NULL);
+    pddiBaseShader::InstallShader("lightweight", AllocSimpleShader, NULL);
+    pddiBaseShader::InstallShader("error",       AllocErrorShader, NULL);
+    pddiBaseShader::InstallShader("environment", AllocReflectionShader, NULL);
+    pddiBaseShader::InstallShader("spheremap",   AllocReflectionShader, NULL);
+}
+
+pddiShader *pglDevice::NewShader(const char* name, const char* aux) 
 { 
-    pglMat* mat= new pglMat((pglContext*)context);
+    pglInstallShaders();
+    pddiBaseShader* mat = pddiBaseShader::AllocateShader(context, name, aux);
     if(mat->GetLastError() != PDDI_OK) {
         delete mat;
         return NULL;

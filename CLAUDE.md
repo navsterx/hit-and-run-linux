@@ -209,6 +209,18 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   frame; resending all of it cost 30%). `SHAR_GL_DEBUG=1` debug context, driver messages on stderr;
   `SHAR_GL_STATS=1` per-frame draws/uploads and CPU/GPU render time every 5 s. `perf` is not permitted on this machine.
   Also fixed: `~pglTexture` never freed its GL texture (VRAM leaked on every level change).
+  Materials (2026-10-17): the retail data uses only three pddi shaders (simple 13,896, spheremap 125 = car paint,
+  environment 32; a p3d shader-chunk survey); the game's code asks only for simple/error. `gldev.cpp` maps names as
+  the D3D8 pddi did (`pddiBaseShader::InstallShader`; unknown names -> simple); one GLSL program per kind
+  (`pglProgramType`, built from shared sources with `#define`s; each program tracks which state versions it has).
+  Reflection = D3D8 `d3dReflShader`: diffuse*texture + envBlend*reflection map at the camera-space reflection vector
+  (0.5x+0.5, 0.5-0.5y), saturated; the game sets envBlend per frame (`geometryvehicle.cpp`: damage, interiors).
+  Lighting/material now follow D3D8, not the old GL pddi: normals renormalised, local viewer, specular only with
+  shininess > 0, point-light range cut-off, defaults of `d3dShader` (black diffuse), two-sided materials disable
+  culling (`pglContext::SetMaterialTwoSided`; 2,836 materials, ignored before), EMISSIVEALPHA = material alpha
+  (traffic/character/vehicle fades), D3D8's blend table with equations (subtract drew opaque, shadow volumes use it).
+  Not ported (unused): lightmap, layered, projtex, pointsprite, toon; multi-CBV (2 front-end materials, mode = plain);
+  flat shading (25 materials draw Gouraud).
 
 ## Mods (Lucas' Mod Launcher format)
 
@@ -265,9 +277,8 @@ The base game is feature-complete but not yet verified end to end. In order:
    of the hacks Futurama lists at startup. Test with the user in the loop (shops, phone booth, dialogue).
 5. **Packaging**: install script or AppImage-style bundle (32-bit runtime libraries, FFmpeg, SDL2).
 6. **Steering-wheel force feedback**: only with a wheel to test on.
-7. **Modern OpenGL** (in progress on `dev`): core profile done (see lessons); next the D3D8 pddi's other material
-   shaders (`libs/pure3d/pddi/dx8/shaders` in the dump; `pglDevice::NewShader` ignores the name), native DXT
-   textures, then custom shader support.
+7. **Modern OpenGL** (in progress on `dev`): core profile and D3D8 material parity done (see lessons); next native
+   DXT textures, then custom shader support (`pglDevice::AddCustomShader` is the pddi's hook, still empty).
 8. **Long term**: 64-bit build (pointer/int casts, fixed-size heaps), a possible Rust/Bevy reimplementation
    (`RUST.md`).
 

@@ -58,8 +58,9 @@ Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its f
 - [ ] **Steering-wheel force feedback** — wheel effects (springs, dampers) are not wired up; needs a wheel to test
 - [ ] **64-bit build** — the code assumes 32-bit pointers in places
 - [ ] **Modern OpenGL** — the renderer runs on an OpenGL 3.3 core context: GLSL shaders reproduce the
-  fixed-function pipeline, geometry lives in GPU buffers (done); still to do: the original's other material
-  shaders (environment maps, lightmaps, layered textures, ...), native DXT textures, custom shaders
+  original Direct3D 8 renderer's materials and lighting (including car paint reflections, two-sided materials,
+  fading cars and characters), geometry lives in GPU buffers (done); still to do: native DXT textures, custom
+  shaders
 - [ ] **Mods** — Mod Launcher mods load (custom files, Lua, Ogg audio, HD movies, custom text, car shop sellers,
   new dialogue characters, 3D phone booth); custom cars, characters, interiors and the other hacks are not
   implemented yet
