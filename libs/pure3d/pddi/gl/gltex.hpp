@@ -58,6 +58,14 @@ protected:
     pddiLockInfo lock;
 
     char** bits;
+
+#ifdef RAD_LINUX
+    // Linux port: DXT textures keep their blocks (as D3D8 did); 0 for 32-bit ARGB
+    unsigned compressedFormat;
+    int blockBytes;
+    int MipBytes(int mip);
+    void UploadCompressed(void);
+#endif
 };
 #endif
 

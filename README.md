@@ -21,7 +21,7 @@ Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its f
 - [x] **Platform layer** — SDL2 window and event loop; Win32 threads, sync, fibers and timers on POSIX;
   case-insensitive file access to the game data
 - [x] **Renderer** — the OpenGL Pure3D backend on SDL2, with
-  - [x] DXT textures decoded in software (correct row order, so sprites and HUD portraits are the right way up)
+  - [x] DXT textures stay compressed on the GPU (decoded in software on drivers without S3TC)
   - [x] multithreaded loading via shared GL contexts (Direct3D 8 was multithreaded, GL is not)
   - [x] texture clamping matching Direct3D (no dark seams)
   - [x] vsync plus a 60 fps cap (physics and AI break at thousands of fps)
@@ -59,8 +59,8 @@ Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its f
 - [ ] **64-bit build** — the code assumes 32-bit pointers in places
 - [ ] **Modern OpenGL** — the renderer runs on an OpenGL 3.3 core context: GLSL shaders reproduce the
   original Direct3D 8 renderer's materials and lighting (including car paint reflections, two-sided materials,
-  fading cars and characters), geometry lives in GPU buffers (done); still to do: native DXT textures, custom
-  shaders
+  fading cars and characters), geometry lives in GPU buffers, DXT textures stay compressed (done); still to do:
+  custom shaders
 - [ ] **Mods** — Mod Launcher mods load (custom files, Lua, Ogg audio, HD movies, custom text, car shop sellers,
   new dialogue characters, 3D phone booth); custom cars, characters, interiors and the other hacks are not
   implemented yet

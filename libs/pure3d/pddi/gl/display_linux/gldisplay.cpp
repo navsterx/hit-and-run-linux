@@ -241,6 +241,12 @@ bool pglDisplay::InitDisplay(const pddiDisplayInit* init)
         g_pglMaxTextureSize = 2048;
     }
 
+    // DXT textures stay compressed on the GPU where the driver takes them (every desktop driver; Mesa since 19.3)
+    extern bool g_pglTextureS3TC;           // gltex.cpp
+    g_pglTextureS3TC = CheckExtension((char*)"GL_EXT_texture_compression_s3tc") && getenv("SHAR_GL_NO_S3TC") == NULL;
+    if(!g_pglTextureS3TC)
+        fprintf(stderr, "PDDI: no S3TC texture compression: DXT textures are decompressed\n");
+
     CreateWorkerContexts(window, glContext);
     if(s_WorkerContextsCreated == 0)
     {

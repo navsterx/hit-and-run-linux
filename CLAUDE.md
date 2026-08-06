@@ -103,7 +103,9 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   contexts (`shar_SetThreadStartHook` / `shar_RunThreadStartHook`, called in radcontent's load loop); texture
   uploads are lazy on the render thread; max texture size cached.
 - `pglDisplay::SwapBuffers` must clear `reset` (else every texture re-uploads each frame and leaks).
-- PC data has DXT textures: decoded to RGBA in software (`p3d/dxtn.cpp`) since the GL pddi has none.
+- PC data has DXT textures (only in sprites: 4,083 front-end/HUD/loading images, 39 MB; models are all PNG): kept
+  compressed and uploaded with glCompressedTexImage2D (`gltex.cpp`, 2026-10-17), `p3d/dxtn.cpp` is the original
+  again. Without GL_EXT_texture_compression_s3tc (or with `SHAR_GL_NO_S3TC=1`) `gltex.cpp` decodes them in software.
 - radscript finds script classes via `typeid().name()`: MSVC format assumed; Linux demangles (`radtypeinfo.hpp`).
   Vtable slots in `srrtypes.typ` are MSVC's; they match GCC only without virtual dtors/overloads in scripted
   interfaces (true so far).
@@ -116,9 +118,10 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   To find which member is undefined, `VALGRIND_GET_VBITS` on the object plus `gdb -batch -ex "ptype /o Class"`
   maps byte offsets to members. Origins follow copies: the bad member may be far from the reported use. Input debug env vars: `SHAR_INPUT_LOG`, `SHAR_NO_INPUT`,
   `SHAR_NO_MOUSE`, `SHAR_KEY_SCRIPT="dik@startms-endms,..."` (1000+n = mouse button n), `SHAR_FORCE_MOUSELOOK`.
-- **Texture row order**: both pddis' `Lock()` hand out a bottom-up view (negative pitch), except D3D8 skips that
-  for DXT formats and copies blocks as-is. The software DXT decoder (`dxtn.cpp`) therefore delivers rows with
-  `Builder::BOTTOM` to cancel the GL flip; with `TOP`, DXT images (sprites, HUD portraits) came out upside down.
+- **Texture row order**: both pddis' `Lock()` hand out a bottom-up view (negative pitch), except for DXT formats,
+  whose blocks are copied as-is (D3D8's FillLockInfo; `pglTexture::Lock` does the same), so the art stores DXT
+  images bottom row first. A decoder feeding scanlines through the bottom-up view must use `Builder::BOTTOM`; with
+  `TOP` (the old software path), sprites and HUD portraits came out upside down.
 - **Frame timing**: D3D8 presented at the display rate; unsynced GL ran at 2,000-4,000 fps with mostly 0 ms frames
   (ms timer), which the 30-60 fps physics/AI never handled: traffic speed 0/0 = NaN (-> NaN engine sounds), cars
   launching over slopes. Now vsync on (`gldisplay.cpp`) plus a 60 fps cap in the main loop (`game.cpp`,
@@ -277,8 +280,8 @@ The base game is feature-complete but not yet verified end to end. In order:
    of the hacks Futurama lists at startup. Test with the user in the loop (shops, phone booth, dialogue).
 5. **Packaging**: install script or AppImage-style bundle (32-bit runtime libraries, FFmpeg, SDL2).
 6. **Steering-wheel force feedback**: only with a wheel to test on.
-7. **Modern OpenGL** (in progress on `dev`): core profile and D3D8 material parity done (see lessons); next native
-   DXT textures, then custom shader support (`pglDevice::AddCustomShader` is the pddi's hook, still empty).
+7. **Modern OpenGL** (in progress on `dev`): core profile, D3D8 material parity and native DXT done (see lessons);
+   next custom shader support (`pglDevice::AddCustomShader` is the pddi's hook, still empty).
 8. **Long term**: 64-bit build (pointer/int casts, fixed-size heaps), a possible Rust/Bevy reimplementation
    (`RUST.md`).
 
