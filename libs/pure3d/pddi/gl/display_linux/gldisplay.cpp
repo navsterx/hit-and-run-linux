@@ -15,6 +15,7 @@
 
 
 #include <pddi/gl/glcon.hpp>
+#include <pddi/gl/glpost.hpp>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -465,25 +466,10 @@ static void ApplyGamma( float gamma, int w, int h )
     }
 
     // what the pass changes (the pddi binds its own program and vertex array object before each draw)
-    static const GLenum caps[] = { GL_DEPTH_TEST, GL_STENCIL_TEST, GL_BLEND, GL_CULL_FACE, GL_SCISSOR_TEST };
-    GLboolean enabled[ 5 ];
-    for( int i = 0; i < 5; i++ )
-    {
-        enabled[ i ] = glIsEnabled( caps[ i ] );
-        glDisable( caps[ i ] );
-    }
-    GLboolean colourMask[ 4 ];
-    GLint viewport[ 4 ], polygonMode[ 2 ], texture = 0, activeTexture = 0;
-    glGetBooleanv( GL_COLOR_WRITEMASK, colourMask );
-    glGetIntegerv( GL_VIEWPORT, viewport );
-    glGetIntegerv( GL_POLYGON_MODE, polygonMode );
-    glGetIntegerv( GL_ACTIVE_TEXTURE, &activeTexture );
-    glActiveTexture( GL_TEXTURE0 );
-    glGetIntegerv( GL_TEXTURE_BINDING_2D, &texture );
-
-    glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
-    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+    pglScreenPassState saved;
+    saved.Save( );
     glViewport( 0, 0, w, h );
+    glBindFramebuffer( GL_READ_FRAMEBUFFER, 0 );
 
     glBindTexture( GL_TEXTURE_2D, s_gammaTexture );
     if( w != s_gammaTexW || h != s_gammaTexH )
@@ -506,16 +492,7 @@ static void ApplyGamma( float gamma, int w, int h )
     glBindVertexArray( 0 );
     glUseProgram( 0 );
 
-    glBindTexture( GL_TEXTURE_2D, texture );
-    glActiveTexture( activeTexture );
-    glPolygonMode( GL_FRONT_AND_BACK, polygonMode[ 0 ] );
-    glViewport( viewport[ 0 ], viewport[ 1 ], viewport[ 2 ], viewport[ 3 ] );
-    glColorMask( colourMask[ 0 ], colourMask[ 1 ], colourMask[ 2 ], colourMask[ 3 ] );
-    for( int i = 0; i < 5; i++ )
-    {
-        if( enabled[ i ] )
-            glEnable( caps[ i ] );
-    }
+    saved.Restore( );
 }
 
 static void MaybeScreenshot(int w, int h)
@@ -593,8 +570,24 @@ static void SwapWithVsync( SDL_Window* window )
     }
 }
 
+// the scene stage of the user's post-processing (glpost.hpp), called by the game before it draws the GUI layer
+static pglDisplay* s_display = NULL;
+
+void pglPostProcessScene()
+{
+    if( s_display )
+        s_display->PostProcess( PGL_POST_SCENE );
+}
+
+void pglDisplay::PostProcess( int stage )
+{
+    pglPostRun( (pglPostStage)stage, winWidth, winHeight, &pipeline );
+}
+
 void pglDisplay ::SwapBuffers()
 {
+    s_display = this;
+    PostProcess( PGL_POST_FINAL );
     ApplyGamma( gammaR, winWidth, winHeight );
     pipeline.Unbind( );     // the gamma pass bound its own program and vertex array object
     MaybeScreenshot( winWidth, winHeight );

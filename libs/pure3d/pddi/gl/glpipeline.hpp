@@ -20,8 +20,11 @@ public:
     ~pglProgram();
 
     // compiles and links; on failure prints the driver's log (prefixed with name) and returns false. header, if
-    // given, goes before both sources (then they leave out the #version line).
-    bool Build(const char* name, const char* vertexSource, const char* fragmentSource, const char* header = 0);
+    // given, goes before both sources (then they leave out the #version line); fragmentHeader, if given, goes before
+    // the fragment source instead.
+    bool Build(const char* name, const char* vertexSource, const char* fragmentSource, const char* header = 0,
+               const char* fragmentHeader = 0);
+    void Release();         // deletes the program (render thread)
     GLint Uniform(const char* name) const;
     GLuint Handle() const { return program; }
 
@@ -85,6 +88,7 @@ public:
 
     // matrices (column-major, as glLoadMatrixf took them)
     void SetProjection(const float* m);
+    const float* GetProjection() const { return projection; }
     void SetModelView(const float* m);
     void LoadIdentity();            // both, as BeginFrame did
 

@@ -47,10 +47,11 @@ static GLuint CompileShader(const char* name, GLenum type, const char* header, c
     return shader;
 }
 
-bool pglProgram::Build(const char* name, const char* vertexSource, const char* fragmentSource, const char* header)
+bool pglProgram::Build(const char* name, const char* vertexSource, const char* fragmentSource, const char* header,
+                       const char* fragmentHeader)
 {
     GLuint vs = CompileShader(name, GL_VERTEX_SHADER, header, vertexSource);
-    GLuint fs = CompileShader(name, GL_FRAGMENT_SHADER, header, fragmentSource);
+    GLuint fs = CompileShader(name, GL_FRAGMENT_SHADER, fragmentHeader ? fragmentHeader : header, fragmentSource);
     if(!vs || !fs)
     {
         if(vs) glDeleteShader(vs);
@@ -81,6 +82,13 @@ bool pglProgram::Build(const char* name, const char* vertexSource, const char* f
         return false;
     }
     return true;
+}
+
+void pglProgram::Release()
+{
+    if(program)
+        glDeleteProgram(program);
+    program = 0;
 }
 
 GLint pglProgram::Uniform(const char* name) const

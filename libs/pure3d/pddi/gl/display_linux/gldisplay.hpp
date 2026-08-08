@@ -52,6 +52,7 @@ public:
 
     void SetContext(pglContext* c) {context = c;}
     pglPipeline* GetPipeline(void) { return &pipeline; }
+    void PostProcess(int stage);    // user post-processing shaders, pglPostStage (glpost.cpp)
     bool ExtBGRA(void) { return extBGRA;}
     bool CheckExtension(char*);
     bool HasReset(void) { return reset; }

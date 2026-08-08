@@ -87,6 +87,10 @@
 #include <radmemorymonitor.hpp>
 #include <worldsim/worldphysicsmanager.h>
 #endif
+
+#ifdef RAD_LINUX
+void pglPostProcessScene();     // pddi/gl/glpost.hpp: the user's scene post-processing shaders
+#endif
 //******************************************************************************
 //
 // Global Data, Local Data, Local Classes
@@ -532,8 +536,20 @@ void RenderManager::ContextUpdate( unsigned int iElapsedTime )
     END_PROFILE( "Begin Frame" );
 
     // Render Stuff; call your Render shots, Tex.
+#ifdef RAD_LINUX
+    bool worldDrawn = false;    // Linux port: a layer below the GUI was drawn (for the scene post-processing)
+#endif
     for( int i=RenderEnums::numLayers-1; i>-1; i-- )
     {
+#ifdef RAD_LINUX
+        // Linux port: the user's "scene" post-processing shaders (pddi/gl/glpost.cpp) see the world, not the HUD
+        // (nor movies, which play in the presentation layer)
+        if( i == RenderEnums::GUI && worldDrawn &&
+            !( GetPresentationManager() && GetPresentationManager()->GetFMVPlayer()->IsPlaying() ) )
+        {
+            pglPostProcessScene();
+        }
+#endif
 #ifdef DEBUGINFO_ENABLED
         // We need to render the debug info just before we render the GUI layer
         //since rendering that layer changes the world matrix.
@@ -547,6 +563,9 @@ void RenderManager::ContextUpdate( unsigned int iElapsedTime )
     BEGIN_PROFILE( "Layers" );
             mpRenderLayers[i]->Render();
     END_PROFILE( "Layers" );
+#ifdef RAD_LINUX
+            worldDrawn |= ( i != RenderEnums::GUI );
+#endif
         }
     }
 

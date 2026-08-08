@@ -27,6 +27,7 @@ Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its f
   - [x] vsync plus a 60 fps cap (physics and AI break at thousands of fps)
   - [x] colour-write masks and alpha testing matching Direct3D (HUD map, see-through fences and ramps)
   - [x] OpenGL 3.3 core profile (shaders and GPU vertex buffers in place of fixed-function GL 1.x)
+  - [x] post-processing shaders of your own (GLSL files in `shaders/`: anti-aliasing, bloom, colour grading, CRT, ...)
 - [x] **Gameplay** — loads levels and plays; uninitialised reads that were zero by luck under MSVC fixed
 - [x] **Input** — keyboard and mouse (mouse look via relative mode), wired and wireless gamepads through SDL;
   verified in play; Start pauses; the menu cursor hides while a gamepad is in use
@@ -59,8 +60,8 @@ Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its f
 - [ ] **64-bit build** — the code assumes 32-bit pointers in places
 - [ ] **Modern OpenGL** — the renderer runs on an OpenGL 3.3 core context: GLSL shaders reproduce the
   original Direct3D 8 renderer's materials and lighting (including car paint reflections, two-sided materials,
-  fading cars and characters), geometry lives in GPU buffers, DXT textures stay compressed (done); still to do:
-  custom shaders
+  fading cars and characters), geometry lives in GPU buffers, DXT textures stay compressed, user post-processing
+  shaders (done); still to do: custom material shaders
 - [ ] **Mods** — Mod Launcher mods load (custom files, Lua, Ogg audio, HD movies, custom text, car shop sellers,
   new dialogue characters, 3D phone booth); custom cars, characters, interiors and the other hacks are not
   implemented yet
@@ -100,6 +101,10 @@ port/play.sh --data /path/to/game skipfe       # extra arguments go to the game 
 On first use it creates `run/` with links to the game data and a private copy of `simpsons.ini` and the save
 files, which the game writes to. Boot movies only play in the release build.
 
+Post-processing shaders (anti-aliasing, bloom, colour grading, a CRT look, or your own) are GLSL files in
+`run/shaders/`, switched on in its `post.ini` (all off at first); they reload while the game runs. See
+[`shaders/README.md`](shaders/README.md).
+
 Each session's console output is also written to `run/logs/last-session.log`. If the game crashes (or exits with
 an error, or is interrupted with Ctrl+C), the log is kept as `run/crashes/crash-<date>-<time>.log`, ending in a
 crash report with the backtrace resolved to source files and lines. Attach that file when reporting a crash.
@@ -119,6 +124,8 @@ crash report with the backtrace resolved to source files and lines. Attach that 
 | `SHAR_ASSERT_ABORT=1` | Make failed asserts abort instead of logging |
 | `SHAR_LOAD_BUDGET_MS=n` | Time per frame given to the background loader |
 | `SHAR_CRASH_HANDLER=0` | Don't install the crash-report signal handler |
+| `SHAR_SHADERS=dir`, `SHAR_POST=0` | Post-processing shaders folder (default `shaders/`), or post-processing off |
+| `SHAR_GL_DEBUG=1`, `SHAR_GL_STATS=1` | OpenGL debug messages; per-frame draw/upload counts and render times |
 
 `port/run.sh [seconds] [args]` rebuilds and runs the game under gdb, printing a backtrace on a crash.
 
@@ -130,4 +137,5 @@ crash report with the backtrace resolved to source files and lines. Attach that 
 | `libs/` | Radical's libraries: Pure3D renderer, radcore, radsound, radmovie, Scrooby UI, ... |
 | `build/` | Original Visual Studio projects (read by the generator) |
 | `port/` | Everything added for the port: generator, compatibility layer (`compat/`), scripts |
+| `shaders/` | Example post-processing shaders and their documentation (copied to `run/shaders/`) |
 | `CLAUDE.md` | Detailed porting notes: platform model and the Windows-to-Linux differences that mattered |

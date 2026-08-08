@@ -1,0 +1,407 @@
+//=============================================================================
+// Linux port: user post-processing shaders (see glpost.hpp, shaders/README.md).
+//=============================================================================
+
+#include <pddi/gl/glpost.hpp>
+#include <pddi/gl/glpipeline.hpp>
+
+#include <SDL2/SDL.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+
+//-----------------------------------------------------------------------------
+// Saving and restoring the state a screen pass touches
+//-----------------------------------------------------------------------------
+
+static const GLenum s_passCaps[5] = { GL_DEPTH_TEST, GL_STENCIL_TEST, GL_BLEND, GL_CULL_FACE, GL_SCISSOR_TEST };
+
+void pglScreenPassState::Save()
+{
+    for(int i = 0; i < 5; i++)
+    {
+        enabled[i] = glIsEnabled(s_passCaps[i]);
+        glDisable(s_passCaps[i]);
+    }
+    glGetBooleanv(GL_COLOR_WRITEMASK, colourMask);
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    glGetIntegerv(GL_POLYGON_MODE, polygonMode);
+    glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
+    for(int i = 0; i < 3; i++)
+    {
+        glActiveTexture(GL_TEXTURE0 + i);
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &textures[i]);
+    }
+    glActiveTexture(GL_TEXTURE0);
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFramebuffer);
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFramebuffer);
+
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+}
+
+void pglScreenPassState::Restore()
+{
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFramebuffer);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, readFramebuffer);
+    for(int i = 2; i >= 0; i--)
+    {
+        glActiveTexture(GL_TEXTURE0 + i);
+        glBindTexture(GL_TEXTURE_2D, textures[i]);
+    }
+    glActiveTexture(activeTexture);
+    glPolygonMode(GL_FRONT_AND_BACK, polygonMode[0]);
+    glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+    glColorMask(colourMask[0], colourMask[1], colourMask[2], colourMask[3]);
+    for(int i = 0; i < 5; i++)
+    {
+        if(enabled[i])
+            glEnable(s_passCaps[i]);
+    }
+}
+
+//-----------------------------------------------------------------------------
+// Passes
+//-----------------------------------------------------------------------------
+
+// one triangle covering the screen, made from the vertex index (no vertex data)
+static const char* s_passVertexSource =
+    "#version 330 core\n"
+    "out vec2 vUV;\n"
+    "void main()\n"
+    "{\n"
+    "    vec2 p = vec2(gl_VertexID == 1 ? 3.0 : -1.0, gl_VertexID == 2 ? 3.0 : -1.0);\n"
+    "    vUV = p * 0.5 + 0.5;\n"
+    "    gl_Position = vec4(p, 0.0, 1.0);\n"
+    "}\n";
+
+// goes before every user file (which therefore has no #version line); #line 1 makes the driver's error messages
+// count lines in the user's file
+static const char* s_passHeader =
+    "#version 330 core\n"
+    "in vec2 vUV;\n"
+    "out vec4 fragColour;\n"
+    "uniform sampler2D uScene;\n"
+    "uniform sampler2D uOriginal;\n"
+    "uniform sampler2D uDepth;\n"
+    "uniform vec2 uResolution;\n"
+    "uniform float uTime;\n"
+    "uniform int uFrame;\n"
+    "uniform float uNear;\n"
+    "uniform float uFar;\n"
+    "float LinearDepth(vec2 uv)\n"
+    "{\n"
+    "    float d = texture(uDepth, uv).r;\n"
+    "    if(uFar <= 0.0)\n"
+    "        return d;\n"
+    "    float z = d * 2.0 - 1.0;\n"
+    "    return 2.0 * uNear * uFar / (uFar + uNear - z * (uFar - uNear));\n"
+    "}\n"
+    "#line 1\n";
+
+const int MAX_PASSES = 16;
+
+struct Pass
+{
+    char file[256];             // as listed in post.ini (relative to the shaders folder)
+    time_t mtime;
+    pglProgram program;
+    bool ok;
+    GLint uScene, uOriginal, uDepth, uResolution, uTime, uFrame, uNear, uFar;
+};
+
+static Pass s_passes[PGL_POST_STAGES][MAX_PASSES];
+static int s_passCount[PGL_POST_STAGES];
+static char s_folder[512];
+static time_t s_iniTime;
+static Uint32 s_lastCheck;
+static int s_state = 0;         // 0 not set up, 1 set up, -1 off (SHAR_POST=0)
+
+static GLuint s_vao, s_original, s_pingPong[2], s_framebuffers[2], s_depth;
+static int s_texW, s_texH;
+static bool s_depthBroken;
+
+static time_t FileTime(const char* path)
+{
+    struct stat st;
+    return stat(path, &st) == 0 ? st.st_mtime : 0;
+}
+
+static char* ReadFile(const char* path)
+{
+    FILE* f = fopen(path, "rb");
+    if(!f)
+        return NULL;
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char* text = (char*)malloc(size + 1);
+    if(text)
+    {
+        size = (long)fread(text, 1, size, f);
+        text[size] = 0;
+    }
+    fclose(f);
+    return text;
+}
+
+static void BuildPass(Pass& p)
+{
+    char path[800];
+    snprintf(path, sizeof(path), "%s/%s", s_folder, p.file);
+    p.mtime = FileTime(path);
+    p.program.Release();
+    p.ok = false;
+
+    char* source = ReadFile(path);
+    if(!source)
+    {
+        fprintf(stderr, "PDDI: post-processing: can't read %s\n", path);
+        return;
+    }
+    p.ok = p.program.Build(path, s_passVertexSource, source, NULL, s_passHeader);
+    free(source);
+    if(!p.ok)
+        return;
+
+    glUseProgram(p.program.Handle());
+    p.uScene = p.program.Uniform("uScene");
+    p.uOriginal = p.program.Uniform("uOriginal");
+    p.uDepth = p.program.Uniform("uDepth");
+    p.uResolution = p.program.Uniform("uResolution");
+    p.uTime = p.program.Uniform("uTime");
+    p.uFrame = p.program.Uniform("uFrame");
+    p.uNear = p.program.Uniform("uNear");
+    p.uFar = p.program.Uniform("uFar");
+    glUniform1i(p.uScene, 0);
+    glUniform1i(p.uOriginal, 1);
+    glUniform1i(p.uDepth, 2);
+    glUseProgram(0);
+}
+
+// post.ini: "[scene]" and "[final]" sections, one shader file per line (relative to the shaders folder), run in
+// order; '#' or ';' starts a comment
+static void LoadConfig()
+{
+    for(int s = 0; s < PGL_POST_STAGES; s++)
+    {
+        for(int i = 0; i < s_passCount[s]; i++)
+            s_passes[s][i].program.Release();
+        s_passCount[s] = 0;
+    }
+
+    char path[600];
+    snprintf(path, sizeof(path), "%s/post.ini", s_folder);
+    s_iniTime = FileTime(path);
+    char* text = ReadFile(path);
+    if(!text)
+        return;
+
+    int stage = -1;
+    for(char* line = strtok(text, "\r\n"); line; line = strtok(NULL, "\r\n"))
+    {
+        char* c = strpbrk(line, "#;");
+        if(c)
+            *c = 0;
+        while(*line == ' ' || *line == '\t')
+            line++;
+        char* end = line + strlen(line);
+        while(end > line && (end[-1] == ' ' || end[-1] == '\t'))
+            *--end = 0;
+        if(!*line)
+            continue;
+        if(strcmp(line, "[scene]") == 0)
+            stage = PGL_POST_SCENE;
+        else if(strcmp(line, "[final]") == 0)
+            stage = PGL_POST_FINAL;
+        else if(line[0] == '[')
+        {
+            fprintf(stderr, "PDDI: post-processing: unknown section %s in %s\n", line, path);
+            stage = -1;
+        }
+        else if(stage < 0)
+            fprintf(stderr, "PDDI: post-processing: %s is outside [scene] or [final] in %s\n", line, path);
+        else if(s_passCount[stage] == MAX_PASSES)
+            fprintf(stderr, "PDDI: post-processing: more than %d passes in a stage, %s left out\n", MAX_PASSES, line);
+        else
+        {
+            Pass& p = s_passes[stage][s_passCount[stage]++];
+            snprintf(p.file, sizeof(p.file), "%s", line);
+            BuildPass(p);
+        }
+    }
+    free(text);
+
+    for(int s = 0; s < PGL_POST_STAGES; s++)
+    {
+        if(!s_passCount[s])
+            continue;
+        fprintf(stderr, "PDDI: post-processing, %s stage:", s == PGL_POST_SCENE ? "scene" : "final");
+        for(int i = 0; i < s_passCount[s]; i++)
+            fprintf(stderr, " %s%s", s_passes[s][i].file, s_passes[s][i].ok ? "" : " (failed)");
+        fprintf(stderr, "\n");
+    }
+}
+
+// once a second: post.ini or a shader changed -> reload (a shader that no longer builds is skipped until fixed)
+static void CheckForChanges()
+{
+    Uint32 now = SDL_GetTicks();
+    if(s_state == 1 && now - s_lastCheck < 1000)
+        return;
+    s_lastCheck = now;
+
+    if(s_state == 0)
+    {
+        const char* e = getenv("SHAR_POST");
+        if(e && e[0] == '0')
+        {
+            s_state = -1;
+            return;
+        }
+        const char* folder = getenv("SHAR_SHADERS");
+        snprintf(s_folder, sizeof(s_folder), "%s", folder && *folder ? folder : "shaders");
+        s_state = 1;
+        LoadConfig();
+        return;
+    }
+
+    char path[600];
+    snprintf(path, sizeof(path), "%s/post.ini", s_folder);
+    if(FileTime(path) != s_iniTime)
+    {
+        LoadConfig();
+        return;
+    }
+    for(int s = 0; s < PGL_POST_STAGES; s++)
+    {
+        for(int i = 0; i < s_passCount[s]; i++)
+        {
+            Pass& p = s_passes[s][i];
+            char file[800];
+            snprintf(file, sizeof(file), "%s/%s", s_folder, p.file);
+            if(FileTime(file) != p.mtime)
+            {
+                BuildPass(p);
+                fprintf(stderr, "PDDI: post-processing: reloaded %s%s\n", p.file, p.ok ? "" : " (failed)");
+            }
+        }
+    }
+}
+
+static void SetupTexture(GLuint texture, GLint internalFormat, GLenum format, GLenum type, GLint filter, int w, int h)
+{
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+}
+
+static void SetupTargets(int w, int h)
+{
+    if(!s_vao)
+    {
+        glGenVertexArrays(1, &s_vao);
+        glGenTextures(1, &s_original);
+        glGenTextures(2, s_pingPong);
+        glGenTextures(1, &s_depth);
+        glGenFramebuffers(2, s_framebuffers);
+    }
+    if(w == s_texW && h == s_texH)
+        return;
+    s_texW = w;
+    s_texH = h;
+    SetupTexture(s_original, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, GL_LINEAR, w, h);
+    SetupTexture(s_depth, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, GL_NEAREST, w, h);
+    for(int i = 0; i < 2; i++)
+    {
+        SetupTexture(s_pingPong[i], GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, GL_LINEAR, w, h);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_framebuffers[i]);
+        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_pingPong[i], 0);
+    }
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+}
+
+void pglPostRun(pglPostStage stage, int w, int h, pglPipeline* pipeline)
+{
+    CheckForChanges();
+    if(s_state != 1 || w <= 0 || h <= 0)
+        return;
+
+    Pass* passes[MAX_PASSES];
+    int n = 0;
+    bool needDepth = false;
+    for(int i = 0; i < s_passCount[stage]; i++)
+    {
+        if(!s_passes[stage][i].ok)
+            continue;
+        passes[n++] = &s_passes[stage][i];
+        needDepth |= s_passes[stage][i].uDepth >= 0;
+    }
+    if(n == 0)
+        return;
+
+    pglScreenPassState saved;
+    saved.Save();
+    SetupTargets(w, h);
+
+    // the frame so far, and the depth buffer if a pass reads it (copying into a depth texture reads depth)
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    glReadBuffer(GL_BACK);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, s_original);
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, s_depth);
+    if(needDepth && !s_depthBroken)
+    {
+        while(glGetError() != GL_NO_ERROR) {}
+        glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h);
+        if(glGetError() != GL_NO_ERROR)
+        {
+            fprintf(stderr, "PDDI: post-processing: the depth buffer can't be copied: uDepth reads 0\n");
+            s_depthBroken = true;
+        }
+    }
+
+    // near and far planes of the last perspective projection (0 when it was not one)
+    float nearPlane = 0.0f, farPlane = 0.0f;
+    const float* m = pipeline->GetProjection();
+    if(m[11] == -1.0f && m[10] != 1.0f && m[10] != -1.0f)
+    {
+        nearPlane = m[14] / (m[10] - 1.0f);
+        farPlane = m[14] / (m[10] + 1.0f);
+    }
+
+    static int s_frame = 0;
+    s_frame++;
+    float time = SDL_GetTicks() / 1000.0f;
+
+    glViewport(0, 0, w, h);
+    glBindVertexArray(s_vao);
+    GLuint input = s_original;
+    for(int i = 0; i < n; i++)
+    {
+        Pass& p = *passes[i];
+        bool last = i == n - 1;
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, last ? saved.drawFramebuffer : s_framebuffers[i & 1]);
+        glUseProgram(p.program.Handle());
+        glUniform2f(p.uResolution, (float)w, (float)h);
+        glUniform1f(p.uTime, time);
+        glUniform1i(p.uFrame, s_frame);
+        glUniform1f(p.uNear, nearPlane);
+        glUniform1f(p.uFar, farPlane);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, input);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        input = s_pingPong[i & 1];
+    }
+    glBindVertexArray(0);
+    glUseProgram(0);
+
+    saved.Restore();
+    pipeline->Unbind();
+}

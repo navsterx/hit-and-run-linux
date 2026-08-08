@@ -35,6 +35,8 @@ port/                      everything added for the port
                            shar_crash.* (SIGSEGV/BUS/ILL/FPE/ABRT -> crash report on stderr; SHAR_CRASH_HANDLER=0 off),
                            pddi_heap.cpp (renderer's private heap), valgrind/ (client-request headers),
                            shar_mods.* (Mod Launcher mods, see below)
+shaders/                   example post-processing shaders + README (play.sh copies them to run/shaders/, or links the
+                           game dir's shaders/); format and uniforms in shaders/README.md
 mod/tools/                 modding tools: lmlm_extract.py (unpacks Mod Launcher .lmlm "LSPA" packages)
 port/third_party/lua/      Lua 5.4.8 (MIT), for mods' scripts
 build-linux/               release build (RAD_RELEASE)     cmake -B build-linux -G Ninja
@@ -224,6 +226,13 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   (traffic/character/vehicle fades), D3D8's blend table with equations (subtract drew opaque, shadow volumes use it).
   Not ported (unused): lightmap, layered, projtex, pointsprite, toon; multi-CBV (2 front-end materials, mode = plain);
   flat shading (25 materials draw Gouraud).
+  Post-processing (2026-10-18, `pddi/gl/glpost.cpp`): `shaders/post.ini` lists GLSL fragment passes in [scene]
+  (run by `RenderManager` just before the GUI layer, only when a lower layer drew and no FMV plays) and [final]
+  (`pglDisplay::SwapBuffers`, before gamma). The back buffer is copied to a texture, passes ping-pong through two
+  FBOs, the last draws to the back buffer; depth is copied (glCopyTexSubImage2D into a DEPTH_COMPONENT24 texture)
+  only when a pass uses uDepth. `pglScreenPassState` saves/restores what a screen pass touches, including texture
+  units 0-2 (the pddi rebinds textures only when the shader changes). Files reload on change (mtime, once a
+  second). All 10 examples together: ~0.25 ms/frame at 720p. Debug logs contain NULs: grep them with -a.
 
 ## Mods (Lucas' Mod Launcher format)
 
@@ -274,14 +283,17 @@ The base game is feature-complete but not yet verified end to end. In order:
    context), missing-data tolerance where cheap. Seen once (2026-10-16, not reproduced): quitting during a level
    load spun in `LoadingManager::CancelPendingRequests` waiting for the current load. Fixed 2026-10-17: shutting
    down with a vehicle sound playing overflowed the stack (`~PositionalSoundPlayer` deleted its owner).
+   Debug build, Ctrl+C from inside a level (2026-10-17): `SimEnvironment::GetCurrentDefaultSimEnvironment() == NULL`
+   and `SimUnits::Reset: there is still some instances` assert during teardown (harmless so far).
 4. **Mods, small to large**: CustomShopSupport item lists (PhoneBooth/SkinShop Free/Included/ExcludedItems),
    3D phone booth DarkenLockedCars, CustomDialogueCharacterCodes outfit voices, CustomText Language setting; then
    CustomCarSupport (unblocks the Futurama demo's cars), custom characters, interiors, audio, traffic and the rest
    of the hacks Futurama lists at startup. Test with the user in the loop (shops, phone booth, dialogue).
 5. **Packaging**: install script or AppImage-style bundle (32-bit runtime libraries, FFmpeg, SDL2).
 6. **Steering-wheel force feedback**: only with a wheel to test on.
-7. **Modern OpenGL** (in progress on `dev`): core profile, D3D8 material parity and native DXT done (see lessons);
-   next custom shader support (`pglDevice::AddCustomShader` is the pddi's hook, still empty).
+7. **Modern OpenGL** (in progress on `dev`): core profile, D3D8 material parity, native DXT and user post-processing
+   done (see lessons); next custom material shaders from GLSL files (`pglDevice::AddCustomShader` is the pddi's hook,
+   still empty; the user wants them both from the shaders folder and from mods).
 8. **Long term**: 64-bit build (pointer/int casts, fixed-size heaps), a possible Rust/Bevy reimplementation
    (`RUST.md`).
 
