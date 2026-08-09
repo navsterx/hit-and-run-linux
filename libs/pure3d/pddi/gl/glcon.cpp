@@ -127,6 +127,7 @@ void pglContext::BeginFrame()
     pglFlushPendingDeletes();
     pipeline->LoadIdentity();
     pipeline->FrameStats();
+    display->BeginFrameTarget();    // Linux port: the multisampled framebuffer, when anti-aliasing is on
 }
 
 void pglContext::EndFrame()

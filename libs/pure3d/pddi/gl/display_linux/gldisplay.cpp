@@ -65,8 +65,15 @@ static void APIENTRY DebugMessage( GLenum source, GLenum type, GLuint id, GLenum
     }
 }
 
+static pglDisplay* s_display = NULL;      // the display (one), for the game's calls into the renderer
+
 pglDisplay::pglDisplay()
 {
+    s_display = this;
+    msaaRequested = msaaSamples = msaaWidth = msaaHeight = 0;
+    msaaFramebuffer = msaaColour = msaaDepth = 0;
+    msaaBound = false;
+    SetAntialiasing( 4 );       // until the settings are read (Win32Platform's default too)
     mode = PDDI_DISPLAY_WINDOW;
     winWidth = 640;
     winHeight = 480;
@@ -571,8 +578,6 @@ static void SwapWithVsync( SDL_Window* window )
 }
 
 // the scene stage of the user's post-processing (glpost.hpp), called by the game before it draws the GUI layer
-static pglDisplay* s_display = NULL;
-
 void pglPostProcessScene()
 {
     if( s_display )
@@ -581,7 +586,119 @@ void pglPostProcessScene()
 
 void pglDisplay::PostProcess( int stage )
 {
+    ResolveFrame( );
     pglPostRun( (pglPostStage)stage, winWidth, winHeight, &pipeline );
+}
+
+//-----------------------------------------------------------------------------
+// Multisample anti-aliasing
+//-----------------------------------------------------------------------------
+
+// for the game's settings (Win32Platform::LoadConfig: simpsons.ini antialiasing=)
+void pglSetAntialiasing( int samples )
+{
+    if( s_display )
+        s_display->SetAntialiasing( samples );
+}
+
+void pglDisplay::SetAntialiasing( int samples )
+{
+    const char* e = getenv( "SHAR_MSAA" );     // overrides the setting
+    msaaRequested = e ? atoi( e ) : samples;
+}
+
+void pglDisplay::BeginFrameTarget( void )
+{
+    msaaBound = false;
+    int samples = msaaRequested;
+    static GLint s_maxSamples = -1;
+    if( samples > 1 && s_maxSamples < 0 )
+    {
+        s_maxSamples = 0;
+        glGetIntegerv( GL_MAX_SAMPLES, &s_maxSamples );
+    }
+    if( samples > s_maxSamples )
+        samples = s_maxSamples;
+    if( samples < 2 || winWidth <= 0 || winHeight <= 0 )
+    {
+        if( msaaSamples )
+        {
+            fprintf( stderr, "PDDI: anti-aliasing off\n" );
+            msaaSamples = 0;
+        }
+        return;
+    }
+
+    if( samples != msaaSamples || winWidth != msaaWidth || winHeight != msaaHeight )
+    {
+        if( !msaaFramebuffer )
+        {
+            glGenFramebuffers( 1, &msaaFramebuffer );
+            glGenRenderbuffers( 1, &msaaColour );
+            glGenRenderbuffers( 1, &msaaDepth );
+        }
+        while( glGetError( ) != GL_NO_ERROR ) {}
+        glBindRenderbuffer( GL_RENDERBUFFER, msaaColour );
+        glRenderbufferStorageMultisample( GL_RENDERBUFFER, samples, GL_RGBA8, winWidth, winHeight );
+        glBindRenderbuffer( GL_RENDERBUFFER, msaaDepth );
+        glRenderbufferStorageMultisample( GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, winWidth, winHeight );   // as the window's
+        glBindRenderbuffer( GL_RENDERBUFFER, 0 );
+        glBindFramebuffer( GL_FRAMEBUFFER, msaaFramebuffer );
+        glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, msaaColour );
+        glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, msaaDepth );
+        GLenum status = glCheckFramebufferStatus( GL_FRAMEBUFFER );
+        GLenum error = glGetError( );
+        glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+        if( status != GL_FRAMEBUFFER_COMPLETE || error != GL_NO_ERROR )
+        {
+            // out of video memory at a large size, typically: carry on without
+            fprintf( stderr, "PDDI: %dx anti-aliasing unavailable at %dx%d (status 0x%x, error 0x%x): off\n",
+                     samples, winWidth, winHeight, status, error );
+            msaaRequested = 0;
+            msaaSamples = 0;
+            return;
+        }
+        if( samples != msaaSamples )
+            fprintf( stderr, "PDDI: %dx anti-aliasing\n", samples );
+        msaaSamples = samples;
+        msaaWidth = winWidth;
+        msaaHeight = winHeight;
+    }
+
+    glBindFramebuffer( GL_FRAMEBUFFER, msaaFramebuffer );
+    msaaBound = true;
+}
+
+void pglDisplay::ResolveFrame( void )
+{
+    if( !msaaBound )
+        return;
+    msaaBound = false;
+
+    // a blit is clipped by the scissor test; write masks are opened in case the driver applies them
+    GLboolean scissor = glIsEnabled( GL_SCISSOR_TEST );
+    GLboolean colourMask[ 4 ], depthMask;
+    GLint stencilMask;
+    glGetBooleanv( GL_COLOR_WRITEMASK, colourMask );
+    glGetBooleanv( GL_DEPTH_WRITEMASK, &depthMask );
+    glGetIntegerv( GL_STENCIL_WRITEMASK, &stencilMask );
+    glDisable( GL_SCISSOR_TEST );
+    glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
+    glDepthMask( GL_TRUE );
+    glStencilMask( 0xff );
+
+    // depth and stencil too: the GUI layer is drawn into the window afterwards and may test against them
+    glBindFramebuffer( GL_READ_FRAMEBUFFER, msaaFramebuffer );
+    glBindFramebuffer( GL_DRAW_FRAMEBUFFER, 0 );
+    glBlitFramebuffer( 0, 0, msaaWidth, msaaHeight, 0, 0, msaaWidth, msaaHeight,
+                       GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST );
+    glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+
+    glStencilMask( stencilMask );
+    glDepthMask( depthMask );
+    glColorMask( colourMask[ 0 ], colourMask[ 1 ], colourMask[ 2 ], colourMask[ 3 ] );
+    if( scissor )
+        glEnable( GL_SCISSOR_TEST );
 }
 
 void pglDisplay ::SwapBuffers()

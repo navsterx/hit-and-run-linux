@@ -27,6 +27,7 @@ Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its f
   - [x] vsync plus a 60 fps cap (physics and AI break at thousands of fps)
   - [x] colour-write masks and alpha testing matching Direct3D (HUD map, see-through fences and ramps)
   - [x] OpenGL 3.3 core profile (shaders and GPU vertex buffers in place of fixed-function GL 1.x)
+  - [x] multisample anti-aliasing (4x by default; `antialiasing=` in `simpsons.ini`)
   - [x] post-processing shaders of your own (GLSL files in `shaders/`: anti-aliasing, bloom, colour grading, CRT, ...)
 - [x] **Gameplay** — loads levels and plays; uninitialised reads that were zero by luck under MSVC fixed
 - [x] **Input** — keyboard and mouse (mouse look via relative mode), wired and wireless gamepads through SDL;
@@ -101,6 +102,9 @@ port/play.sh --data /path/to/game skipfe       # extra arguments go to the game 
 On first use it creates `run/` with links to the game data and a private copy of `simpsons.ini` and the save
 files, which the game writes to. Boot movies only play in the release build.
 
+Anti-aliasing (MSAA) is on at 4x. To change it, set `antialiasing=` in the `#System` section of
+`run/simpsons.ini` to 0 (off), 2, 4, 8 or 16; the game adds the line itself the first time it saves its settings.
+
 Post-processing shaders (anti-aliasing, bloom, colour grading, a CRT look, or your own) are GLSL files in
 `run/shaders/`, switched on in its `post.ini` (all off at first); they reload while the game runs. See
 [`shaders/README.md`](shaders/README.md).
@@ -124,6 +128,7 @@ crash report with the backtrace resolved to source files and lines. Attach that 
 | `SHAR_ASSERT_ABORT=1` | Make failed asserts abort instead of logging |
 | `SHAR_LOAD_BUDGET_MS=n` | Time per frame given to the background loader |
 | `SHAR_CRASH_HANDLER=0` | Don't install the crash-report signal handler |
+| `SHAR_MSAA=n` | Anti-aliasing samples, overriding `simpsons.ini` (0 = off) |
 | `SHAR_SHADERS=dir`, `SHAR_POST=0` | Post-processing shaders folder (default `shaders/`), or post-processing off |
 | `SHAR_GL_DEBUG=1`, `SHAR_GL_STATS=1` | OpenGL debug messages; per-frame draw/upload counts and render times |
 

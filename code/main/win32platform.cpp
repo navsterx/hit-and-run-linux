@@ -16,6 +16,10 @@
 // Standard Lib
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef RAD_LINUX
+void pglSetAntialiasing( int samples );     // pddi/gl/display_linux/gldisplay.cpp: MSAA
+#endif
 // Pure 3D
 #include <p3d/anim/compositedrawable.hpp>
 #include <p3d/anim/expression.hpp>
@@ -1171,7 +1175,19 @@ void Win32Platform::LoadConfig( ConfigString& config )
                 GetRenderFlow()->SetGamma( val );
             }
         }
+#ifdef RAD_LINUX
+        else if( _stricmp( property, "antialiasing" ) == 0 )
+        {
+            // Linux port: multisample anti-aliasing, samples per pixel (0 or 1 = off; the renderer caps it at what
+            // the graphics card supports)
+            mAntialiasing = atoi( value );
+        }
+#endif
     }
+
+#ifdef RAD_LINUX
+    pglSetAntialiasing( mAntialiasing );
+#endif
 
     // apply the new settings.
     SetResolution( mResolution, mbpp, mFullscreen );
@@ -1270,6 +1286,12 @@ void Win32Platform::SaveConfig( ConfigString& config )
     char gamma[20];
     sprintf( gamma, "%f", GetRenderFlow()->GetGamma() );
     config.WriteProperty( "gamma", gamma );
+
+#ifdef RAD_LINUX
+    char antialiasing[ 20 ];
+    sprintf( antialiasing, "%d", mAntialiasing );
+    config.WriteProperty( "antialiasing", antialiasing );
+#endif
 }
 
 
@@ -1299,6 +1321,7 @@ Win32Platform::Win32Platform( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPST
     mFullscreen = false;
 #ifdef RAD_LINUX
     mBorderless = true;     // fullscreen without a display=... setting is borderless
+    mAntialiasing = 4;      // 4x MSAA unless simpsons.ini says otherwise
 #endif
 
 #ifdef RAD_LINUX

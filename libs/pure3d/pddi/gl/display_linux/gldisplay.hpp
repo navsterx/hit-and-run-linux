@@ -53,6 +53,13 @@ public:
     void SetContext(pglContext* c) {context = c;}
     pglPipeline* GetPipeline(void) { return &pipeline; }
     void PostProcess(int stage);    // user post-processing shaders, pglPostStage (glpost.cpp)
+
+    // Linux port: multisample anti-aliasing. Frames are drawn into a multisampled framebuffer (bound by
+    // BeginFrameTarget), resolved into the window by ResolveFrame: before the HUD when the game drew the 3D world
+    // (the scene post-processing point), else before the swap. Changes apply on the next frame.
+    void SetAntialiasing(int samples);
+    void BeginFrameTarget(void);    // pglContext::BeginFrame
+    void ResolveFrame(void);
     bool ExtBGRA(void) { return extBGRA;}
     bool CheckExtension(char*);
     bool HasReset(void) { return reset; }
@@ -83,6 +90,10 @@ private:
 
     bool extBGRA;
     bool reset;
+
+    int msaaRequested, msaaSamples, msaaWidth, msaaHeight;
+    GLuint msaaFramebuffer, msaaColour, msaaDepth;
+    bool msaaBound;
 
     struct timeval beginTime;
 };

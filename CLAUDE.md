@@ -233,6 +233,14 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   only when a pass uses uDepth. `pglScreenPassState` saves/restores what a screen pass touches, including texture
   units 0-2 (the pddi rebinds textures only when the shader changes). Files reload on change (mtime, once a
   second). All 10 examples together: ~0.25 ms/frame at 720p. Debug logs contain NULs: grep them with -a.
+  MSAA (2026-10-18): an offscreen multisampled FBO (RGBA8 + DEPTH24_STENCIL8, as the window) is bound in
+  `pglContext::BeginFrame` (`pglDisplay::BeginFrameTarget`) and blitted (colour, depth, stencil) into the window by
+  `ResolveFrame`, at the scene post-processing point (so the GUI layer draws into the window, single-sampled) or at
+  the swap. Chosen over a multisampled window because simpsons.ini is read after the GL context exists
+  (`Win32Platform::LoadConfig` -> `pglSetAntialiasing`; `antialiasing=`, default 4; `SHAR_MSAA` overrides), so the
+  setting applies on the next frame without recreating the window. Capped at GL_MAX_SAMPLES; an incomplete FBO
+  (out of VRAM) turns it off with a message. Cost at 2560x1440: ~0.2-0.3 ms GPU. Alpha-tested edges (fences,
+  foliage) are not smoothed (alpha-to-coverage not used).
 
 ## Mods (Lucas' Mod Launcher format)
 
@@ -284,7 +292,8 @@ The base game is feature-complete but not yet verified end to end. In order:
    load spun in `LoadingManager::CancelPendingRequests` waiting for the current load. Fixed 2026-10-17: shutting
    down with a vehicle sound playing overflowed the stack (`~PositionalSoundPlayer` deleted its owner).
    Debug build, Ctrl+C from inside a level (2026-10-17): `SimEnvironment::GetCurrentDefaultSimEnvironment() == NULL`
-   and `SimUnits::Reset: there is still some instances` assert during teardown (harmless so far).
+   and `SimUnits::Reset: there is still some instances` assert during teardown (harmless so far); with a file
+   request in flight also radFileSystem "not all files/requests were destroyed" and `s_ThreadTable[ i ] == NULL`.
 4. **Mods, small to large**: CustomShopSupport item lists (PhoneBooth/SkinShop Free/Included/ExcludedItems),
    3D phone booth DarkenLockedCars, CustomDialogueCharacterCodes outfit voices, CustomText Language setting; then
    CustomCarSupport (unblocks the Futurama demo's cars), custom characters, interiors, audio, traffic and the rest
