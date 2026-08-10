@@ -315,6 +315,7 @@ void pglMat::SetupStandard(pglPipeline::Material& m)
     m.alphaCompare = texEnv[i].alphaTest ? (int)texEnv[i].alphaCompareMode : -1;
     m.alphaRef = texEnv[i].alphaRef;
 
+    m.blended = texEnv[i].alphaBlendMode != PDDI_BLEND_NONE;
     if(texEnv[i].alphaBlendMode == PDDI_BLEND_NONE)
     {
         glDisable(GL_BLEND);

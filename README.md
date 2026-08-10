@@ -27,7 +27,8 @@ Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its f
   - [x] vsync plus a 60 fps cap (physics and AI break at thousands of fps)
   - [x] colour-write masks and alpha testing matching Direct3D (HUD map, see-through fences and ramps)
   - [x] OpenGL 3.3 core profile (shaders and GPU vertex buffers in place of fixed-function GL 1.x)
-  - [x] multisample anti-aliasing (4x by default; `antialiasing=` in `simpsons.ini`)
+  - [x] multisample anti-aliasing (4x by default; `antialiasing=` in `simpsons.ini`), with alpha-to-coverage so
+    cut-out textures (fences, foliage) get smooth edges too
   - [x] post-processing shaders of your own (GLSL files in `shaders/`: anti-aliasing, bloom, colour grading, CRT, ...)
 - [x] **Gameplay** — loads levels and plays; uninitialised reads that were zero by luck under MSVC fixed
 - [x] **Input** — keyboard and mouse (mouse look via relative mode), wired and wireless gamepads through SDL;
@@ -129,6 +130,7 @@ crash report with the backtrace resolved to source files and lines. Attach that 
 | `SHAR_LOAD_BUDGET_MS=n` | Time per frame given to the background loader |
 | `SHAR_CRASH_HANDLER=0` | Don't install the crash-report signal handler |
 | `SHAR_MSAA=n` | Anti-aliasing samples, overriding `simpsons.ini` (0 = off) |
+| `SHAR_ALPHA_TO_COVERAGE=0` | Hard edges on cut-out textures even with anti-aliasing |
 | `SHAR_SHADERS=dir`, `SHAR_POST=0` | Post-processing shaders folder (default `shaders/`), or post-processing off |
 | `SHAR_GL_DEBUG=1`, `SHAR_GL_STATS=1` | OpenGL debug messages; per-frame draw/upload counts and render times |
 

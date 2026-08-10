@@ -210,6 +210,7 @@ static const char* s_fragmentSource =
     "uniform float uFogScale;\n"
     "uniform int uAlphaCompare;\n"
     "uniform float uAlphaRef;\n"
+    "uniform bool uAlphaToCoverage;\n"
     "out vec4 fragColour;\n"
     "void main()\n"
     "{\n"
@@ -225,6 +226,17 @@ static const char* s_fragmentSource =
     "    c.rgb = min(c.rgb + vSpecular, 1.0);\n"
     "    if(uFog)\n"
     "        c.rgb = mix(uFogColour, c.rgb, clamp((uFogEnd - vFogDistance) * uFogScale, 0.0, 1.0));\n"
+    "    // alpha-to-coverage (MSAA): instead of the cut, alpha ramps from 0 to 1 over about a pixel around the\n"
+    "    // reference, and the hardware covers that share of the pixel's samples\n"
+    "    float alphaWidth = max(fwidth(c.a), 1e-4);\n"
+    "    if(uAlphaToCoverage)\n"
+    "    {\n"
+    "        c.a = clamp((c.a - uAlphaRef) / alphaWidth + 0.5, 0.0, 1.0);\n"
+    "        if(c.a <= 0.0)\n"
+    "            discard;\n"
+    "        fragColour = c;\n"
+    "        return;\n"
+    "    }\n"
     "    bool pass = true;\n"
     "    if(uAlphaCompare == 0) pass = false;\n"
     "    else if(uAlphaCompare == 2) pass = c.a < uAlphaRef;\n"
@@ -250,7 +262,7 @@ static const char* s_uniformNames[] =
     "uLit", "uMatAmbient", "uMatDiffuse", "uMatSpecular", "uMatEmissive", "uShininess",
     "uGlobalAmbient", "uLightCount", "uLightPosition", "uLightColour", "uLightAtten", "uLightRange",
     "uTextured", "uTexture", "uFog", "uFogColour", "uFogEnd", "uFogScale", "uAlphaCompare", "uAlphaRef",
-    "uReflectionTextured", "uReflection", "uEnvBlend",
+    "uReflectionTextured", "uReflection", "uEnvBlend", "uAlphaToCoverage",
 };
 
 static void Identity(float* m)
@@ -268,6 +280,8 @@ static void SetColour(float* d, const float* s, int n)
 pglPipeline::pglPipeline()
 {
     ready = false;
+    multisampled = false;
+    alphaToCoverageState = -1;
     bound = NULL;
     vao = 0;
     streamVerts = NULL;
@@ -493,6 +507,7 @@ void pglPipeline::UploadUniforms(Program& p)
         glUniform1f(u[U_SHININESS], material.shininess);
         glUniform1i(u[U_ALPHACOMPARE], material.alphaCompare < 0 ? 1 : material.alphaCompare);    // 1: always
         glUniform1f(u[U_ALPHAREF], material.alphaRef);
+        glUniform1i(u[U_ALPHATOCOVERAGE], AlphaToCoverage());
         if(u[U_ENVBLEND] >= 0)
         {
             glUniform1i(u[U_REFLECTIONTEXTURED], material.reflectionTextured);
@@ -514,7 +529,39 @@ void pglPipeline::Prepare()
         bound = &p;
     }
     UploadUniforms(p);
+
+    int alphaToCoverage = AlphaToCoverage();
+    if(alphaToCoverage != alphaToCoverageState)
+    {
+        if(alphaToCoverage)
+            glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+        else
+            glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+        alphaToCoverageState = alphaToCoverage;
+    }
     stats.draws++;
+}
+
+// for alpha tests that keep the high alphas (the data's: GREATER, a few GREATEREQUAL) on opaque materials
+bool pglPipeline::AlphaToCoverage() const
+{
+    return multisampled && !material.blended &&
+           (material.alphaCompare == 4 || material.alphaCompare == 5);     // PDDI_COMPARE_GREATER, _GREATEREQUAL
+}
+
+void pglPipeline::SetMultisampled(bool m)
+{
+    static int s_allowed = -1;      // SHAR_ALPHA_TO_COVERAGE=0: plain alpha test even with MSAA
+    if(s_allowed < 0)
+    {
+        const char* e = getenv("SHAR_ALPHA_TO_COVERAGE");
+        s_allowed = !(e && e[0] == '0');
+    }
+    m = m && s_allowed;
+    if(m == multisampled)
+        return;
+    multisampled = m;
+    Changed(GROUP_MATERIAL);        // uAlphaToCoverage
 }
 
 static int s_statsEnabled = -1;

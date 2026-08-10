@@ -610,6 +610,7 @@ void pglDisplay::SetAntialiasing( int samples )
 void pglDisplay::BeginFrameTarget( void )
 {
     msaaBound = false;
+    pipeline.SetMultisampled( false );
     int samples = msaaRequested;
     static GLint s_maxSamples = -1;
     if( samples > 1 && s_maxSamples < 0 )
@@ -667,6 +668,7 @@ void pglDisplay::BeginFrameTarget( void )
 
     glBindFramebuffer( GL_FRAMEBUFFER, msaaFramebuffer );
     msaaBound = true;
+    pipeline.SetMultisampled( true );
 }
 
 void pglDisplay::ResolveFrame( void )
@@ -674,6 +676,7 @@ void pglDisplay::ResolveFrame( void )
     if( !msaaBound )
         return;
     msaaBound = false;
+    pipeline.SetMultisampled( false );      // what follows (the GUI layer) draws into the window
 
     // a blit is clipped by the scissor test; write masks are opened in case the driver applies them
     GLboolean scissor = glIsEnabled( GL_SCISSOR_TEST );

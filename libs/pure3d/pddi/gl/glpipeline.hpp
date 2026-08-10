@@ -72,6 +72,7 @@ public:
         bool lit;
         int alphaCompare;           // pddiCompareMode, or -1 for no alpha test
         float alphaRef;
+        bool blended;               // blending on (an alpha-tested material then keeps its plain alpha test)
         float ambient[4];
         float diffuse[4];
         float specular[4];
@@ -114,6 +115,10 @@ public:
     // before drawing anything: binds the material's program and the vertex array object, uploads changed uniforms
     void Prepare();
 
+    // the framebuffer drawn to is multisampled (MSAA, gldisplay.cpp): alpha-tested materials that do not blend
+    // then use alpha-to-coverage, which smooths their cut-out edges (fences, foliage)
+    void SetMultisampled(bool multisampled);
+
     // after GL calls outside the pipeline that change the program or vertex array object (the gamma pass)
     void Unbind() { bound = 0; }
 
@@ -136,7 +141,7 @@ private:
         U_LIT, U_MATAMBIENT, U_MATDIFFUSE, U_MATSPECULAR, U_MATEMISSIVE, U_SHININESS,
         U_GLOBALAMBIENT, U_LIGHTCOUNT, U_LIGHTPOSITION, U_LIGHTCOLOUR, U_LIGHTATTEN, U_LIGHTRANGE,
         U_TEXTURED, U_TEXTURE, U_FOG, U_FOGCOLOUR, U_FOGEND, U_FOGSCALE, U_ALPHACOMPARE, U_ALPHAREF,
-        U_REFLECTIONTEXTURED, U_REFLECTION, U_ENVBLEND,
+        U_REFLECTIONTEXTURED, U_REFLECTION, U_ENVBLEND, U_ALPHATOCOVERAGE,
         U_COUNT
     };
 
@@ -148,9 +153,12 @@ private:
     };
 
     void Changed(int group) { version[group]++; }
+    bool AlphaToCoverage() const;
     void UploadUniforms(Program& p);
 
     bool ready;
+    bool multisampled;
+    int alphaToCoverageState;   // GL_SAMPLE_ALPHA_TO_COVERAGE as last set, -1 unknown
     Program programs[PGL_PROGRAM_COUNT];
     Program* bound;             // the program in use, NULL when unknown
     unsigned version[GROUP_COUNT];

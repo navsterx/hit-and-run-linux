@@ -239,8 +239,11 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   the swap. Chosen over a multisampled window because simpsons.ini is read after the GL context exists
   (`Win32Platform::LoadConfig` -> `pglSetAntialiasing`; `antialiasing=`, default 4; `SHAR_MSAA` overrides), so the
   setting applies on the next frame without recreating the window. Capped at GL_MAX_SAMPLES; an incomplete FBO
-  (out of VRAM) turns it off with a message. Cost at 2560x1440: ~0.2-0.3 ms GPU. Alpha-tested edges (fences,
-  foliage) are not smoothed (alpha-to-coverage not used).
+  (out of VRAM) turns it off with a message. Cost at 2560x1440: ~0.2-0.3 ms GPU. Alpha-tested materials that do not
+  blend (fences, foliage; compare GREATER/GREATEREQUAL) use alpha-to-coverage while the target is multisampled
+  (`pglPipeline::SetMultisampled`, off again after the resolve: in a single-sampled buffer it would do nothing and
+  the shader would no longer cut): alpha is ramped over ~1 pixel around the reference (fwidth), so the edge stays
+  where the alpha test put it. `SHAR_ALPHA_TO_COVERAGE=0` keeps the plain alpha test.
 
 ## Mods (Lucas' Mod Launcher format)
 
