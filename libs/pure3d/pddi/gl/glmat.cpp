@@ -5,6 +5,8 @@
 
 #include <pddi/gl/glmat.hpp>
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <pddi/gl/gltex.hpp>
 #include <pddi/gl/glcon.hpp>
 
@@ -16,6 +18,7 @@
     #include <pddi/gl/display_linux/gl.hpp>
     #include <pddi/gl/display_linux/gldisplay.hpp>
     #include <pddi/gl/glpipeline.hpp>
+    #include <pddi/gl/glcustom.hpp>
 #endif
 
 
@@ -125,6 +128,10 @@ pglMat::pglMat(pglContext* c, int prog)
 {
     context = c;
     program = prog;
+    typeName[0] = 0;
+    materialName = NULL;
+    customSlot = -1;
+    customGeneration = 0;
 
     for(int i = 0; i < pglMaxPasses; i++)
     {
@@ -161,6 +168,7 @@ pglMat::pglMat(pglContext* c, int prog)
 
 pglMat::~pglMat() 
 {
+    free(materialName);
     for(int i = 0; i < pglMaxPasses; i++)
         if(texEnv[i].texture)
             texEnv[i].texture->Release();
@@ -301,6 +309,22 @@ void pglMat::SetupStandard(pglPipeline::Material& m)
     memset(&m, 0, sizeof(m));       // compared whole by SetMaterial
     m.program = program;
 
+    // a user material shader, looked up again whenever the shader rules or files reload
+    if(customGeneration != pglCustomGeneration())
+    {
+        static int s_log = -1;      // SHAR_MATERIAL_LOG=1: each material's name and type when it is first drawn
+        if(s_log < 0)
+        {
+            const char* e = getenv("SHAR_MATERIAL_LOG");
+            s_log = e && e[0] == '1';
+        }
+        if(s_log && customGeneration == 0)
+            fprintf(stderr, "PDDI: material %s (type %s)\n", materialName ? materialName : "(unnamed)", typeName);
+        customGeneration = pglCustomGeneration();
+        customSlot = pglCustomShaderFor(typeName, materialName);
+    }
+    m.custom = customSlot;
+
     m.textured = texEnv[i].texture != NULL;
     if(texEnv[i].texture)
     {
@@ -424,4 +448,28 @@ void pglErrorMat::SetDevPass(unsigned pass)
     SetupStandard(m);
     texEnv[0].texture = texture;
     context->GetDisplay()->GetPipeline()->SetMaterial(m);
+}
+
+//-------------------------------------------------------------------
+// names for user material shaders
+//-------------------------------------------------------------------
+
+void pglMat::SetTypeName(const char* name)
+{
+    snprintf(typeName, sizeof(typeName), "%s", name ? name : "");
+    customGeneration = 0;
+}
+
+void pglMat::SetMaterialName(const char* name)
+{
+    free(materialName);
+    materialName = name ? strdup(name) : NULL;
+    customGeneration = 0;
+}
+
+// for p3d's shader loader (tShaderLoader): the material's name from the art
+void pglSetMaterialName(pddiShader* shader, const char* name)
+{
+    if(shader)
+        ((pglMat*)shader)->SetMaterialName(name);
 }

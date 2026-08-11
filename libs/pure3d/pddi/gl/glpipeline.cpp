@@ -133,6 +133,10 @@ static const char* s_vertexSource =
     "#if REFLECTION\n"
     "out vec2 vReflectionUV;\n"
     "#endif\n"
+    "#if CUSTOM\n"
+    "out vec3 vNormal;\n"
+    "out vec3 vEyePosition;\n"
+    "#endif\n"
     "out float vFogDistance;\n"
     "void main()\n"
     "{\n"
@@ -145,6 +149,10 @@ static const char* s_vertexSource =
     "    float nLength = length(n);\n"
     "    if(nLength > 0.0)\n"
     "        n /= nLength;\n"
+    "#if CUSTOM\n"
+    "    vNormal = n;\n"
+    "    vEyePosition = v;\n"
+    "#endif\n"
     "#if REFLECTION\n"
     "    // D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR through the shader's texture matrix: (0.5 x + 0.5, 0.5 - 0.5 y)\n"
     "    vec3 r = reflect(normalize(v), n);\n"
@@ -191,7 +199,7 @@ static const char* s_vertexSource =
 // The texture stages (simple: diffuse * texture; reflection: that plus envBlend * reflection map, saturated), then
 // the specular sum, linear fog (RGB only) and the alpha test (pddiCompareMode order). A stage without a texture
 // passes its colour through, as D3D's did.
-static const char* s_fragmentSource =
+static const char* s_fragmentPrelude =
     "in vec4 vColour;\n"
     "in vec3 vSpecular;\n"
     "in vec2 vUV;\n"
@@ -200,6 +208,23 @@ static const char* s_fragmentSource =
     "uniform bool uReflectionTextured;\n"
     "uniform sampler2D uReflection;\n"
     "uniform vec4 uEnvBlend;\n"
+    "#endif\n"
+    "#if CUSTOM\n"
+    "in vec3 vNormal;\n"
+    "in vec3 vEyePosition;\n"
+    "uniform bool uLit;\n"
+    "uniform vec4 uMatAmbient;\n"
+    "uniform vec4 uMatDiffuse;\n"
+    "uniform vec4 uMatSpecular;\n"
+    "uniform vec4 uMatEmissive;\n"
+    "uniform float uShininess;\n"
+    "uniform vec4 uGlobalAmbient;\n"
+    "uniform int uLightCount;\n"
+    "uniform vec4 uLightPosition[8];\n"
+    "uniform vec3 uLightColour[8];\n"
+    "uniform vec3 uLightAtten[8];\n"
+    "uniform float uLightRange[8];\n"
+    "uniform float uTime;\n"
     "#endif\n"
     "in float vFogDistance;\n"
     "uniform bool uTextured;\n"
@@ -212,7 +237,8 @@ static const char* s_fragmentSource =
     "uniform float uAlphaRef;\n"
     "uniform bool uAlphaToCoverage;\n"
     "out vec4 fragColour;\n"
-    "void main()\n"
+    "// the material as the game draws it, before fog\n"
+    "vec4 StandardColour()\n"
     "{\n"
     "    vec4 c = vColour;\n"
     "    if(uTextured)\n"
@@ -224,6 +250,30 @@ static const char* s_fragmentSource =
     "    c = min(c + e, 1.0);\n"
     "#endif\n"
     "    c.rgb = min(c.rgb + vSpecular, 1.0);\n"
+    "    return c;\n"
+    "}\n"
+    "#if CUSTOM\n"
+    "// the base texture (white without one)\n"
+    "vec4 BaseTexture()\n"
+    "{\n"
+    "    return uTextured ? texture(uTexture, vUV) : vec4(1.0);\n"
+    "}\n"
+    "// eye-space direction from this pixel towards light i (< uLightCount), and its attenuation (0 out of range)\n"
+    "vec3 LightVector(int i, out float attenuation)\n"
+    "{\n"
+    "    attenuation = 1.0;\n"
+    "    if(uLightPosition[i].w == 0.0)\n"
+    "        return normalize(uLightPosition[i].xyz);\n"
+    "    vec3 d = uLightPosition[i].xyz / uLightPosition[i].w - vEyePosition;\n"
+    "    float distance = length(d);\n"
+    "    attenuation = distance > uLightRange[i] ? 0.0 :\n"
+    "        1.0 / (uLightAtten[i].x + uLightAtten[i].y * distance + uLightAtten[i].z * distance * distance);\n"
+    "    return d / max(distance, 1e-6);\n"
+    "}\n"
+    "#endif\n"
+    "// fog, then the alpha test\n"
+    "void FinishFragment(vec4 c)\n"
+    "{\n"
     "    if(uFog)\n"
     "        c.rgb = mix(uFogColour, c.rgb, clamp((uFogEnd - vFogDistance) * uFogScale, 0.0, 1.0));\n"
     "    // alpha-to-coverage (MSAA): instead of the cut, alpha ramps from 0 to 1 over about a pixel around the\n"
@@ -250,10 +300,24 @@ static const char* s_fragmentSource =
     "    fragColour = c;\n"
     "}\n";
 
+static const char* s_fragmentMain =
+    "void main()\n"
+    "{\n"
+    "    FinishFragment(StandardColour());\n"
+    "}\n";
+
+// a custom material shader (glcustom.cpp) is the user's ShadeMaterial() between the prelude and this
+static const char* s_customFragmentMain =
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    FinishFragment(ShadeMaterial());\n"
+    "}\n";
+
 static const struct { const char* name; const char* header; } s_programs[PGL_PROGRAM_COUNT] =
 {
-    { "simple",     "#version 330 core\n#define REFLECTION 0\n" },
-    { "reflection", "#version 330 core\n#define REFLECTION 1\n" },
+    { "simple",     "#version 330 core\n#define REFLECTION 0\n#define CUSTOM 0\n" },
+    { "reflection", "#version 330 core\n#define REFLECTION 1\n#define CUSTOM 0\n" },
 };
 
 static const char* s_uniformNames[] =
@@ -262,7 +326,7 @@ static const char* s_uniformNames[] =
     "uLit", "uMatAmbient", "uMatDiffuse", "uMatSpecular", "uMatEmissive", "uShininess",
     "uGlobalAmbient", "uLightCount", "uLightPosition", "uLightColour", "uLightAtten", "uLightRange",
     "uTextured", "uTexture", "uFog", "uFogColour", "uFogEnd", "uFogScale", "uAlphaCompare", "uAlphaRef",
-    "uReflectionTextured", "uReflection", "uEnvBlend", "uAlphaToCoverage",
+    "uReflectionTextured", "uReflection", "uEnvBlend", "uAlphaToCoverage", "uTime",
 };
 
 static void Identity(float* m)
@@ -280,6 +344,9 @@ static void SetColour(float* d, const float* s, int n)
 pglPipeline::pglPipeline()
 {
     ready = false;
+    customCount = 0;
+    frameCount = 0;
+    frameTime = 0.0f;
     multisampled = false;
     alphaToCoverageState = -1;
     bound = NULL;
@@ -309,6 +376,7 @@ pglPipeline::pglPipeline()
 
     memset(&material, 0, sizeof(material));
     material.alphaCompare = -1;
+    material.custom = -1;
 
     memset(&stats, 0, sizeof(stats));
     memset(&current, 0, sizeof(current));
@@ -328,16 +396,8 @@ bool pglPipeline::Init()
 
     for(int i = 0; i < PGL_PROGRAM_COUNT; i++)
     {
-        Program& p = programs[i];
-        if(!p.program.Build(s_programs[i].name, s_vertexSource, s_fragmentSource, s_programs[i].header))
+        if(!BuildProgram(programs[i], s_programs[i].name, s_programs[i].header, s_fragmentMain, false))
             return false;
-        glUseProgram(p.program.Handle());
-        for(int u = 0; u < U_COUNT; u++)
-            p.uniform[u] = p.program.Uniform(s_uniformNames[u]);
-        glUniform1i(p.uniform[U_TEXTURE], 0);
-        glUniform1i(p.uniform[U_REFLECTION], 1);
-        for(int g = 0; g < GROUP_COUNT; g++)
-            p.uploaded[g] = version[g] - 1;     // everything to upload
     }
     bound = NULL;
 
@@ -353,6 +413,62 @@ bool pglPipeline::Init()
 
     ready = true;
     return true;
+}
+
+bool pglPipeline::BuildProgram(Program& p, const char* name, const char* header, const char* fragmentBody, bool custom)
+{
+    // the fragment shader: the prelude, then the body (a custom one with its own line numbers, then main)
+    const char* parts[4] = { s_fragmentPrelude, custom ? "#line 1\n" : "", fragmentBody, custom ? s_customFragmentMain : "" };
+    size_t size = 1;
+    for(int i = 0; i < 4; i++)
+        size += strlen(parts[i]);
+    char* fragment = (char*)malloc(size);
+    if(!fragment)
+        return false;
+    fragment[0] = 0;
+    for(int i = 0; i < 4; i++)
+        strcat(fragment, parts[i]);
+    bool ok = p.program.Build(name, s_vertexSource, fragment, header);
+    free(fragment);
+    if(!ok)
+        return false;
+
+    glUseProgram(p.program.Handle());
+    for(int u = 0; u < U_COUNT; u++)
+        p.uniform[u] = p.program.Uniform(s_uniformNames[u]);
+    glUniform1i(p.uniform[U_TEXTURE], 0);
+    glUniform1i(p.uniform[U_REFLECTION], 1);
+    for(int g = 0; g < GROUP_COUNT; g++)
+        p.uploaded[g] = version[g] - 1;     // everything to upload
+    p.timeFrame = frameCount - 1;
+    bound = NULL;
+    return true;
+}
+
+int pglPipeline::BuildCustomProgram(const char* name, const char* source)
+{
+    if(!ready || customCount == pglMaxCustomPrograms)
+        return -1;
+    Program& p = programs[PGL_PROGRAM_COUNT + customCount];
+    if(!BuildProgram(p, name, "#version 330 core\n#define REFLECTION 1\n#define CUSTOM 1\n", source, true))
+        return -1;
+    return customCount++;
+}
+
+void pglPipeline::ReleaseCustomPrograms()
+{
+    for(int i = 0; i < customCount; i++)
+        programs[PGL_PROGRAM_COUNT + i].program.Release();
+    customCount = 0;
+    bound = NULL;
+    material.custom = -1;
+    Changed(GROUP_MATERIAL);
+}
+
+void pglPipeline::NewFrame()
+{
+    frameCount++;
+    frameTime = SDL_GetTicks() / 1000.0f;
 }
 
 // setters skip values that did not change: the game sets the same material and matrices over and over
@@ -520,6 +636,8 @@ void pglPipeline::UploadUniforms(Program& p)
 void pglPipeline::Prepare()
 {
     int index = material.program >= 0 && material.program < PGL_PROGRAM_COUNT ? material.program : PGL_PROGRAM_SIMPLE;
+    if(material.custom >= 0 && material.custom < customCount)
+        index = PGL_PROGRAM_COUNT + material.custom;
     Program& p = programs[index];
     if(bound != &p)
     {
@@ -529,6 +647,11 @@ void pglPipeline::Prepare()
         bound = &p;
     }
     UploadUniforms(p);
+    if(p.uniform[U_TIME] >= 0 && p.timeFrame != frameCount)
+    {
+        glUniform1f(p.uniform[U_TIME], frameTime);
+        p.timeFrame = frameCount;
+    }
 
     int alphaToCoverage = AlphaToCoverage();
     if(alphaToCoverage != alphaToCoverageState)

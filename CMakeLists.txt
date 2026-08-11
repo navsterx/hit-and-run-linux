@@ -634,6 +634,7 @@ add_library(pddigl STATIC
   libs/pure3d/pddi/gl/gltex.cpp
   libs/pure3d/pddi/gl/glpipeline.cpp
   libs/pure3d/pddi/gl/glpost.cpp
+  libs/pure3d/pddi/gl/glcustom.cpp
   libs/pure3d/pddi/gl/display_linux/gldisplay.cpp
 )
 target_include_directories(pddigl PRIVATE libs libs/radmath libs/pure3d)

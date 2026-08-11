@@ -89,6 +89,11 @@ public:
     int  CountDevPasses(void);
     virtual void SetDevPass(unsigned);
 
+    // Linux port: what user material shaders (glcustom.cpp) are matched by: the pddi shader type the art asked for
+    // ("spheremap", or a name only a custom shader knows) and the material's own name (set by p3d's shader loader)
+    void SetTypeName(const char* name);
+    void SetMaterialName(const char* name);
+
 protected:
     // the pipeline material and GL state for a draw (the standard part; shader kinds add theirs and set it)
     void SetupStandard(pglPipeline::Material& m);
@@ -96,6 +101,10 @@ protected:
     pglContext* context;
     int program;
     int pass;
+    char typeName[32];
+    char* materialName;
+    int customSlot;
+    unsigned customGeneration;
     pglTextureEnv texEnv[pglMaxPasses];
 };
 

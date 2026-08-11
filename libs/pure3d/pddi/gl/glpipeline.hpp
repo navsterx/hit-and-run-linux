@@ -52,6 +52,8 @@ struct pglVertex
 
 const int pglMaxLights = 8;
 
+const int pglMaxCustomPrograms = 32;       // user material shaders (glcustom.cpp)
+
 // the programs, one per kind of pddi shader (glmat.cpp)
 enum pglProgramType
 {
@@ -67,6 +69,7 @@ public:
     struct Material
     {
         int program;                // pglProgramType
+        int custom;                 // a custom material shader (BuildCustomProgram's slot) to draw with, or -1
         bool textured;
         bool reflectionTextured;    // a reflection map on unit 1
         bool lit;
@@ -112,6 +115,15 @@ public:
     void Emit(float x, float y, float z);
     void EndStream();
 
+    // user material shaders: ShadeMaterial() in GLSL (shaders/README.md). Returns the slot for Material::custom,
+    // or -1 when it does not build (the driver's log is printed). Release drops them all (materials' slots with them).
+    int BuildCustomProgram(const char* name, const char* source);
+    void ReleaseCustomPrograms();
+    int CustomProgramCount() const { return customCount; }
+
+    // from BeginFrame: the time custom shaders see
+    void NewFrame();
+
     // before drawing anything: binds the material's program and the vertex array object, uploads changed uniforms
     void Prepare();
 
@@ -141,7 +153,7 @@ private:
         U_LIT, U_MATAMBIENT, U_MATDIFFUSE, U_MATSPECULAR, U_MATEMISSIVE, U_SHININESS,
         U_GLOBALAMBIENT, U_LIGHTCOUNT, U_LIGHTPOSITION, U_LIGHTCOLOUR, U_LIGHTATTEN, U_LIGHTRANGE,
         U_TEXTURED, U_TEXTURE, U_FOG, U_FOGCOLOUR, U_FOGEND, U_FOGSCALE, U_ALPHACOMPARE, U_ALPHAREF,
-        U_REFLECTIONTEXTURED, U_REFLECTION, U_ENVBLEND, U_ALPHATOCOVERAGE,
+        U_REFLECTIONTEXTURED, U_REFLECTION, U_ENVBLEND, U_ALPHATOCOVERAGE, U_TIME,
         U_COUNT
     };
 
@@ -150,16 +162,21 @@ private:
         pglProgram program;
         GLint uniform[U_COUNT];
         unsigned uploaded[GROUP_COUNT];
+        unsigned timeFrame;         // frame whose time uTime holds
     };
 
     void Changed(int group) { version[group]++; }
     bool AlphaToCoverage() const;
     void UploadUniforms(Program& p);
+    bool BuildProgram(Program& p, const char* name, const char* header, const char* fragmentBody, bool custom);
 
     bool ready;
     bool multisampled;
     int alphaToCoverageState;   // GL_SAMPLE_ALPHA_TO_COVERAGE as last set, -1 unknown
-    Program programs[PGL_PROGRAM_COUNT];
+    Program programs[PGL_PROGRAM_COUNT + pglMaxCustomPrograms];   // built-in ones, then custom ones
+    int customCount;
+    unsigned frameCount;
+    float frameTime;
     Program* bound;             // the program in use, NULL when unknown
     unsigned version[GROUP_COUNT];
     GLuint vao;

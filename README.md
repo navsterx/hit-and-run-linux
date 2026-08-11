@@ -30,6 +30,8 @@ Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its f
   - [x] multisample anti-aliasing (4x by default; `antialiasing=` in `simpsons.ini`), with alpha-to-coverage so
     cut-out textures (fences, foliage) get smooth edges too
   - [x] post-processing shaders of your own (GLSL files in `shaders/`: anti-aliasing, bloom, colour grading, CRT, ...)
+  - [x] material shaders of your own (toon shading, car paint, ...), assigned by material type or name; mods can
+    ship them too
 - [x] **Gameplay** — loads levels and plays; uninitialised reads that were zero by luck under MSVC fixed
 - [x] **Input** — keyboard and mouse (mouse look via relative mode), wired and wireless gamepads through SDL;
   verified in play; Start pauses; the menu cursor hides while a gamepad is in use
@@ -63,7 +65,7 @@ Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its f
 - [ ] **Modern OpenGL** — the renderer runs on an OpenGL 3.3 core context: GLSL shaders reproduce the
   original Direct3D 8 renderer's materials and lighting (including car paint reflections, two-sided materials,
   fading cars and characters), geometry lives in GPU buffers, DXT textures stay compressed, user post-processing
-  shaders (done); still to do: custom material shaders
+  shaders, user material shaders (done)
 - [ ] **Mods** — Mod Launcher mods load (custom files, Lua, Ogg audio, HD movies, custom text, car shop sellers,
   new dialogue characters, 3D phone booth); custom cars, characters, interiors and the other hacks are not
   implemented yet
@@ -106,8 +108,9 @@ files, which the game writes to. Boot movies only play in the release build.
 Anti-aliasing (MSAA) is on at 4x. To change it, set `antialiasing=` in the `#System` section of
 `run/simpsons.ini` to 0 (off), 2, 4, 8 or 16; the game adds the line itself the first time it saves its settings.
 
-Post-processing shaders (anti-aliasing, bloom, colour grading, a CRT look, or your own) are GLSL files in
-`run/shaders/`, switched on in its `post.ini` (all off at first); they reload while the game runs. See
+Shaders of your own are GLSL files in `run/shaders/`: post-processing (anti-aliasing, bloom, colour grading, a CRT
+look, ...) switched on in its `post.ini`, and material shaders (toon shading, car paint, ...) assigned in its
+`materials.ini`; the examples are all off at first, and everything reloads while the game runs. See
 [`shaders/README.md`](shaders/README.md).
 
 Each session's console output is also written to `run/logs/last-session.log`. If the game crashes (or exits with
@@ -131,7 +134,8 @@ crash report with the backtrace resolved to source files and lines. Attach that 
 | `SHAR_CRASH_HANDLER=0` | Don't install the crash-report signal handler |
 | `SHAR_MSAA=n` | Anti-aliasing samples, overriding `simpsons.ini` (0 = off) |
 | `SHAR_ALPHA_TO_COVERAGE=0` | Hard edges on cut-out textures even with anti-aliasing |
-| `SHAR_SHADERS=dir`, `SHAR_POST=0` | Post-processing shaders folder (default `shaders/`), or post-processing off |
+| `SHAR_SHADERS=dir`, `SHAR_POST=0` | Shaders folder (default `shaders/`); post-processing off |
+| `SHAR_MATERIAL_LOG=1` | Print each material's name and type when first drawn (for `materials.ini`) |
 | `SHAR_GL_DEBUG=1`, `SHAR_GL_STATS=1` | OpenGL debug messages; per-frame draw/upload counts and render times |
 
 `port/run.sh [seconds] [args]` rebuilds and runs the game under gdb, printing a backtrace on a crash.
@@ -144,5 +148,5 @@ crash report with the backtrace resolved to source files and lines. Attach that 
 | `libs/` | Radical's libraries: Pure3D renderer, radcore, radsound, radmovie, Scrooby UI, ... |
 | `build/` | Original Visual Studio projects (read by the generator) |
 | `port/` | Everything added for the port: generator, compatibility layer (`compat/`), scripts |
-| `shaders/` | Example post-processing shaders and their documentation (copied to `run/shaders/`) |
+| `shaders/` | Example post-processing and material shaders, and their documentation (copied to `run/shaders/`) |
 | `CLAUDE.md` | Detailed porting notes: platform model and the Windows-to-Linux differences that mattered |

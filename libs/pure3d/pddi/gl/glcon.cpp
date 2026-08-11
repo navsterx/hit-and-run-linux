@@ -20,6 +20,7 @@
 #include <pddi/gl/gldev.hpp>
 #include <pddi/gl/gltex.hpp>
 #include <pddi/gl/glmat.hpp>
+#include <pddi/gl/glcustom.hpp>
 #include <pddi/gl/glpipeline.hpp>
 
 #include <pddi/base/debug.hpp>
@@ -125,6 +126,8 @@ void pglContext::BeginFrame()
     }
 
     pglFlushPendingDeletes();
+    pipeline->NewFrame();
+    pglCustomUpdate(pipeline);      // Linux port: user material shaders (glcustom.cpp)
     pipeline->LoadIdentity();
     pipeline->FrameStats();
     display->BeginFrameTarget();    // Linux port: the multisampled framebuffer, when anti-aliasing is on

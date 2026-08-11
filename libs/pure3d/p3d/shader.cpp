@@ -11,6 +11,10 @@
 #include "p3d/texture.hpp"
 #include <string.h>
 
+#ifdef RAD_LINUX
+void pglSetMaterialName(pddiShader* shader, const char* name);     // pddi/gl/glmat.cpp
+#endif
+
 tShader::tShader()
 {
     shader = p3d::device->NewShader("simple");
@@ -274,6 +278,9 @@ tEntity* tShaderLoader::LoadObject(tChunkFile* f, tEntityStore* store)
     }
     shader->mTranslucent = HasTranslucency;
     shader->SetName(name);
+#ifdef RAD_LINUX
+    pglSetMaterialName(shader->GetShader(), name);     // user material shaders can match it (pddi/gl/glcustom.cpp)
+#endif
     return shader;
 }
 

@@ -16,13 +16,15 @@ DROP_DEFINES = {"WIN32", "_WINDOWS", "_USRDLL", "_LIB", "WIN32_EXTRA_LEAN", "WIN
 PLATFORM_DEFINES = ["RAD_WIN32", "RAD_LINUX", "LINUX", "RAD_PC", "PDDI_NO_ASM"]
 
 # The DX8 renderer is replaced by Pure3D's existing OpenGL pddi (sources from build/linux/pddi/Makefile), ported to
-# an OpenGL 3.3 core context (glpipeline.cpp; user post-processing shaders: glpost.cpp)
+# an OpenGL 3.3 core context (glpipeline.cpp; user post-processing shaders: glpost.cpp; user material shaders:
+# glcustom.cpp)
 PDDI_GL = {
     "name": "pddigl", "kind": "StaticLibrary",
     "sources": ["libs/pure3d/pddi/base/basecontext.cpp", "libs/pure3d/pddi/base/baseshader.cpp",
                 "libs/pure3d/pddi/base/font.cpp", "libs/pure3d/pddi/base/pddiobj.cpp",
                 "libs/pure3d/pddi/gl/glcon.cpp", "libs/pure3d/pddi/gl/gldev.cpp", "libs/pure3d/pddi/gl/glmat.cpp",
                 "libs/pure3d/pddi/gl/gltex.cpp", "libs/pure3d/pddi/gl/glpipeline.cpp", "libs/pure3d/pddi/gl/glpost.cpp",
+                "libs/pure3d/pddi/gl/glcustom.cpp",
                 "libs/pure3d/pddi/gl/display_linux/gldisplay.cpp"],
     "includes": ["libs", "libs/radmath", "libs/pure3d"],
     "defines": ["RAD_RELEASE", "NDEBUG"],

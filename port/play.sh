@@ -51,9 +51,12 @@ done
 for f in simpsons.ini Save1 Save2 Save3 Save4; do
     [ -e "$DATA/$f" ] && [ ! -e "$RUN/$f" ] && cp "$DATA/$f" "$RUN/$f"
 done
-# Post-processing shaders: the game dir's shaders/ if it has one, else a copy of the examples (yours to edit)
+# Shaders (post-processing, materials): the game dir's shaders/ if it has one, else a copy of the examples (yours to
+# edit; examples added later are copied in without touching files already there)
 if [ ! -e "$RUN/shaders" ]; then
     if [ -d "$DATA/shaders" ]; then ln -s "$DATA/shaders" "$RUN/shaders"; else cp -r "$ROOT/shaders" "$RUN/shaders"; fi
+elif [ -d "$RUN/shaders" ] && [ ! -L "$RUN/shaders" ]; then
+    cp -rn "$ROOT/shaders/." "$RUN/shaders/"
 fi
 
 # Mods: absolute paths in SHAR_MODS (the game runs from the run dir)

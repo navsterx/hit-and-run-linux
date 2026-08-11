@@ -184,6 +184,7 @@ pddiShader *pglDevice::NewShader(const char* name, const char* aux)
         delete mat;
         return NULL;
     }
+    ((pglMat*)mat)->SetTypeName(name);     // for user material shaders (glcustom.cpp)
 
     return mat;
 }

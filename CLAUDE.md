@@ -35,8 +35,9 @@ port/                      everything added for the port
                            shar_crash.* (SIGSEGV/BUS/ILL/FPE/ABRT -> crash report on stderr; SHAR_CRASH_HANDLER=0 off),
                            pddi_heap.cpp (renderer's private heap), valgrind/ (client-request headers),
                            shar_mods.* (Mod Launcher mods, see below)
-shaders/                   example post-processing shaders + README (play.sh copies them to run/shaders/, or links the
-                           game dir's shaders/); format and uniforms in shaders/README.md
+shaders/                   example post-processing + material shaders, README (play.sh copies them to run/shaders/,
+                           adding new examples later with cp -n, or links the game dir's shaders/); formats in
+                           shaders/README.md
 mod/tools/                 modding tools: lmlm_extract.py (unpacks Mod Launcher .lmlm "LSPA" packages)
 port/third_party/lua/      Lua 5.4.8 (MIT), for mods' scripts
 build-linux/               release build (RAD_RELEASE)     cmake -B build-linux -G Ninja
@@ -244,6 +245,16 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   (`pglPipeline::SetMultisampled`, off again after the resolve: in a single-sampled buffer it would do nothing and
   the shader would no longer cut): alpha is ramped over ~1 pixel around the reference (fwidth), so the edge stays
   where the alpha test put it. `SHAR_ALPHA_TO_COVERAGE=0` keeps the plain alpha test.
+  Material shaders (2026-10-18, `pddi/gl/glcustom.cpp`): `shaders/materials.ini` [types] (the pddi shader name the
+  art asked for, kept by `pglMat::SetTypeName` from `pglDevice::NewShader`) and [materials] (the tShader name, passed
+  by a RAD_LINUX hook in `p3d/shader.cpp` -> `pglSetMaterialName`) map fnmatch patterns to GLSL files defining
+  `vec4 ShadeMaterial()`; the user's rules first, then the first mod's `Shaders/` (`shar_ModConfigFolder`). Each
+  file is a pipeline program slot (`BuildCustomProgram`, up to 32), built from the shared vertex shader with
+  CUSTOM/REFLECTION defined and the fragment prelude (StandardColour, BaseTexture, LightVector, FinishFragment: fog +
+  alpha test/A2C) + `#line 1` + the user file. A material caches its slot per reload generation
+  (`pglCustomGeneration`); `pglCustomUpdate` (BeginFrame) reloads everything when the ini or a user file changes.
+  `SHAR_MATERIAL_LOG=1` lists materials as drawn. GL's front faces are the game's back faces (z mirrored), so
+  gl_FrontFacing is inverted for user shaders. World geometry is mostly unlit without normals (baked vertex colours).
 
 ## Mods (Lucas' Mod Launcher format)
 
@@ -303,9 +314,10 @@ The base game is feature-complete but not yet verified end to end. In order:
    of the hacks Futurama lists at startup. Test with the user in the loop (shops, phone booth, dialogue).
 5. **Packaging**: install script or AppImage-style bundle (32-bit runtime libraries, FFmpeg, SDL2).
 6. **Steering-wheel force feedback**: only with a wheel to test on.
-7. **Modern OpenGL** (in progress on `dev`): core profile, D3D8 material parity, native DXT and user post-processing
-   done (see lessons); next custom material shaders from GLSL files (`pglDevice::AddCustomShader` is the pddi's hook,
-   still empty; the user wants them both from the shaders folder and from mods).
+7. **Modern OpenGL** (done on `dev`, 2026-10-18): core profile, D3D8 material parity, native DXT, MSAA with
+   alpha-to-coverage, user post-processing and material shaders (see lessons). Possible follow-ups: custom vertex
+   stages (displacement), several mods' Shaders/ folders (only the first mod's is read), a display-menu entry for
+   anti-aliasing, half-resolution post passes.
 8. **Long term**: 64-bit build (pointer/int casts, fixed-size heaps), a possible Rust/Bevy reimplementation
    (`RUST.md`).
 
