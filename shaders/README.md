@@ -93,7 +93,9 @@ applied to what the shader returns.
 ```ini
 [types]                     # by the shader type the game's art names
 spheremap = materials/carpaint.glsl
-[materials]                 # by material name (wins over [types])
+[files]                     # by the art file the material comes from (wins over [types])
+*chars/* = materials/flat.glsl
+[materials]                 # by material name (wins over [files] and [types])
 homer_v* = materials/toon.glsl
 ```
 
@@ -103,8 +105,10 @@ Within each section the first matching line wins.
 - **Types**: `simple` is almost everything, including the HUD and menus; `spheremap` and `environment` are car
   paint and chrome. A mod's art can name a type of its own (`toon`, say), which draws as `simple` unless a rule
   gives it a shader.
-- **Material names** come from the art. Start the game with `SHAR_MATERIAL_LOG=1` to print each material's name
-  and type the first time it is drawn.
+- **Files** are the art files materials are loaded from, as the game opens them (`art/chars/homer_m.p3d`; the
+  case varies, matching ignores it): `*chars/*` is every character, `*cars/*` every car, `*cars/famil_v*` one car.
+- **Material names** come from the art. Start the game with `SHAR_MATERIAL_LOG=1` to print each material's name,
+  type and file the first time it is drawn.
 
 **Mods** can ship material shaders: a `Shaders/` folder in the mod's root folder holding a `materials.ini` and the
 shader files it names, next to it (no subfolders). Your own `materials.ini` comes first, so its rules win over a
@@ -155,6 +159,7 @@ and `vColour` are the way to include the world's own shading.
 
 | File | For | What it does |
 |------|-----|--------------|
+| `flat.glsl` | `[files] *chars/*` | characters in flat cartoon colours: no shading across the model, still as bright or dark as the scene |
 | `toon.glsl` | `simple` | cel shading: light in flat bands (per-pixel on lit materials; colours banded on the rest) |
 | `carpaint.glsl` | `spheremap`, `environment` | the car paint plus a sharp highlight per light and stronger reflections at grazing angles |
 | `normals.glsl` | anything | shows the normals as colours |

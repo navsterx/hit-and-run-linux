@@ -130,6 +130,7 @@ pglMat::pglMat(pglContext* c, int prog)
     program = prog;
     typeName[0] = 0;
     materialName = NULL;
+    fileName = NULL;
     customSlot = -1;
     customGeneration = 0;
 
@@ -169,6 +170,7 @@ pglMat::pglMat(pglContext* c, int prog)
 pglMat::~pglMat() 
 {
     free(materialName);
+    free(fileName);
     for(int i = 0; i < pglMaxPasses; i++)
         if(texEnv[i].texture)
             texEnv[i].texture->Release();
@@ -319,9 +321,10 @@ void pglMat::SetupStandard(pglPipeline::Material& m)
             s_log = e && e[0] == '1';
         }
         if(s_log && customGeneration == 0)
-            fprintf(stderr, "PDDI: material %s (type %s)\n", materialName ? materialName : "(unnamed)", typeName);
+            fprintf(stderr, "PDDI: material %s (type %s, file %s)\n", materialName ? materialName : "(unnamed)", typeName,
+                    fileName ? fileName : "-");
         customGeneration = pglCustomGeneration();
-        customSlot = pglCustomShaderFor(typeName, materialName);
+        customSlot = pglCustomShaderFor(typeName, materialName, fileName);
     }
     m.custom = customSlot;
 
@@ -460,16 +463,26 @@ void pglMat::SetTypeName(const char* name)
     customGeneration = 0;
 }
 
-void pglMat::SetMaterialName(const char* name)
+void pglMat::SetMaterialName(const char* name, const char* file)
 {
     free(materialName);
+    free(fileName);
     materialName = name ? strdup(name) : NULL;
+    fileName = file ? strdup(file) : NULL;
+    if(fileName)
+    {
+        for(char* c = fileName; *c; c++)        // "art\chars\homer_m.p3d" -> "art/chars/homer_m.p3d"
+        {
+            if(*c == '\\')
+                *c = '/';
+        }
+    }
     customGeneration = 0;
 }
 
-// for p3d's shader loader (tShaderLoader): the material's name from the art
-void pglSetMaterialName(pddiShader* shader, const char* name)
+// for p3d's shader loader (tShaderLoader): the material's name and the art file it is in
+void pglSetMaterialName(pddiShader* shader, const char* name, const char* file)
 {
     if(shader)
-        ((pglMat*)shader)->SetMaterialName(name);
+        ((pglMat*)shader)->SetMaterialName(name, file);
 }

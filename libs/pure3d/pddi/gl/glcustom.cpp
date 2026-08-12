@@ -20,9 +20,11 @@ const int MAX_RULES = 256;
 const int MAX_FILES = pglMaxCustomPrograms;
 const int MAX_MOD_FILES = 64;
 
+enum RuleKind { RULE_MATERIAL, RULE_FILE, RULE_TYPE, RULE_KINDS };      // [materials], [files], [types]: matched in this order
+
 struct Rule
 {
-    bool byMaterial;            // [materials] (else [types])
+    int kind;                   // RuleKind
     char pattern[128];          // fnmatch pattern, case-insensitive
     int file;                   // index in s_files
 };
@@ -105,11 +107,12 @@ static int AddFile(pglPipeline* pipeline, const char* name, const char* path, co
     return s_fileCount++;
 }
 
-// materials.ini: "[types]" and "[materials]" sections of "pattern = file" lines; '#' or ';' starts a comment.
+// materials.ini: "[types]", "[files]" and "[materials]" sections of "pattern = file" lines; '#' or ';' starts a
+// comment.
 // files[] / texts[] are a mod's Shaders/ folder (NULL for the user's folder, whose files are read from disk).
 static void ParseRules(pglPipeline* pipeline, char* text, const char* source, char** names, char** texts, int count)
 {
-    bool byMaterial = false;
+    int kind = RULE_TYPE;
     bool inSection = false;
     for(char* line = strtok(text, "\r\n"); line; line = strtok(NULL, "\r\n"))
     {
@@ -119,12 +122,18 @@ static void ParseRules(pglPipeline* pipeline, char* text, const char* source, ch
         line = Trim(line);
         if(!*line)
             continue;
-        if(strcasecmp(line, "[types]") == 0 || strcasecmp(line, "[materials]") == 0)
+        static const char* sections[RULE_KINDS] = { "[materials]", "[files]", "[types]" };
+        bool section = false;
+        for(int k = 0; k < RULE_KINDS; k++)
         {
-            byMaterial = strcasecmp(line, "[materials]") == 0;
-            inSection = true;
-            continue;
+            if(strcasecmp(line, sections[k]) == 0)
+            {
+                kind = k;
+                section = inSection = true;
+            }
         }
+        if(section)
+            continue;
         char* eq = strchr(line, '=');
         if(line[0] == '[' || !inSection || !eq)
         {
@@ -164,7 +173,7 @@ static void ParseRules(pglPipeline* pipeline, char* text, const char* source, ch
         if(index < 0)
             continue;
         Rule& r = s_rules[s_ruleCount++];
-        r.byMaterial = byMaterial;
+        r.kind = kind;
         snprintf(r.pattern, sizeof(r.pattern), "%s", pattern);
         r.file = index;
     }
@@ -208,7 +217,8 @@ static void Load(pglPipeline* pipeline)
         for(int i = 0; i < s_ruleCount; i++)
         {
             const ShaderFile& f = s_files[s_rules[i].file];
-            fprintf(stderr, "%s %s%s -> %s%s", i ? "," : "", s_rules[i].byMaterial ? "material " : "", s_rules[i].pattern,
+            static const char* prefixes[RULE_KINDS] = { "material ", "file ", "" };
+            fprintf(stderr, "%s %s%s -> %s%s", i ? "," : "", prefixes[s_rules[i].kind], s_rules[i].pattern,
                     f.name, f.slot < 0 ? " (failed)" : "");
         }
         fprintf(stderr, "\n");
@@ -248,17 +258,18 @@ unsigned pglCustomGeneration()
     return s_generation;
 }
 
-int pglCustomShaderFor(const char* type, const char* material)
+int pglCustomShaderFor(const char* type, const char* material, const char* file)
 {
-    // material rules before type rules; the first match of each kind wins
-    for(int pass = 0; pass < 2; pass++)
+    // material rules, then file rules, then type rules; the first match of each kind wins
+    const char* subjects[RULE_KINDS] = { material, file, type };
+    for(int kind = 0; kind < RULE_KINDS; kind++)
     {
-        const char* subject = pass == 0 ? material : type;
+        const char* subject = subjects[kind];
         if(!subject || !*subject)
             continue;
         for(int i = 0; i < s_ruleCount; i++)
         {
-            if(s_rules[i].byMaterial == (pass == 0) && fnmatch(s_rules[i].pattern, subject, FNM_CASEFOLD) == 0)
+            if(s_rules[i].kind == kind && fnmatch(s_rules[i].pattern, subject, FNM_CASEFOLD) == 0)
                 return s_files[s_rules[i].file].slot;
         }
     }

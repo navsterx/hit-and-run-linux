@@ -3,9 +3,9 @@
 //=============================================================================
 
 // GLSL files assigned to materials by shaders/materials.ini (in the shaders folder: shaders/ in the working directory
-// or $SHAR_SHADERS) and by a mod's Shaders/materials.ini; the user's rules come first. A material matches by the name
-// of its pddi shader type ("simple", "spheremap", a mod's own) or by its own name from the art. Files reload when
-// they change. Format: shaders/README.md.
+// or $SHAR_SHADERS) and by a mod's Shaders/materials.ini; the user's rules come first. A material matches by its own
+// name from the art, the art file it was loaded from, or the name of its pddi shader type ("simple", "spheremap", a
+// mod's own), in that order. Files reload when they change. Format: shaders/README.md.
 
 #ifndef _GLCUSTOM_HPP_
 #define _GLCUSTOM_HPP_
@@ -19,6 +19,6 @@ void pglCustomUpdate(pglPipeline* pipeline);
 unsigned pglCustomGeneration();
 
 // the custom program slot for a material (pglPipeline::Material::custom), or -1
-int pglCustomShaderFor(const char* type, const char* material);
+int pglCustomShaderFor(const char* type, const char* material, const char* file);
 
 #endif

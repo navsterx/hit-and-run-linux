@@ -12,7 +12,7 @@
 #include <string.h>
 
 #ifdef RAD_LINUX
-void pglSetMaterialName(pddiShader* shader, const char* name);     // pddi/gl/glmat.cpp
+void pglSetMaterialName(pddiShader* shader, const char* name, const char* file);     // pddi/gl/glmat.cpp
 #endif
 
 tShader::tShader()
@@ -279,7 +279,7 @@ tEntity* tShaderLoader::LoadObject(tChunkFile* f, tEntityStore* store)
     shader->mTranslucent = HasTranslucency;
     shader->SetName(name);
 #ifdef RAD_LINUX
-    pglSetMaterialName(shader->GetShader(), name);     // user material shaders can match it (pddi/gl/glcustom.cpp)
+    pglSetMaterialName(shader->GetShader(), name, f->GetFullFilename());    // for user material shaders (pddi/gl/glcustom.cpp)
 #endif
     return shader;
 }

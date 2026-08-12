@@ -246,8 +246,9 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   the shader would no longer cut): alpha is ramped over ~1 pixel around the reference (fwidth), so the edge stays
   where the alpha test put it. `SHAR_ALPHA_TO_COVERAGE=0` keeps the plain alpha test.
   Material shaders (2026-10-18, `pddi/gl/glcustom.cpp`): `shaders/materials.ini` [types] (the pddi shader name the
-  art asked for, kept by `pglMat::SetTypeName` from `pglDevice::NewShader`) and [materials] (the tShader name, passed
-  by a RAD_LINUX hook in `p3d/shader.cpp` -> `pglSetMaterialName`) map fnmatch patterns to GLSL files defining
+  art asked for, kept by `pglMat::SetTypeName` from `pglDevice::NewShader`), [files] (the chunk file's
+  GetFullFilename, '/'-separated: "art/chars/homer_m.p3d"; case as opened, "ART/l1r1.p3d") and [materials] (the
+  tShader name; both passed by a RAD_LINUX hook in `p3d/shader.cpp` -> `pglSetMaterialName`) map fnmatch patterns to GLSL files defining
   `vec4 ShadeMaterial()`; the user's rules first, then the first mod's `Shaders/` (`shar_ModConfigFolder`). Each
   file is a pipeline program slot (`BuildCustomProgram`, up to 32), built from the shared vertex shader with
   CUSTOM/REFLECTION defined and the fragment prelude (StandardColour, BaseTexture, LightVector, FinishFragment: fog +
