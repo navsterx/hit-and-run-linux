@@ -100,7 +100,8 @@ homer_v* = materials/toon.glsl
 ```
 
 Each line is `pattern = file`. Patterns may use `*` and `?` and ignore case; the file is relative to this folder.
-Within each section the first matching line wins.
+Within each section the first matching line wins. Up to four files, comma-separated, draw the material once with
+each, in order: `*chars/* = materials/flat.glsl, materials/outline.glsl` is flat colours, then outlines.
 
 - **Types**: `simple` is almost everything, including the HUD and menus; `spheremap` and `environment` are car
   paint and chrome. A mod's art can name a type of its own (`toon`, say), which draws as `simple` unless a rule
@@ -149,7 +150,37 @@ uniform int uLightCount;               uniform vec3 uLightColour[8];   // the li
 uniform float uTime;                   // seconds since the game started
 ```
 
-(`gl_FrontFacing` is false on the side of a polygon the game shows: the renderer mirrors the scene in depth.)
+(`gl_FrontFacing` is no use for telling the outside of a model from the inside: the game draws with culling off
+and its models do not all wind their polygons the same way. Compare `vNormal` with `-vEyePosition` instead, as
+`outline.glsl` does.)
+
+### Moving vertices
+
+A shader can also move the model's vertices, by defining `vec4 MaterialVertex(vec3 position, vec3 normal)`: it gets
+a vertex's position and normal (model space) and returns where it goes on screen (clip space, as `gl_Position`).
+The file is then compiled twice, once for each stage, so keep each part inside its stage's `#ifdef`:
+
+```glsl
+#ifdef VERTEX_STAGE
+vec4 MaterialVertex(vec3 position, vec3 normal)
+{
+    return StandardPosition(position + normal * 0.05);     // a little fatter
+}
+#endif
+
+#ifdef FRAGMENT_STAGE
+vec4 ShadeMaterial()
+{
+    return StandardColour();
+}
+#endif
+```
+
+In the vertex stage: `StandardPosition(position)` (where the game puts it), `uModelView`, `uProjection`,
+`uNormalMatrix` (model to eye space, for normals), `uResolution` (the window in pixels), `uTime`. Lighting is still
+worked out at the vertex's original place.
+
+`#pragma shar_cull none` in a file draws every face of the model with it, even where the game would cull some.
 
 Most of the world is unlit: its lighting is painted into the vertex colours and it has no normals (`vNormal` is
 then the same across each object), so lighting-based effects work on lit materials (characters, cars). `StandardColour()`
@@ -159,6 +190,8 @@ and `vColour` are the way to include the world's own shading.
 
 | File | For | What it does |
 |------|-----|--------------|
+| `outline.glsl` | after another, `[files] *chars/* = materials/flat.glsl, materials/outline.glsl` | black cartoon outlines (inverted hull: the model again, pushed out along its normals, back half only), a fixed width in pixels |
+| `standard.glsl` | first of several | draws a material exactly as the game does (to add an outline to the normal look) |
 | `flat.glsl` | `[files] *chars/*` | characters in flat cartoon colours: no shading across the model, still as bright or dark as the scene |
 | `toon.glsl` | `simple` | cel shading: light in flat bands (per-pixel on lit materials; colours banded on the rest) |
 | `carpaint.glsl` | `spheremap`, `environment` | the car paint plus a sharp highlight per light and stronger reflections at grazing angles |

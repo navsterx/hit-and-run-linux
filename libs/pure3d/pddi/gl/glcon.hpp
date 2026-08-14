@@ -48,8 +48,9 @@ public :
 
     // backface culling
     void SetCullMode(pddiCullMode mode);
-    // Linux port: a two-sided material turns culling off until a one-sided one is set, as in the D3D8 pddi
-    void SetMaterialTwoSided(bool twoSided);
+    // Linux port: a material's culling, PGL_CULL_* (glpipeline.hpp): two-sided materials (and custom shaders with
+    // #pragma shar_cull none) turn it off until a one-sided one is set, as in the D3D8 pddi
+    void SetMaterialCull(int cull);
 
     // z-buffer control
     void EnableZBuffer(bool enable);
@@ -98,7 +99,7 @@ protected:
     pglDevice* device;
     pglDisplay* display;
     pglPipeline* pipeline;      // Linux port: the display's (OpenGL 3.3 core: glpipeline.hpp)
-    bool materialTwoSided;
+    int materialCull;
     void ApplyCull(void);
 
     pglExtContext* extContext;

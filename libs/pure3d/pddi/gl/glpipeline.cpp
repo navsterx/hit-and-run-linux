@@ -107,7 +107,7 @@ GLint pglProgram::Uniform(const char* name) const
 // pglContext::LoadHardwareMatrix): x and y, and so lighting and the reflection vector's x and y, are D3D's.
 // Fog distance is |eye z|, as D3D's linear table fog. Each program's source is compiled with a header defining
 // REFLECTION 0 or 1.
-static const char* s_vertexSource =
+static const char* s_vertexDeclarations =
     "in vec3 aPosition;\n"
     "in vec3 aNormal;\n"
     "in vec4 aColour;\n"
@@ -134,14 +134,27 @@ static const char* s_vertexSource =
     "out vec2 vReflectionUV;\n"
     "#endif\n"
     "#if CUSTOM\n"
+    "uniform float uTime;\n"
+    "uniform vec2 uResolution;\n"
+    "// the position as the game places it, in clip space\n"
+    "vec4 StandardPosition(vec3 position)\n"
+    "{\n"
+    "    return uProjection * (uModelView * vec4(position, 1.0));\n"
+    "}\n"
     "out vec3 vNormal;\n"
     "out vec3 vEyePosition;\n"
     "#endif\n"
-    "out float vFogDistance;\n"
+    "out float vFogDistance;\n";
+
+static const char* s_vertexMain =
     "void main()\n"
     "{\n"
     "    vec4 eye = uModelView * vec4(aPosition, 1.0);\n"
+    "#if MATERIAL_VERTEX\n"
+    "    gl_Position = MaterialVertex(aPosition, aNormal);\n"
+    "#else\n"
     "    gl_Position = uProjection * eye;\n"
+    "#endif\n"
     "    vUV = aUV;\n"
     "    vFogDistance = abs(eye.z);\n"
     "    vec3 v = eye.xyz / eye.w;\n"
@@ -225,6 +238,7 @@ static const char* s_fragmentPrelude =
     "uniform vec3 uLightAtten[8];\n"
     "uniform float uLightRange[8];\n"
     "uniform float uTime;\n"
+    "uniform vec2 uResolution;\n"
     "#endif\n"
     "in float vFogDistance;\n"
     "uniform bool uTextured;\n"
@@ -316,8 +330,8 @@ static const char* s_customFragmentMain =
 
 static const struct { const char* name; const char* header; } s_programs[PGL_PROGRAM_COUNT] =
 {
-    { "simple",     "#version 330 core\n#define REFLECTION 0\n#define CUSTOM 0\n" },
-    { "reflection", "#version 330 core\n#define REFLECTION 1\n#define CUSTOM 0\n" },
+    { "simple",     "#version 330 core\n#define REFLECTION 0\n#define CUSTOM 0\n#define MATERIAL_VERTEX 0\n" },
+    { "reflection", "#version 330 core\n#define REFLECTION 1\n#define CUSTOM 0\n#define MATERIAL_VERTEX 0\n" },
 };
 
 static const char* s_uniformNames[] =
@@ -326,7 +340,7 @@ static const char* s_uniformNames[] =
     "uLit", "uMatAmbient", "uMatDiffuse", "uMatSpecular", "uMatEmissive", "uShininess",
     "uGlobalAmbient", "uLightCount", "uLightPosition", "uLightColour", "uLightAtten", "uLightRange",
     "uTextured", "uTexture", "uFog", "uFogColour", "uFogEnd", "uFogScale", "uAlphaCompare", "uAlphaRef",
-    "uReflectionTextured", "uReflection", "uEnvBlend", "uAlphaToCoverage", "uTime",
+    "uReflectionTextured", "uReflection", "uEnvBlend", "uAlphaToCoverage", "uTime", "uResolution",
 };
 
 static void Identity(float* m)
@@ -347,6 +361,7 @@ pglPipeline::pglPipeline()
     customCount = 0;
     frameCount = 0;
     frameTime = 0.0f;
+    frameWidth = frameHeight = 1.0f;
     multisampled = false;
     alphaToCoverageState = -1;
     bound = NULL;
@@ -396,7 +411,7 @@ bool pglPipeline::Init()
 
     for(int i = 0; i < PGL_PROGRAM_COUNT; i++)
     {
-        if(!BuildProgram(programs[i], s_programs[i].name, s_programs[i].header, s_fragmentMain, false))
+        if(!BuildProgram(programs[i], s_programs[i].name, s_programs[i].header, s_fragmentMain, false, NULL, NULL))
             return false;
     }
     bound = NULL;
@@ -415,20 +430,34 @@ bool pglPipeline::Init()
     return true;
 }
 
-bool pglPipeline::BuildProgram(Program& p, const char* name, const char* header, const char* fragmentBody, bool custom)
+// joins NULL-terminated parts into a malloc'd string
+static char* Join(const char** parts)
 {
-    // the fragment shader: the prelude, then the body (a custom one with its own line numbers, then main)
-    const char* parts[4] = { s_fragmentPrelude, custom ? "#line 1\n" : "", fragmentBody, custom ? s_customFragmentMain : "" };
     size_t size = 1;
-    for(int i = 0; i < 4; i++)
+    for(int i = 0; parts[i]; i++)
         size += strlen(parts[i]);
-    char* fragment = (char*)malloc(size);
-    if(!fragment)
-        return false;
-    fragment[0] = 0;
-    for(int i = 0; i < 4; i++)
-        strcat(fragment, parts[i]);
-    bool ok = p.program.Build(name, s_vertexSource, fragment, header);
+    char* s = (char*)malloc(size);
+    if(!s)
+        return NULL;
+    s[0] = 0;
+    for(int i = 0; parts[i]; i++)
+        strcat(s, parts[i]);
+    return s;
+}
+
+bool pglPipeline::BuildProgram(Program& p, const char* name, const char* header, const char* fragmentBody, bool custom,
+                               const char* fragmentHeader, const char* vertexBody)
+{
+    // vertex: the declarations, a custom shader's vertex part (with its own line numbers), main; fragment: the
+    // prelude, the body (a custom one with its own line numbers, then main)
+    const char* vertexParts[] = { s_vertexDeclarations, vertexBody ? "#line 1\n" : "", vertexBody ? vertexBody : "",
+                                  vertexBody ? "\n" : "", s_vertexMain, NULL };
+    const char* fragmentParts[] = { s_fragmentPrelude, custom ? "#line 1\n" : "", fragmentBody,
+                                    custom ? s_customFragmentMain : "", NULL };
+    char* vertex = Join(vertexParts);
+    char* fragment = Join(fragmentParts);
+    bool ok = vertex && fragment && p.program.Build(name, vertex, fragment, header, fragmentHeader);
+    free(vertex);
     free(fragment);
     if(!ok)
         return false;
@@ -441,8 +470,21 @@ bool pglPipeline::BuildProgram(Program& p, const char* name, const char* header,
     for(int g = 0; g < GROUP_COUNT; g++)
         p.uploaded[g] = version[g] - 1;     // everything to upload
     p.timeFrame = frameCount - 1;
+    p.cull = 0;
     bound = NULL;
     return true;
+}
+
+// "#pragma shar_cull none" in a custom shader: it draws every face, whatever the game's culling
+static int CullDirective(const char* source)
+{
+    const char* p = strstr(source, "#pragma shar_cull");
+    if(!p)
+        return PGL_CULL_GAME;
+    p += strlen("#pragma shar_cull");
+    while(*p == ' ' || *p == '\t')
+        p++;
+    return strncmp(p, "none", 4) == 0 ? PGL_CULL_NONE : PGL_CULL_GAME;
 }
 
 int pglPipeline::BuildCustomProgram(const char* name, const char* source)
@@ -450,9 +492,25 @@ int pglPipeline::BuildCustomProgram(const char* name, const char* source)
     if(!ready || customCount == pglMaxCustomPrograms)
         return -1;
     Program& p = programs[PGL_PROGRAM_COUNT + customCount];
-    if(!BuildProgram(p, name, "#version 330 core\n#define REFLECTION 1\n#define CUSTOM 1\n", source, true))
+
+    // the file goes into the fragment stage with FRAGMENT_STAGE defined; if it defines MaterialVertex, also into the
+    // vertex stage with VERTEX_STAGE defined (the file keeps each part inside #ifdef ..._STAGE)
+    bool vertexPart = strstr(source, "MaterialVertex") != NULL;
+    char vertexHeader[160], fragmentHeader[160];
+    snprintf(vertexHeader, sizeof(vertexHeader),
+             "#version 330 core\n#define REFLECTION 1\n#define CUSTOM 1\n#define MATERIAL_VERTEX %d\n#define VERTEX_STAGE 1\n",
+             vertexPart ? 1 : 0);
+    snprintf(fragmentHeader, sizeof(fragmentHeader),
+             "#version 330 core\n#define REFLECTION 1\n#define CUSTOM 1\n#define FRAGMENT_STAGE 1\n");
+    if(!BuildProgram(p, name, vertexHeader, source, true, fragmentHeader, vertexPart ? source : NULL))
         return -1;
+    p.cull = CullDirective(source);
     return customCount++;
+}
+
+int pglPipeline::CustomCull(int slot) const
+{
+    return slot >= 0 && slot < customCount ? programs[PGL_PROGRAM_COUNT + slot].cull : PGL_CULL_GAME;
 }
 
 void pglPipeline::ReleaseCustomPrograms()
@@ -465,10 +523,12 @@ void pglPipeline::ReleaseCustomPrograms()
     Changed(GROUP_MATERIAL);
 }
 
-void pglPipeline::NewFrame()
+void pglPipeline::NewFrame(int width, int height)
 {
     frameCount++;
     frameTime = SDL_GetTicks() / 1000.0f;
+    frameWidth = (float)width;
+    frameHeight = (float)height;
 }
 
 // setters skip values that did not change: the game sets the same material and matrices over and over
@@ -647,9 +707,10 @@ void pglPipeline::Prepare()
         bound = &p;
     }
     UploadUniforms(p);
-    if(p.uniform[U_TIME] >= 0 && p.timeFrame != frameCount)
+    if(p.timeFrame != frameCount && (p.uniform[U_TIME] >= 0 || p.uniform[U_RESOLUTION] >= 0))
     {
         glUniform1f(p.uniform[U_TIME], frameTime);
+        glUniform2f(p.uniform[U_RESOLUTION], frameWidth, frameHeight);
         p.timeFrame = frameCount;
     }
 

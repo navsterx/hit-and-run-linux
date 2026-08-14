@@ -10,6 +10,7 @@
 #include <pddi/base/baseshader.hpp>
 #include <pddi/gl/glcon.hpp>
 #include <pddi/gl/glpipeline.hpp>
+#include <pddi/gl/glcustom.hpp>
 class pglTexture;
 
 const int pglMaxPasses = 1;
@@ -96,8 +97,9 @@ public:
     void SetMaterialName(const char* name, const char* file);
 
 protected:
-    // the pipeline material and GL state for a draw (the standard part; shader kinds add theirs and set it)
-    void SetupStandard(pglPipeline::Material& m);
+    // the pipeline material and GL state for a draw pass (the standard part; shader kinds add theirs and set it)
+    void SetupStandard(pglPipeline::Material& m, unsigned renderPass);
+    void LookUpCustomShaders(void);     // when the user material shaders' rules or files were reloaded
 
     pglContext* context;
     int program;
@@ -105,7 +107,8 @@ protected:
     char typeName[32];
     char* materialName;
     char* fileName;
-    int customSlot;
+    int customSlots[pglMaxMaterialPasses];  // a pipeline custom program per pass (-1: built-in)
+    int customPasses;
     unsigned customGeneration;
     pglTextureEnv texEnv[pglMaxPasses];
 };

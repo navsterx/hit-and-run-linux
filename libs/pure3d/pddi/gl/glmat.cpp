@@ -131,7 +131,8 @@ pglMat::pglMat(pglContext* c, int prog)
     typeName[0] = 0;
     materialName = NULL;
     fileName = NULL;
-    customSlot = -1;
+    customSlots[0] = -1;
+    customPasses = 1;
     customGeneration = 0;
 
     for(int i = 0; i < pglMaxPasses; i++)
@@ -185,7 +186,8 @@ const char* pglMat::GetType(void)
 
 int pglMat::GetPasses(void)
 {
-    return 1;
+    LookUpCustomShaders();
+    return customPasses;        // Linux port: a user material shader rule can list several (glcustom.cpp)
 }
 
 void pglMat::SetPass(int pass)
@@ -296,11 +298,28 @@ int pglMat::CountDevPasses(void)
 void pglMat::SetDevPass(unsigned pass)
 {
     pglPipeline::Material m;
-    SetupStandard(m);
+    SetupStandard(m, pass);
     context->GetDisplay()->GetPipeline()->SetMaterial(m);
 }
 
-void pglMat::SetupStandard(pglPipeline::Material& m)
+void pglMat::LookUpCustomShaders(void)
+{
+    if(customGeneration == pglCustomGeneration())
+        return;
+    static int s_log = -1;      // SHAR_MATERIAL_LOG=1: each material's name and type when it is first drawn
+    if(s_log < 0)
+    {
+        const char* e = getenv("SHAR_MATERIAL_LOG");
+        s_log = e && e[0] == '1';
+    }
+    if(s_log && customGeneration == 0)
+        fprintf(stderr, "PDDI: material %s (type %s, file %s)\n", materialName ? materialName : "(unnamed)", typeName,
+                fileName ? fileName : "-");
+    customGeneration = pglCustomGeneration();
+    customPasses = pglCustomShadersFor(typeName, materialName, fileName, customSlots);
+}
+
+void pglMat::SetupStandard(pglPipeline::Material& m, unsigned renderPass)
 {
     // Linux port: the lighting, texturing and alpha-test settings go to the pipeline's programs (glpipeline.cpp);
     // blending, culling and texture parameters are still GL state
@@ -311,22 +330,9 @@ void pglMat::SetupStandard(pglPipeline::Material& m)
     memset(&m, 0, sizeof(m));       // compared whole by SetMaterial
     m.program = program;
 
-    // a user material shader, looked up again whenever the shader rules or files reload
-    if(customGeneration != pglCustomGeneration())
-    {
-        static int s_log = -1;      // SHAR_MATERIAL_LOG=1: each material's name and type when it is first drawn
-        if(s_log < 0)
-        {
-            const char* e = getenv("SHAR_MATERIAL_LOG");
-            s_log = e && e[0] == '1';
-        }
-        if(s_log && customGeneration == 0)
-            fprintf(stderr, "PDDI: material %s (type %s, file %s)\n", materialName ? materialName : "(unnamed)", typeName,
-                    fileName ? fileName : "-");
-        customGeneration = pglCustomGeneration();
-        customSlot = pglCustomShaderFor(typeName, materialName, fileName);
-    }
-    m.custom = customSlot;
+    // a user material shader for this pass (rules and files can reload: looked up again then)
+    LookUpCustomShaders();
+    m.custom = customSlots[renderPass < (unsigned)customPasses ? renderPass : 0];
 
     m.textured = texEnv[i].texture != NULL;
     if(texEnv[i].texture)
@@ -354,7 +360,11 @@ void pglMat::SetupStandard(pglPipeline::Material& m)
         glBlendFunc(alphaBlendTable[texEnv[i].alphaBlendMode].src, alphaBlendTable[texEnv[i].alphaBlendMode].dest);
     }
 
-    context->SetMaterialTwoSided(texEnv[i].twoSided);
+    // two-sided materials draw every face, as in the D3D8 pddi; a custom shader's #pragma shar_cull overrides it
+    int cull = texEnv[i].twoSided ? PGL_CULL_NONE : PGL_CULL_GAME;
+    if(pipeline->CustomCull(m.custom) != PGL_CULL_GAME)
+        cull = pipeline->CustomCull(m.custom);
+    context->SetMaterialCull(cull);
  
     m.lit = texEnv[i].lit;
     m.shininess = texEnv[i].shininess;
@@ -405,7 +415,7 @@ void pglReflectionMat::SetEnvBlend(pddiColour c)
 void pglReflectionMat::SetDevPass(unsigned pass)
 {
     pglPipeline::Material m;
-    SetupStandard(m);
+    SetupStandard(m, pass);
 
     // stage 1: the reflection map, sampled like the base texture
     m.reflectionTextured = reflectionMap != NULL;
@@ -448,7 +458,7 @@ void pglErrorMat::SetDevPass(unsigned pass)
     pglPipeline::Material m;
     pglTexture* texture = texEnv[0].texture;
     texEnv[0].texture = NULL;           // no texture stage
-    SetupStandard(m);
+    SetupStandard(m, pass);
     texEnv[0].texture = texture;
     context->GetDisplay()->GetPipeline()->SetMaterial(m);
 }

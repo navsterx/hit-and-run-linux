@@ -54,6 +54,11 @@ const int pglMaxLights = 8;
 
 const int pglMaxCustomPrograms = 32;       // user material shaders (glcustom.cpp)
 
+// which faces a material draws (pglContext::SetMaterialCull): as the game says, or all (two-sided materials, a custom
+// shader's "#pragma shar_cull none"). The game itself draws with culling off (RenderFlow) and its art's winding is not
+// consistent, so there is no "reverse": shaders tell faces apart by their normals instead.
+enum { PGL_CULL_GAME, PGL_CULL_NONE };
+
 // the programs, one per kind of pddi shader (glmat.cpp)
 enum pglProgramType
 {
@@ -118,11 +123,12 @@ public:
     // user material shaders: ShadeMaterial() in GLSL (shaders/README.md). Returns the slot for Material::custom,
     // or -1 when it does not build (the driver's log is printed). Release drops them all (materials' slots with them).
     int BuildCustomProgram(const char* name, const char* source);
+    int CustomCull(int slot) const;     // the slot's PGL_CULL_* directive
     void ReleaseCustomPrograms();
     int CustomProgramCount() const { return customCount; }
 
-    // from BeginFrame: the time custom shaders see
-    void NewFrame();
+    // from BeginFrame: the time and frame size (uTime, uResolution) custom shaders see
+    void NewFrame(int width, int height);
 
     // before drawing anything: binds the material's program and the vertex array object, uploads changed uniforms
     void Prepare();
@@ -153,7 +159,7 @@ private:
         U_LIT, U_MATAMBIENT, U_MATDIFFUSE, U_MATSPECULAR, U_MATEMISSIVE, U_SHININESS,
         U_GLOBALAMBIENT, U_LIGHTCOUNT, U_LIGHTPOSITION, U_LIGHTCOLOUR, U_LIGHTATTEN, U_LIGHTRANGE,
         U_TEXTURED, U_TEXTURE, U_FOG, U_FOGCOLOUR, U_FOGEND, U_FOGSCALE, U_ALPHACOMPARE, U_ALPHAREF,
-        U_REFLECTIONTEXTURED, U_REFLECTION, U_ENVBLEND, U_ALPHATOCOVERAGE, U_TIME,
+        U_REFLECTIONTEXTURED, U_REFLECTION, U_ENVBLEND, U_ALPHATOCOVERAGE, U_TIME, U_RESOLUTION,
         U_COUNT
     };
 
@@ -162,13 +168,15 @@ private:
         pglProgram program;
         GLint uniform[U_COUNT];
         unsigned uploaded[GROUP_COUNT];
-        unsigned timeFrame;         // frame whose time uTime holds
+        unsigned timeFrame;         // frame whose time and size uTime, uResolution hold
+        int cull;                   // PGL_CULL_* (custom programs)
     };
 
     void Changed(int group) { version[group]++; }
     bool AlphaToCoverage() const;
     void UploadUniforms(Program& p);
-    bool BuildProgram(Program& p, const char* name, const char* header, const char* fragmentBody, bool custom);
+    bool BuildProgram(Program& p, const char* name, const char* header, const char* fragmentBody, bool custom,
+                      const char* fragmentHeader, const char* vertexBody);
 
     bool ready;
     bool multisampled;
@@ -176,7 +184,7 @@ private:
     Program programs[PGL_PROGRAM_COUNT + pglMaxCustomPrograms];   // built-in ones, then custom ones
     int customCount;
     unsigned frameCount;
-    float frameTime;
+    float frameTime, frameWidth, frameHeight;
     Program* bound;             // the program in use, NULL when unknown
     unsigned version[GROUP_COUNT];
     GLuint vao;

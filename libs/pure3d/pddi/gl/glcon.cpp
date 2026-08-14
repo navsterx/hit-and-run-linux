@@ -77,7 +77,7 @@ pglContext::pglContext(pglDevice* dev, pglDisplay* disp) : pddiBaseContext((pddi
     device = dev;
     display = disp;
     pipeline = disp->GetPipeline();
-    materialTwoSided = false;
+    materialCull = 0;      // PGL_CULL_GAME
 
     device->AddRef();
     display->AddRef();
@@ -126,7 +126,7 @@ void pglContext::BeginFrame()
     }
 
     pglFlushPendingDeletes();
-    pipeline->NewFrame();
+    pipeline->NewFrame(display->GetWidth(), display->GetHeight());
     pglCustomUpdate(pipeline);      // Linux port: user material shaders (glcustom.cpp)
     pipeline->LoadIdentity();
     pipeline->FrameStats();
@@ -799,8 +799,13 @@ void pglContext::DrawPrimBuffer(pddiShader* mat, pddiPrimBuffer* buffer)
 
     pddiBaseShader* material = (pddiBaseShader*)mat;
     ADD_STAT(PDDI_STAT_MATERIAL_OPS, !material->IsCurrent());
-    material->SetMaterial();
-    ((pglPrimBuffer*)buffer)->Display();
+    // as the D3D8 pddi, once per pass (Linux port: user material shaders can have several, glcustom.cpp)
+    int passes = material->GetPasses();
+    for(int i = 0; i < passes; i++)
+    {
+        material->SetMaterial(i);
+        ((pglPrimBuffer*)buffer)->Display();
+    }
 }
 
 // lighting
@@ -861,13 +866,13 @@ GLenum cullModeTable[3] =
 void pglContext::SetCullMode(pddiCullMode mode)
 {
     pddiBaseContext::SetCullMode(mode);
-    if(!materialTwoSided)
-        ApplyCull();
+    ApplyCull();
 }
 
 void pglContext::ApplyCull(void)
 {
-    pddiCullMode mode = materialTwoSided ? PDDI_CULL_NONE : state.renderState->cullMode;
+    pddiCullMode mode = materialCull == PGL_CULL_NONE ? PDDI_CULL_NONE : state.renderState->cullMode;
+
     if(mode == PDDI_CULL_NONE)
     {
         glDisable(GL_CULL_FACE);
@@ -879,11 +884,11 @@ void pglContext::ApplyCull(void)
     }
 }
 
-void pglContext::SetMaterialTwoSided(bool twoSided)
+void pglContext::SetMaterialCull(int cull)
 {
-    if(twoSided == materialTwoSided)
+    if(cull == materialCull)
         return;
-    materialTwoSided = twoSided;
+    materialCull = cull;
     ApplyCull();
 }
 

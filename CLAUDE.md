@@ -254,8 +254,14 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   CUSTOM/REFLECTION defined and the fragment prelude (StandardColour, BaseTexture, LightVector, FinishFragment: fog +
   alpha test/A2C) + `#line 1` + the user file. A material caches its slot per reload generation
   (`pglCustomGeneration`); `pglCustomUpdate` (BeginFrame) reloads everything when the ini or a user file changes.
-  `SHAR_MATERIAL_LOG=1` lists materials as drawn. GL's front faces are the game's back faces (z mirrored), so
-  gl_FrontFacing is inverted for user shaders. World geometry is mostly unlit without normals (baked vertex colours).
+  `SHAR_MATERIAL_LOG=1` lists materials as drawn. World geometry is mostly unlit without normals (baked vertex colours).
+  Passes: a rule may list up to 4 files; `pglMat::GetPasses` returns that count and `pglContext::DrawPrimBuffer` now
+  loops passes as the D3D8 pddi did (skinned characters are CPU-skinned prim buffers, `tPrimGroupSkinnedPC`, normals
+  included). A file defining `MaterialVertex` is also compiled into the vertex stage (VERTEX_STAGE / FRAGMENT_STAGE
+  defines, MATERIAL_VERTEX replaces gl_Position). `#pragma shar_cull none` -> `pglContext::SetMaterialCull`. The game
+  renders with culling OFF (`renderflow.cpp` SetCullMode(PDDI_CULL_NONE)) and the art's winding is inconsistent (an
+  inverted hull culled by winding drew the characters' front shells black), so outline.glsl keeps shell fragments
+  by normal (dot(vNormal, -vEyePosition) < 0).
 
 ## Mods (Lucas' Mod Launcher format)
 

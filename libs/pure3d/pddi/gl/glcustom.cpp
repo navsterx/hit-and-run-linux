@@ -26,7 +26,8 @@ struct Rule
 {
     int kind;                   // RuleKind
     char pattern[128];          // fnmatch pattern, case-insensitive
-    int file;                   // index in s_files
+    int files[pglMaxMaterialPasses];    // indices in s_files, one per pass
+    int passes;
 };
 
 struct ShaderFile
@@ -142,40 +143,51 @@ static void ParseRules(pglPipeline* pipeline, char* text, const char* source, ch
         }
         *eq = 0;
         char* pattern = Trim(line);
-        char* file = Trim(eq + 1);
         if(s_ruleCount == MAX_RULES)
         {
             fprintf(stderr, "PDDI: material shaders: more than %d rules, %s left out\n", MAX_RULES, pattern);
             continue;
         }
 
-        int index;
-        if(!names)
-        {
-            char path[800];
-            snprintf(path, sizeof(path), "%s/%s", s_folder, file);
-            char* shader = ReadFile(path);
-            index = AddFile(pipeline, file, path, shader);
-            free(shader);
-        }
-        else
-        {
-            char name[300];
-            snprintf(name, sizeof(name), "mod:%s", file);
-            const char* shader = NULL;
-            for(int i = 0; i < count; i++)
-            {
-                if(strcasecmp(names[i], file) == 0)
-                    shader = texts[i];
-            }
-            index = AddFile(pipeline, name, NULL, shader);
-        }
-        if(index < 0)
-            continue;
-        Rule& r = s_rules[s_ruleCount++];
+        // one or more files, comma-separated: the material is drawn once with each, in order
+        Rule& r = s_rules[s_ruleCount];
         r.kind = kind;
+        r.passes = 0;
         snprintf(r.pattern, sizeof(r.pattern), "%s", pattern);
-        r.file = index;
+        char* list = eq + 1;
+        for(char* file = list; file && r.passes < pglMaxMaterialPasses; )
+        {
+            char* comma = strchr(file, ',');
+            if(comma)
+                *comma = 0;
+            file = Trim(file);
+            int index = -1;
+            if(*file && !names)
+            {
+                char path[800];
+                snprintf(path, sizeof(path), "%s/%s", s_folder, file);
+                char* shader = ReadFile(path);
+                index = AddFile(pipeline, file, path, shader);
+                free(shader);
+            }
+            else if(*file)
+            {
+                char name[300];
+                snprintf(name, sizeof(name), "mod:%s", file);
+                const char* shader = NULL;
+                for(int i = 0; i < count; i++)
+                {
+                    if(strcasecmp(names[i], file) == 0)
+                        shader = texts[i];
+                }
+                index = AddFile(pipeline, name, NULL, shader);
+            }
+            if(index >= 0)
+                r.files[r.passes++] = index;
+            file = comma ? comma + 1 : NULL;
+        }
+        if(r.passes)
+            s_ruleCount++;
     }
 }
 
@@ -216,10 +228,13 @@ static void Load(pglPipeline* pipeline)
         fprintf(stderr, "PDDI: material shaders:");
         for(int i = 0; i < s_ruleCount; i++)
         {
-            const ShaderFile& f = s_files[s_rules[i].file];
             static const char* prefixes[RULE_KINDS] = { "material ", "file ", "" };
-            fprintf(stderr, "%s %s%s -> %s%s", i ? "," : "", prefixes[s_rules[i].kind], s_rules[i].pattern,
-                    f.name, f.slot < 0 ? " (failed)" : "");
+            fprintf(stderr, "%s %s%s ->", i ? "," : "", prefixes[s_rules[i].kind], s_rules[i].pattern);
+            for(int f = 0; f < s_rules[i].passes; f++)
+            {
+                const ShaderFile& file = s_files[s_rules[i].files[f]];
+                fprintf(stderr, "%s %s%s", f ? " +" : "", file.name, file.slot < 0 ? " (failed)" : "");
+            }
         }
         fprintf(stderr, "\n");
     }
@@ -258,7 +273,7 @@ unsigned pglCustomGeneration()
     return s_generation;
 }
 
-int pglCustomShaderFor(const char* type, const char* material, const char* file)
+int pglCustomShadersFor(const char* type, const char* material, const char* file, int* slots)
 {
     // material rules, then file rules, then type rules; the first match of each kind wins
     const char* subjects[RULE_KINDS] = { material, file, type };
@@ -269,9 +284,19 @@ int pglCustomShaderFor(const char* type, const char* material, const char* file)
             continue;
         for(int i = 0; i < s_ruleCount; i++)
         {
-            if(s_rules[i].kind == kind && fnmatch(s_rules[i].pattern, subject, FNM_CASEFOLD) == 0)
-                return s_files[s_rules[i].file].slot;
+            if(s_rules[i].kind != kind || fnmatch(s_rules[i].pattern, subject, FNM_CASEFOLD) != 0)
+                continue;
+            const Rule& r = s_rules[i];
+            int count = 0;
+            for(int p = 0; p < r.passes; p++)
+            {
+                int slot = s_files[r.files[p]].slot;
+                if(slot >= 0 || p == 0)
+                    slots[count++] = slot;
+            }
+            return count;
         }
     }
-    return -1;
+    slots[0] = -1;
+    return 1;
 }

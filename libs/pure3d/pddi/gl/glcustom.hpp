@@ -18,7 +18,11 @@ void pglCustomUpdate(pglPipeline* pipeline);
 // bumped whenever the rules or shaders are reloaded: materials look themselves up again
 unsigned pglCustomGeneration();
 
-// the custom program slot for a material (pglPipeline::Material::custom), or -1
-int pglCustomShaderFor(const char* type, const char* material, const char* file);
+const int pglMaxMaterialPasses = 4;
+
+// the passes a material is drawn in: the custom program slot of each (pglPipeline::Material::custom), -1 for the
+// built-in drawing; returns the count, 1 when no rule matches (slots[0] = -1). A shader that did not build is the
+// built-in drawing in the first pass and left out in later ones.
+int pglCustomShadersFor(const char* type, const char* material, const char* file, int* slots);
 
 #endif
