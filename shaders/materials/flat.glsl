@@ -3,8 +3,10 @@
 //
 // By default the colours still follow the light around them as a whole (dimmer at night and indoors, tinted by
 // coloured lights), so characters do not glow in the dark. Set SCENE_LIGHT to 0.0 for full colour everywhere.
+// FLATNESS blends between these flat colours and the game's own smooth shading.
 
-const float BRIGHTNESS = 1.0;           // overall brightness
+const float FLATNESS = 1.0;             // 1 = flat colours, 0 = the game's smooth shading, in between = a mix
+const float BRIGHTNESS = 1.0;           // overall brightness (of the flat colours)
 const float SCENE_LIGHT = 1.0;          // 1 = follow the scene's light level, 0 = ignore it (always full colour)
 const float LIGHT_SHARE = 0.75;         // how much of each light counts (as if it hit every part at the same angle)
 
@@ -32,5 +34,7 @@ vec4 ShadeMaterial()
         base *= vColour;                // unlit parts keep their vertex colours (flat already)
     }
 
-    return vec4(min(base.rgb * light * BRIGHTNESS, 1.0), base.a);
+    vec3 flatColour = min(base.rgb * light * BRIGHTNESS, 1.0);
+    vec3 smoothColour = StandardColour().rgb;    // as the game shades it: light to dark across the model
+    return vec4(mix(smoothColour, flatColour, clamp(FLATNESS, 0.0, 1.0)), base.a);
 }
