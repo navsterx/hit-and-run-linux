@@ -57,12 +57,17 @@ void main()
         vec2 uv = clip.xy / clip.w * 0.5 + 0.5;
         if(uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
             continue;
-        float sceneZ = ViewPosition(uv).z;
+        vec3 q = ViewPosition(uv);
 
-        // occluded when something is in front of the sample point; not by things far in front (range check)
-        float inFront = sceneZ >= s.z + BIAS ? 1.0 : 0.0;
-        float range = smoothstep(0.0, 1.0, RADIUS / max(abs(p.z - sceneZ), 1e-4));
-        occlusion += inFront * range;
+        // occluded when the surface there is in front of the sample point, above this surface (not just in front
+        // of it on screen) and within RADIUS of this point in 3D: a character standing in front of a wall is far
+        // from the wall in 3D, so it leaves no dark halo on it
+        vec3 toOccluder = q - p;
+        float distance3D = length(toOccluder);
+        float inFront = q.z >= s.z + BIAS ? 1.0 : 0.0;
+        float above = dot(toOccluder, n) > BIAS * distance3D ? 1.0 : 0.0;
+        float range = 1.0 - smoothstep(0.5 * RADIUS, RADIUS, distance3D);
+        occlusion += inFront * above * range;
     }
 
     float ao = 1.0 - occlusion / float(SAMPLES);
