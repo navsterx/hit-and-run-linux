@@ -245,6 +245,17 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   (`pglPipeline::SetMultisampled`, off again after the resolve: in a single-sampled buffer it would do nothing and
   the shader would no longer cut): alpha is ramped over ~1 pixel around the reference (fwidth), so the edge stays
   where the alpha test put it. `SHAR_ALPHA_TO_COVERAGE=0` keeps the plain alpha test.
+  Texture filtering (2026-10-18): every uncompressed texture gets glGenerateMipmap after upload (DXT sprites: one
+  level, no mips); `pglTexture::SetSampling` picks trilinear + anisotropy (GL_EXT/ARB_texture_filter_anisotropic,
+  max cached at init) for non-point materials when `mipmaps=` (simpsons.ini, default yes, `anisotropy=` 16;
+  `pglSetTextureFiltering`, SHAR_MIPMAPS / SHAR_ANISOTROPY) allows, so it can change at runtime. Mipmapped alpha
+  makes alpha-tested textures thin out with distance: `SampleBase()` raises alpha by 25% per mip level (computed
+  from UV derivatives, minus the anisotropy) for alpha-tested, non-blended materials (uMipAlpha). Stills show only
+  a small change (fine-detail noise -7%); the gain is less shimmer in motion.
+  Post passes also get uProjection/uInverseProjection (the last perspective projection) and ViewPosition(); a pass
+  with `#pragma shar_original` makes its input the effect's uOriginal (blitted into s_original). SSAO
+  (post/ssao.glsl + ssao_apply.glsl): hemisphere samples around depth-reconstructed positions and normals, depth-aware
+  blur, faded beyond 40-90 m. The game never calls SetZRange, so depth is 0-1.
   Material shaders (2026-10-18, `pddi/gl/glcustom.cpp`): `shaders/materials.ini` [types] (the pddi shader name the
   art asked for, kept by `pglMat::SetTypeName` from `pglDevice::NewShader`), [files] (the chunk file's
   GetFullFilename, '/'-separated: "art/chars/homer_m.p3d"; case as opened, "ART/l1r1.p3d") and [materials] (the

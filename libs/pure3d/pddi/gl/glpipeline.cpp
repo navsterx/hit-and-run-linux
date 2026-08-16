@@ -250,13 +250,31 @@ static const char* s_fragmentPrelude =
     "uniform int uAlphaCompare;\n"
     "uniform float uAlphaRef;\n"
     "uniform bool uAlphaToCoverage;\n"
+    "uniform float uMipAlpha;\n"
     "out vec4 fragColour;\n"
+    "// the base texture; with mipmapping on (uMipAlpha: the anisotropy), an alpha-tested texture's alpha is raised\n"
+    "// with the mip level sampled, so averaged-down levels keep the coverage (fences and leaves would thin out)\n"
+    "vec4 SampleBase()\n"
+    "{\n"
+    "    vec4 t = texture(uTexture, vUV);\n"
+    "    if(uMipAlpha > 0.0 && (uAlphaCompare == 4 || uAlphaCompare == 5))\n"
+    "    {\n"
+    "        vec2 size = vec2(textureSize(uTexture, 0));\n"
+    "        vec2 dx = dFdx(vUV * size);\n"
+    "        vec2 dy = dFdy(vUV * size);\n"
+    "        float major = max(dot(dx, dx), dot(dy, dy));\n"
+    "        float minor = max(min(dot(dx, dx), dot(dy, dy)), 1e-8);\n"
+    "        float lod = 0.5 * log2(max(major, 1e-8)) - log2(min(sqrt(major / minor), uMipAlpha));\n"
+    "        t.a *= 1.0 + max(lod, 0.0) * 0.25;\n"
+    "    }\n"
+    "    return t;\n"
+    "}\n"
     "// the material as the game draws it, before fog\n"
     "vec4 StandardColour()\n"
     "{\n"
     "    vec4 c = vColour;\n"
     "    if(uTextured)\n"
-    "        c *= texture(uTexture, vUV);\n"
+    "        c *= SampleBase();\n"
     "#if REFLECTION\n"
     "    vec4 e = uEnvBlend;\n"
     "    if(uReflectionTextured)\n"
@@ -270,7 +288,7 @@ static const char* s_fragmentPrelude =
     "// the base texture (white without one)\n"
     "vec4 BaseTexture()\n"
     "{\n"
-    "    return uTextured ? texture(uTexture, vUV) : vec4(1.0);\n"
+    "    return uTextured ? SampleBase() : vec4(1.0);\n"
     "}\n"
     "// eye-space direction from this pixel towards light i (< uLightCount), and its attenuation (0 out of range)\n"
     "vec3 LightVector(int i, out float attenuation)\n"
@@ -340,7 +358,7 @@ static const char* s_uniformNames[] =
     "uLit", "uMatAmbient", "uMatDiffuse", "uMatSpecular", "uMatEmissive", "uShininess",
     "uGlobalAmbient", "uLightCount", "uLightPosition", "uLightColour", "uLightAtten", "uLightRange",
     "uTextured", "uTexture", "uFog", "uFogColour", "uFogEnd", "uFogScale", "uAlphaCompare", "uAlphaRef",
-    "uReflectionTextured", "uReflection", "uEnvBlend", "uAlphaToCoverage", "uTime", "uResolution",
+    "uReflectionTextured", "uReflection", "uEnvBlend", "uAlphaToCoverage", "uTime", "uResolution", "uMipAlpha",
 };
 
 static void Identity(float* m)
@@ -363,6 +381,7 @@ pglPipeline::pglPipeline()
     frameTime = 0.0f;
     frameWidth = frameHeight = 1.0f;
     multisampled = false;
+    mipAlpha = 0.0f;
     alphaToCoverageState = -1;
     bound = NULL;
     vao = 0;
@@ -684,6 +703,7 @@ void pglPipeline::UploadUniforms(Program& p)
         glUniform1i(u[U_ALPHACOMPARE], material.alphaCompare < 0 ? 1 : material.alphaCompare);    // 1: always
         glUniform1f(u[U_ALPHAREF], material.alphaRef);
         glUniform1i(u[U_ALPHATOCOVERAGE], AlphaToCoverage());
+        glUniform1f(u[U_MIPALPHA], material.blended ? 0.0f : mipAlpha);
         if(u[U_ENVBLEND] >= 0)
         {
             glUniform1i(u[U_REFLECTIONTEXTURED], material.reflectionTextured);
@@ -731,6 +751,15 @@ bool pglPipeline::AlphaToCoverage() const
 {
     return multisampled && !material.blended &&
            (material.alphaCompare == 4 || material.alphaCompare == 5);     // PDDI_COMPARE_GREATER, _GREATEREQUAL
+}
+
+void pglPipeline::SetTextureFiltering(bool mipmaps, float anisotropy)
+{
+    float value = mipmaps ? (anisotropy < 1.0f ? 1.0f : anisotropy) : 0.0f;
+    if(value == mipAlpha)
+        return;
+    mipAlpha = value;
+    Changed(GROUP_MATERIAL);
 }
 
 void pglPipeline::SetMultisampled(bool m)

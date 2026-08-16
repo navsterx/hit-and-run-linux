@@ -19,6 +19,7 @@
 
 #ifdef RAD_LINUX
 void pglSetAntialiasing( int samples );     // pddi/gl/display_linux/gldisplay.cpp: MSAA
+void pglSetTextureFiltering( int mipmaps, int anisotropy );     // and texture filtering
 #endif
 // Pure 3D
 #include <p3d/anim/compositedrawable.hpp>
@@ -1182,11 +1183,22 @@ void Win32Platform::LoadConfig( ConfigString& config )
             // the graphics card supports)
             mAntialiasing = atoi( value );
         }
+        else if( _stricmp( property, "mipmaps" ) == 0 )
+        {
+            // Linux port: texture filtering: mipmapping (distant textures without shimmer) and anisotropic
+            // filtering (sharp at grazing angles; samples, 1 = off)
+            mMipmaps = _stricmp( value, "no" ) != 0 && strcmp( value, "0" ) != 0;
+        }
+        else if( _stricmp( property, "anisotropy" ) == 0 )
+        {
+            mAnisotropy = atoi( value );
+        }
 #endif
     }
 
 #ifdef RAD_LINUX
     pglSetAntialiasing( mAntialiasing );
+    pglSetTextureFiltering( mMipmaps ? 1 : 0, mAnisotropy );
 #endif
 
     // apply the new settings.
@@ -1291,6 +1303,10 @@ void Win32Platform::SaveConfig( ConfigString& config )
     char antialiasing[ 20 ];
     sprintf( antialiasing, "%d", mAntialiasing );
     config.WriteProperty( "antialiasing", antialiasing );
+    config.WriteProperty( "mipmaps", mMipmaps ? "yes" : "no" );
+    char anisotropy[ 20 ];
+    sprintf( anisotropy, "%d", mAnisotropy );
+    config.WriteProperty( "anisotropy", anisotropy );
 #endif
 }
 
@@ -1322,6 +1338,8 @@ Win32Platform::Win32Platform( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPST
 #ifdef RAD_LINUX
     mBorderless = true;     // fullscreen without a display=... setting is borderless
     mAntialiasing = 4;      // 4x MSAA unless simpsons.ini says otherwise
+    mMipmaps = true;        // mipmapped textures with 16x anisotropic filtering, likewise
+    mAnisotropy = 16;
 #endif
 
 #ifdef RAD_LINUX

@@ -90,6 +90,14 @@ static const char* s_passHeader =
     "uniform int uFrame;\n"
     "uniform float uNear;\n"
     "uniform float uFar;\n"
+    "uniform mat4 uProjection;\n"
+    "uniform mat4 uInverseProjection;\n"
+    "// the eye-space position of what is drawn at uv (the camera at 0,0,0 looking down -z; GL's eye space)\n"
+    "vec3 ViewPosition(vec2 uv)\n"
+    "{\n"
+    "    vec4 p = uInverseProjection * vec4(uv * 2.0 - 1.0, texture(uDepth, uv).r * 2.0 - 1.0, 1.0);\n"
+    "    return p.xyz / p.w;\n"
+    "}\n"
     "float LinearDepth(vec2 uv)\n"
     "{\n"
     "    float d = texture(uDepth, uv).r;\n"
@@ -108,7 +116,8 @@ struct Pass
     time_t mtime;
     pglProgram program;
     bool ok;
-    GLint uScene, uOriginal, uDepth, uResolution, uTime, uFrame, uNear, uFar;
+    bool beginsEffect;          // "#pragma shar_original": uOriginal is this pass's input from here on
+    GLint uScene, uOriginal, uDepth, uResolution, uTime, uFrame, uNear, uFar, uProjection, uInverseProjection;
 };
 
 static Pass s_passes[PGL_POST_STAGES][MAX_PASSES];
@@ -118,7 +127,7 @@ static time_t s_iniTime;
 static Uint32 s_lastCheck;
 static int s_state = 0;         // 0 not set up, 1 set up, -1 off (SHAR_POST=0)
 
-static GLuint s_vao, s_original, s_pingPong[2], s_framebuffers[2], s_depth;
+static GLuint s_vao, s_original, s_pingPong[2], s_framebuffers[3], s_depth;     // framebuffer 2: s_original
 static int s_texW, s_texH;
 static bool s_depthBroken;
 
@@ -161,6 +170,7 @@ static void BuildPass(Pass& p)
         return;
     }
     p.ok = p.program.Build(path, s_passVertexSource, source, NULL, s_passHeader);
+    p.beginsEffect = strstr(source, "#pragma shar_original") != NULL;
     free(source);
     if(!p.ok)
         return;
@@ -174,6 +184,8 @@ static void BuildPass(Pass& p)
     p.uFrame = p.program.Uniform("uFrame");
     p.uNear = p.program.Uniform("uNear");
     p.uFar = p.program.Uniform("uFar");
+    p.uProjection = p.program.Uniform("uProjection");
+    p.uInverseProjection = p.program.Uniform("uInverseProjection");
     glUniform1i(p.uScene, 0);
     glUniform1i(p.uOriginal, 1);
     glUniform1i(p.uDepth, 2);
@@ -290,6 +302,37 @@ static void CheckForChanges()
     }
 }
 
+// a general 4x4 inverse (column-major), for the projection; identity when it is singular
+static void Invert(const float* m, float* out)
+{
+    float inv[16];
+    inv[0] = m[5]*m[10]*m[15] - m[5]*m[11]*m[14] - m[9]*m[6]*m[15] + m[9]*m[7]*m[14] + m[13]*m[6]*m[11] - m[13]*m[7]*m[10];
+    inv[4] = -m[4]*m[10]*m[15] + m[4]*m[11]*m[14] + m[8]*m[6]*m[15] - m[8]*m[7]*m[14] - m[12]*m[6]*m[11] + m[12]*m[7]*m[10];
+    inv[8] = m[4]*m[9]*m[15] - m[4]*m[11]*m[13] - m[8]*m[5]*m[15] + m[8]*m[7]*m[13] + m[12]*m[5]*m[11] - m[12]*m[7]*m[9];
+    inv[12] = -m[4]*m[9]*m[14] + m[4]*m[10]*m[13] + m[8]*m[5]*m[14] - m[8]*m[6]*m[13] - m[12]*m[5]*m[10] + m[12]*m[6]*m[9];
+    inv[1] = -m[1]*m[10]*m[15] + m[1]*m[11]*m[14] + m[9]*m[2]*m[15] - m[9]*m[3]*m[14] - m[13]*m[2]*m[11] + m[13]*m[3]*m[10];
+    inv[5] = m[0]*m[10]*m[15] - m[0]*m[11]*m[14] - m[8]*m[2]*m[15] + m[8]*m[3]*m[14] + m[12]*m[2]*m[11] - m[12]*m[3]*m[10];
+    inv[9] = -m[0]*m[9]*m[15] + m[0]*m[11]*m[13] + m[8]*m[1]*m[15] - m[8]*m[3]*m[13] - m[12]*m[1]*m[11] + m[12]*m[3]*m[9];
+    inv[13] = m[0]*m[9]*m[14] - m[0]*m[10]*m[13] - m[8]*m[1]*m[14] + m[8]*m[2]*m[13] + m[12]*m[1]*m[10] - m[12]*m[2]*m[9];
+    inv[2] = m[1]*m[6]*m[15] - m[1]*m[7]*m[14] - m[5]*m[2]*m[15] + m[5]*m[3]*m[14] + m[13]*m[2]*m[7] - m[13]*m[3]*m[6];
+    inv[6] = -m[0]*m[6]*m[15] + m[0]*m[7]*m[14] + m[4]*m[2]*m[15] - m[4]*m[3]*m[14] - m[12]*m[2]*m[7] + m[12]*m[3]*m[6];
+    inv[10] = m[0]*m[5]*m[15] - m[0]*m[7]*m[13] - m[4]*m[1]*m[15] + m[4]*m[3]*m[13] + m[12]*m[1]*m[7] - m[12]*m[3]*m[5];
+    inv[14] = -m[0]*m[5]*m[14] + m[0]*m[6]*m[13] + m[4]*m[1]*m[14] - m[4]*m[2]*m[13] - m[12]*m[1]*m[6] + m[12]*m[2]*m[5];
+    inv[3] = -m[1]*m[6]*m[11] + m[1]*m[7]*m[10] + m[5]*m[2]*m[11] - m[5]*m[3]*m[10] - m[9]*m[2]*m[7] + m[9]*m[3]*m[6];
+    inv[7] = m[0]*m[6]*m[11] - m[0]*m[7]*m[10] - m[4]*m[2]*m[11] + m[4]*m[3]*m[10] + m[8]*m[2]*m[7] - m[8]*m[3]*m[6];
+    inv[11] = -m[0]*m[5]*m[11] + m[0]*m[7]*m[9] + m[4]*m[1]*m[11] - m[4]*m[3]*m[9] - m[8]*m[1]*m[7] + m[8]*m[3]*m[5];
+    inv[15] = m[0]*m[5]*m[10] - m[0]*m[6]*m[9] - m[4]*m[1]*m[10] + m[4]*m[2]*m[9] + m[8]*m[1]*m[6] - m[8]*m[2]*m[5];
+    float det = m[0]*inv[0] + m[1]*inv[4] + m[2]*inv[8] + m[3]*inv[12];
+    if(det == 0.0f)
+    {
+        memset(out, 0, 16 * sizeof(float));
+        out[0] = out[5] = out[10] = out[15] = 1.0f;
+        return;
+    }
+    for(int i = 0; i < 16; i++)
+        out[i] = inv[i] / det;
+}
+
 static void SetupTexture(GLuint texture, GLint internalFormat, GLenum format, GLenum type, GLint filter, int w, int h)
 {
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -308,7 +351,7 @@ static void SetupTargets(int w, int h)
         glGenTextures(1, &s_original);
         glGenTextures(2, s_pingPong);
         glGenTextures(1, &s_depth);
-        glGenFramebuffers(2, s_framebuffers);
+        glGenFramebuffers(3, s_framebuffers);
     }
     if(w == s_texW && h == s_texH)
         return;
@@ -322,6 +365,8 @@ static void SetupTargets(int w, int h)
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_framebuffers[i]);
         glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_pingPong[i], 0);
     }
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_framebuffers[2]);
+    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_original, 0);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
@@ -367,7 +412,7 @@ void pglPostRun(pglPostStage stage, int w, int h, pglPipeline* pipeline)
         }
     }
 
-    // near and far planes of the last perspective projection (0 when it was not one)
+    // near and far planes of the last perspective projection (0 when it was not one), the projection and its inverse
     float nearPlane = 0.0f, farPlane = 0.0f;
     const float* m = pipeline->GetProjection();
     if(m[11] == -1.0f && m[10] != 1.0f && m[10] != -1.0f)
@@ -375,6 +420,8 @@ void pglPostRun(pglPostStage stage, int w, int h, pglPipeline* pipeline)
         nearPlane = m[14] / (m[10] - 1.0f);
         farPlane = m[14] / (m[10] + 1.0f);
     }
+    float inverse[16];
+    Invert(m, inverse);
 
     static int s_frame = 0;
     s_frame++;
@@ -394,6 +441,19 @@ void pglPostRun(pglPostStage stage, int w, int h, pglPipeline* pipeline)
         glUniform1i(p.uFrame, s_frame);
         glUniform1f(p.uNear, nearPlane);
         glUniform1f(p.uFar, farPlane);
+        glUniformMatrix4fv(p.uProjection, 1, GL_FALSE, m);
+        glUniformMatrix4fv(p.uInverseProjection, 1, GL_FALSE, inverse);
+
+        // a pass that begins an effect makes its input the effect's uOriginal (copied: a ping-pong texture is
+        // written again two passes on)
+        if(p.beginsEffect && input != s_original)
+        {
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, s_framebuffers[(i - 1) & 1]);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_framebuffers[2]);
+            glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, last ? saved.drawFramebuffer : s_framebuffers[i & 1]);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        }
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, input);
         glDrawArrays(GL_TRIANGLES, 0, 3);

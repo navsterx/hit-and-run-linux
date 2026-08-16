@@ -137,6 +137,10 @@ public:
     // then use alpha-to-coverage, which smooths their cut-out edges (fences, foliage)
     void SetMultisampled(bool multisampled);
 
+    // texture filtering settings (gldisplay.cpp pglSetTextureFiltering): with mipmaps, alpha-tested textures that do
+    // not blend have their alpha raised with distance so they keep their coverage (fences, foliage would thin out)
+    void SetTextureFiltering(bool mipmaps, float anisotropy);
+
     // after GL calls outside the pipeline that change the program or vertex array object (the gamma pass)
     void Unbind() { bound = 0; }
 
@@ -159,7 +163,7 @@ private:
         U_LIT, U_MATAMBIENT, U_MATDIFFUSE, U_MATSPECULAR, U_MATEMISSIVE, U_SHININESS,
         U_GLOBALAMBIENT, U_LIGHTCOUNT, U_LIGHTPOSITION, U_LIGHTCOLOUR, U_LIGHTATTEN, U_LIGHTRANGE,
         U_TEXTURED, U_TEXTURE, U_FOG, U_FOGCOLOUR, U_FOGEND, U_FOGSCALE, U_ALPHACOMPARE, U_ALPHAREF,
-        U_REFLECTIONTEXTURED, U_REFLECTION, U_ENVBLEND, U_ALPHATOCOVERAGE, U_TIME, U_RESOLUTION,
+        U_REFLECTIONTEXTURED, U_REFLECTION, U_ENVBLEND, U_ALPHATOCOVERAGE, U_TIME, U_RESOLUTION, U_MIPALPHA,
         U_COUNT
     };
 
@@ -180,6 +184,7 @@ private:
 
     bool ready;
     bool multisampled;
+    float mipAlpha;             // the anisotropy when mipmapping is on, else 0
     int alphaToCoverageState;   // GL_SAMPLE_ALPHA_TO_COVERAGE as last set, -1 unknown
     Program programs[PGL_PROGRAM_COUNT + pglMaxCustomPrograms];   // built-in ones, then custom ones
     int customCount;

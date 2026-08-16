@@ -203,6 +203,8 @@ private:
 #ifdef RAD_LINUX
     bool mBorderless;
     int mAntialiasing;      // MSAA samples (simpsons.ini antialiasing=, 0 = off)
+    bool mMipmaps;          // texture filtering (simpsons.ini mipmaps=yes/no, anisotropy=)
+    int mAnisotropy;
 #endif
     int mScreenWidth;
     int mScreenHeight;

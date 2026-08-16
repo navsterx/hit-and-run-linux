@@ -338,11 +338,8 @@ void pglMat::SetupStandard(pglPipeline::Material& m, unsigned renderPass)
     if(texEnv[i].texture)
     {
         texEnv[i].texture->SetGLState();
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterMagTable[texEnv[i].filterMode]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMinTable[texEnv[i].filterMode]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, uvTable[texEnv[i].uvMode]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, uvTable[texEnv[i].uvMode]);
+        texEnv[i].texture->SetSampling(texEnv[i].filterMode, uvTable[texEnv[i].uvMode],
+                                       filterMagTable[texEnv[i].filterMode], filterMinTable[texEnv[i].filterMode]);
     }
 
     m.alphaCompare = texEnv[i].alphaTest ? (int)texEnv[i].alphaCompareMode : -1;
@@ -423,10 +420,8 @@ void pglReflectionMat::SetDevPass(unsigned pass)
     {
         glActiveTexture(GL_TEXTURE1);
         reflectionMap->SetGLState();
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterMagTable[texEnv[0].filterMode]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMinTable[texEnv[0].filterMode]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, uvTable[texEnv[0].uvMode]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, uvTable[texEnv[0].uvMode]);
+        reflectionMap->SetSampling(texEnv[0].filterMode, uvTable[texEnv[0].uvMode],
+                                   filterMagTable[texEnv[0].filterMode], filterMinTable[texEnv[0].filterMode]);
         glActiveTexture(GL_TEXTURE0);
     }
     FillGLColour(envBlend, m.envBlend);

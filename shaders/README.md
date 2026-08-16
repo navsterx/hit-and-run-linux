@@ -51,7 +51,10 @@ uniform vec2 uResolution;       // the picture's size in pixels
 uniform float uTime;            // seconds since the game started
 uniform int uFrame;             // frame counter
 uniform float uNear, uFar;      // the camera's near and far planes (0 when the last view was not 3D)
+uniform mat4 uProjection;       // the camera's projection (eye space to clip space), and its inverse
+uniform mat4 uInverseProjection;
 float LinearDepth(vec2 uv);     // distance from the camera at uv, in game units (about metres)
+vec3 ViewPosition(vec2 uv);     // the eye-space position of what is drawn at uv (camera at 0,0,0 looking down -z)
 ```
 
 The smallest pass:
@@ -66,21 +69,27 @@ void main()
 
 Settings are best written as `const float NAME = value;` at the top of the file (the examples do that).
 
+An effect of several passes that needs the picture as it was before it began (bloom adds its glow to it, ambient
+occlusion darkens it) puts `#pragma shar_original` in its first pass: from that pass on, `uOriginal` is that pass's
+input. Without it, `uOriginal` is the picture as the stage began.
+
 `uDepth` is copied only when a pass uses it. In the final stage it also holds what the HUD and menus drew.
 
 ## The examples (post/)
 
 | File | Stage | What it does |
 |------|-------|--------------|
+| `ssao.glsl`, `ssao_apply.glsl` | scene | ambient occlusion: darkens corners, recesses and the ground around objects (two passes, in this order; `SHOW_AO` in `ssao_apply.glsl` shows it alone) |
 | `fxaa.glsl` | scene | anti-aliasing: smooths jagged edges |
 | `sharpen.glsl` | scene | contrast-adaptive sharpening |
 | `grade.glsl` | scene | exposure, contrast, saturation, warmth |
 | `vignette.glsl` | scene | darker corners |
-| `bloom_bright.glsl`, `bloom_blur_h.glsl`, `bloom_blur_v.glsl`, `bloom_add.glsl` | scene | glow around bright things (four passes, in this order, first in their stage) |
+| `bloom_bright.glsl`, `bloom_blur_h.glsl`, `bloom_blur_v.glsl`, `bloom_add.glsl` | scene | glow around bright things (four passes, in this order) |
 | `crt.glsl` | final | old TV: curved screen, scanlines, shadow mask |
 | `show_depth.glsl` | scene | shows the depth buffer (near black, far white) |
 
-Cost: all of them together take about 0.25 ms a frame at 1280x720 on a current graphics card.
+Cost: all of them together take about 0.25 ms a frame at 1280x720 on a current graphics card; ambient occlusion
+takes up to about 1 ms at 2560x1440.
 
 # Material shaders
 

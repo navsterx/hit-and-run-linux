@@ -31,6 +31,13 @@
 
 int g_pglMaxTextureSize = 0;                  // set by pglDisplay::InitDisplay on the render thread
 bool g_pglTextureS3TC = false;               // GL_EXT_texture_compression_s3tc, set there too
+float g_pglMaxAnisotropy = 0.0f;             // GL_*_texture_filter_anisotropic's limit (0: none), set there too
+
+// texture-filtering settings (simpsons.ini mipmaps=, anisotropy=; pglSetTextureFiltering in gldisplay.cpp)
+bool g_pglMipmaps = true;
+float g_pglAnisotropy = 16.0f;
+
+#define PGL_TEXTURE_MAX_ANISOTROPY 0x84FE    // GL_TEXTURE_MAX_ANISOTROPY (GL 4.6, ARB/EXT_texture_filter_anisotropic)
 
 // from GL_EXT_texture_compression_s3tc (not in glcorearb.h)
 #define PGL_COMPRESSED_RGBA_S3TC_DXT1 0x83F1
@@ -176,6 +183,12 @@ void pglTexture::SetGLState(void)
                 ySize, 0, lock.native ? GL_BGRA : GL_RGBA, GL_UNSIGNED_BYTE,
                 (GLvoid *)bits[0]);
 #ifdef RAD_LINUX
+            // Linux port: mip levels for every uncompressed texture (the D3D8 pddi's art had one level and almost
+            // every material filtered without mips: distant textures shimmered). Whether they are used is the
+            // texture-filtering setting's call, in SetSampling, so it can change at any time.
+            hasMipmaps = !compressedFormat;
+            if(hasMipmaps)
+                glGenerateMipmap(GL_TEXTURE_2D);
             // Linux port: out of video memory the upload fails and the texture drew black for good. Say so once
             // and retry on the next use, so textures appear once memory is freed.
             if(glGetError() == GL_OUT_OF_MEMORY)
@@ -378,6 +391,7 @@ pglTexture::pglTexture(pglContext* c)
 #ifdef RAD_LINUX
     compressedFormat = 0;
     blockBytes = 0;
+    hasMipmaps = false;
 #endif
 }
 
@@ -525,3 +539,22 @@ int pglTexture::GetPalette(pddiColour* palette)
 }
 
 
+
+#ifdef RAD_LINUX
+void pglTexture::SetSampling(int filterMode, unsigned wrap, unsigned magFilter, unsigned minFilter)
+{
+    // with mipmaps on, every filtered (non-point) material samples trilinear, with anisotropy as set
+    bool mipmapped = g_pglMipmaps && hasMipmaps && filterMode != PDDI_FILTER_NONE;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mipmapped ? GL_LINEAR_MIPMAP_LINEAR : minFilter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+    if(g_pglMaxAnisotropy > 0.0f)
+    {
+        float anisotropy = mipmapped ? g_pglAnisotropy : 1.0f;
+        if(anisotropy > g_pglMaxAnisotropy)
+            anisotropy = g_pglMaxAnisotropy;
+        glTexParameterf(GL_TEXTURE_2D, PGL_TEXTURE_MAX_ANISOTROPY, anisotropy < 1.0f ? 1.0f : anisotropy);
+    }
+}
+#endif

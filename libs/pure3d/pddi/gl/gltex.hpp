@@ -65,6 +65,12 @@ protected:
     int blockBytes;
     int MipBytes(int mip);
     void UploadCompressed(void);
+    bool hasMipmaps;            // generated after upload (uncompressed textures)
+
+public:
+    // the filter, address mode and (when the texture-filtering settings allow) mipmapping and anisotropy for this
+    // texture as bound on the active unit; GL tables in glmat.cpp
+    void SetSampling(int filterMode, unsigned wrap, unsigned magFilter, unsigned minFilter);
 #endif
 };
 #endif

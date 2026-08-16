@@ -65,6 +65,7 @@ static void APIENTRY DebugMessage( GLenum source, GLenum type, GLuint id, GLenum
     }
 }
 
+void pglSetTextureFiltering( int mipmaps, int anisotropy );
 static pglDisplay* s_display = NULL;      // the display (one), for the game's calls into the renderer
 
 pglDisplay::pglDisplay()
@@ -254,6 +255,15 @@ bool pglDisplay::InitDisplay(const pddiDisplayInit* init)
     g_pglTextureS3TC = CheckExtension((char*)"GL_EXT_texture_compression_s3tc") && getenv("SHAR_GL_NO_S3TC") == NULL;
     if(!g_pglTextureS3TC)
         fprintf(stderr, "PDDI: no S3TC texture compression: DXT textures are decompressed\n");
+
+    // anisotropic filtering: core in GL 4.6, an extension (everywhere) before
+    extern float g_pglMaxAnisotropy;        // gltex.cpp
+    g_pglMaxAnisotropy = 0.0f;
+    if( CheckExtension( (char*)"GL_EXT_texture_filter_anisotropic" ) || CheckExtension( (char*)"GL_ARB_texture_filter_anisotropic" ) )
+    {
+        glGetFloatv( 0x84FF, &g_pglMaxAnisotropy );     // GL_MAX_TEXTURE_MAX_ANISOTROPY
+    }
+    pglSetTextureFiltering( -1, -1 );       // the current settings, for the pipeline (and the environment's overrides)
 
     CreateWorkerContexts(window, glContext);
     if(s_WorkerContextsCreated == 0)
@@ -593,6 +603,26 @@ void pglDisplay::PostProcess( int stage )
 //-----------------------------------------------------------------------------
 // Multisample anti-aliasing
 //-----------------------------------------------------------------------------
+
+// texture filtering (Win32Platform::LoadConfig: simpsons.ini mipmaps=, anisotropy=; -1 keeps a value): mip levels
+// are always made, so this applies at once. SHAR_MIPMAPS=0 / SHAR_ANISOTROPY=n override the settings.
+void pglSetTextureFiltering( int mipmaps, int anisotropy )
+{
+    extern bool g_pglMipmaps;
+    extern float g_pglAnisotropy;
+    if( mipmaps >= 0 )
+        g_pglMipmaps = mipmaps != 0;
+    if( anisotropy >= 0 )
+        g_pglAnisotropy = (float)anisotropy;
+    const char* e = getenv( "SHAR_MIPMAPS" );
+    if( e )
+        g_pglMipmaps = atoi( e ) != 0;
+    e = getenv( "SHAR_ANISOTROPY" );
+    if( e )
+        g_pglAnisotropy = (float)atoi( e );
+    if( s_display )
+        s_display->GetPipeline( )->SetTextureFiltering( g_pglMipmaps, g_pglAnisotropy );
+}
 
 // for the game's settings (Win32Platform::LoadConfig: simpsons.ini antialiasing=)
 void pglSetAntialiasing( int samples )

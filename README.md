@@ -29,6 +29,8 @@ Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its f
   - [x] OpenGL 3.3 core profile (shaders and GPU vertex buffers in place of fixed-function GL 1.x)
   - [x] multisample anti-aliasing (4x by default; `antialiasing=` in `simpsons.ini`), with alpha-to-coverage so
     cut-out textures (fences, foliage) get smooth edges too
+  - [x] mipmapped textures with 16x anisotropic filtering (no shimmering in the distance; `mipmaps=`,
+    `anisotropy=` in `simpsons.ini`)
   - [x] post-processing shaders of your own (GLSL files in `shaders/`: anti-aliasing, bloom, colour grading, CRT, ...)
   - [x] material shaders of your own (toon shading, car paint, ...), assigned by material type or name; mods can
     ship them too
@@ -105,11 +107,12 @@ port/play.sh --data /path/to/game skipfe       # extra arguments go to the game 
 On first use it creates `run/` with links to the game data and a private copy of `simpsons.ini` and the save
 files, which the game writes to. Boot movies only play in the release build.
 
-Anti-aliasing (MSAA) is on at 4x. To change it, set `antialiasing=` in the `#System` section of
-`run/simpsons.ini` to 0 (off), 2, 4, 8 or 16; the game adds the line itself the first time it saves its settings.
+Anti-aliasing (MSAA) is on at 4x, textures are mipmapped with 16x anisotropic filtering. To change them, set these
+in the `#System` section of `run/simpsons.ini` (the game adds the lines itself the first time it saves its
+settings): `antialiasing=` 0 (off), 2, 4, 8 or 16; `mipmaps=` yes or no; `anisotropy=` 1 (off) to 16.
 
-Shaders of your own are GLSL files in `run/shaders/`: post-processing (anti-aliasing, bloom, colour grading, a CRT
-look, ...) switched on in its `post.ini`, and material shaders (toon shading, car paint, ...) assigned in its
+Shaders of your own are GLSL files in `run/shaders/`: post-processing (ambient occlusion, anti-aliasing, bloom,
+colour grading, a CRT look, ...) switched on in its `post.ini`, and material shaders (toon shading, car paint, ...) assigned in its
 `materials.ini`; the examples are all off at first, and everything reloads while the game runs. See
 [`shaders/README.md`](shaders/README.md).
 
@@ -134,6 +137,7 @@ crash report with the backtrace resolved to source files and lines. Attach that 
 | `SHAR_CRASH_HANDLER=0` | Don't install the crash-report signal handler |
 | `SHAR_MSAA=n` | Anti-aliasing samples, overriding `simpsons.ini` (0 = off) |
 | `SHAR_ALPHA_TO_COVERAGE=0` | Hard edges on cut-out textures even with anti-aliasing |
+| `SHAR_MIPMAPS=0`, `SHAR_ANISOTROPY=n` | Texture filtering, overriding `simpsons.ini` |
 | `SHAR_SHADERS=dir`, `SHAR_POST=0` | Shaders folder (default `shaders/`); post-processing off |
 | `SHAR_MATERIAL_LOG=1` | Print each material's name and type when first drawn (for `materials.ini`) |
 | `SHAR_GL_DEBUG=1`, `SHAR_GL_STATS=1` | OpenGL debug messages; per-frame draw/upload counts and render times |
