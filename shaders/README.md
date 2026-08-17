@@ -202,6 +202,7 @@ and `vColour` are the way to include the world's own shading.
 | `outline.glsl` | after another, `[files] *chars/* = materials/flat.glsl, materials/outline.glsl` | black cartoon outlines (inverted hull: the model again, pushed out along its normals, back half only), a fixed width in pixels |
 | `standard.glsl` | first of several | draws a material exactly as the game does (to add an outline to the normal look) |
 | `flat.glsl` | `[files] *chars/*` | characters in flat cartoon colours: no shading across the model, still as bright or dark as the scene; `FLATNESS` blends towards the game's smooth shading (1 flat, 0 smooth) |
+| `pixellit.glsl` | `simple`, `spheremap`, `environment` | per-pixel lighting: the game's lighting computed for every pixel (smooth shading on low-poly characters and cars); optional sheen (`HIGHLIGHT`) and rim light (`RIM`) |
 | `toon.glsl` | `simple` | cel shading: light in flat bands (per-pixel on lit materials; colours banded on the rest) |
 | `carpaint.glsl` | `spheremap`, `environment` | the car paint plus a sharp highlight per light and stronger reflections at grazing angles |
 | `normals.glsl` | anything | shows the normals as colours |
