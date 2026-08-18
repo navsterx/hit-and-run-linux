@@ -25,21 +25,16 @@ vec4 ShadeMaterial()
     vec3 toEye = -normalize(vEyePosition);
 
     // Direct3D 8's lighting (as the game's vertices get it), per pixel
-    vec3 colour = uMatEmissive.rgb + uMatAmbient.rgb * uGlobalAmbient.rgb;
-    vec3 specular = vec3(0.0);
-    for(int i = 0; i < uLightCount; i++)
+    vec3 specular;
+    vec3 colour = Lighting(n, 0.0, specular);
+    if(HIGHLIGHT > 0.0)
     {
-        float attenuation;
-        vec3 l = LightVector(i, attenuation);
-        float nl = dot(n, l);
-        colour += attenuation * max(nl, 0.0) * uMatDiffuse.rgb * uLightColour[i];
-        if(nl > 0.0)
+        for(int i = 0; i < uLightCount; i++)
         {
-            float nh = max(dot(n, normalize(l + toEye)), 0.0);
-            if(uShininess > 0.0)
-                specular += attenuation * pow(nh, uShininess) * uMatSpecular.rgb * uLightColour[i];
-            if(HIGHLIGHT > 0.0)
-                specular += attenuation * HIGHLIGHT * pow(nh, HIGHLIGHT_GLOSS) * uLightColour[i];
+            float attenuation;
+            vec3 l = LightVector(i, attenuation);
+            if(dot(n, l) > 0.0)
+                specular += attenuation * HIGHLIGHT * pow(max(dot(n, normalize(l + toEye)), 0.0), HIGHLIGHT_GLOSS) * uLightColour[i];
         }
     }
     if(RIM > 0.0)
