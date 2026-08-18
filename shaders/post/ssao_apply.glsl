@@ -1,7 +1,7 @@
 // Ambient occlusion (SSAO), pass 2 of 2: smooths the occlusion from ssao.glsl (without blurring across edges) and
 // darkens the picture with it.
 
-const float STRENGTH = 1.5;             // 0 = no darkening, 1 = as computed, more = stronger
+const float STRENGTH = 1.0;             // 0 = no darkening, 1 = as computed, more = stronger
 const float BLUR_RADIUS = 2.0;          // smoothing, in pixels per step
 const float EDGE_SHARPNESS = 60.0;      // how strictly the smoothing stops at depth edges
 const bool SHOW_AO = false;             // true: show only the occlusion (black and white), for tuning
