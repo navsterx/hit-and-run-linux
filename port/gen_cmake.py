@@ -26,7 +26,8 @@ PDDI_GL = {
                 "libs/pure3d/pddi/gl/gltex.cpp", "libs/pure3d/pddi/gl/glpipeline.cpp", "libs/pure3d/pddi/gl/glpost.cpp",
                 "libs/pure3d/pddi/gl/glcustom.cpp",
                 "libs/pure3d/pddi/gl/display_linux/gldisplay.cpp"],
-    "includes": ["libs", "libs/radmath", "libs/pure3d"],
+    # libpng/zlib: images for post-processing passes (glpost.cpp)
+    "includes": ["libs", "libs/radmath", "libs/pure3d", "libs/pure3d/lib/libpng", "libs/pure3d/lib/zlib"],
     "defines": ["RAD_RELEASE", "NDEBUG"],
 }
 PDDI_GL_DEBUG_DEFINES = ["RAD_DEBUG", "_DEBUG"]

@@ -69,6 +69,10 @@ void main()
 
 Settings are best written as `const float NAME = value;` at the top of the file (the examples do that).
 
+A pass can use images: `#pragma shar_texture uName file.png` (up to four per pass) declares `uniform sampler2D
+uName` holding the PNG, the path relative to the pass's own file; the image's top row is at `v = 0`. Images reload
+when they change too.
+
 An effect of several passes that needs the picture as it was before it began (bloom adds its glow to it, ambient
 occlusion darkens it) puts `#pragma shar_original` in its first pass: from that pass on, `uOriginal` is that pass's
 input. Without it, `uOriginal` is the picture as the stage began.
@@ -80,13 +84,23 @@ input. Without it, `uOriginal` is the picture as the stage began.
 | File | Stage | What it does |
 |------|-------|--------------|
 | `ssao.glsl`, `ssao_apply.glsl` | scene | ambient occlusion: darkens corners, recesses and the ground around objects (two passes, in this order; `SHOW_AO` in `ssao_apply.glsl` shows it alone) |
+| `tonemap.glsl` | scene | filmic tone mapping (`CURVE`: ACES, Hable, Reinhard): softer highlights, richer midtones; mid grey stays put |
+| `grade.glsl` | scene | colour grading: white balance, exposure, contrast, saturation, vibrance, lift / gamma / gain, split toning |
+| `lut.glsl` | scene | colour grading with a lookup-table image (`lut/`: `neutral`, `warm`, `teal_orange`, `cool`); see below |
 | `fxaa.glsl` | scene | anti-aliasing: smooths jagged edges |
 | `sharpen.glsl` | scene | contrast-adaptive sharpening |
-| `grade.glsl` | scene | exposure, contrast, saturation, warmth |
 | `vignette.glsl` | scene | darker corners |
 | `bloom_bright.glsl`, `bloom_blur_h.glsl`, `bloom_blur_v.glsl`, `bloom_add.glsl` | scene | glow around bright things (four passes, in this order) |
 | `crt.glsl` | final | old TV: curved screen, scanlines, shadow mask |
 | `show_depth.glsl` | scene | shows the depth buffer (near black, far white) |
+
+### Making your own LUT
+
+1. Take a screenshot of the game and paste `post/lut/neutral.png` (1024 x 32) onto it, anywhere.
+2. Grade the whole image in GIMP, Photoshop, Krita, Resolve...: colour adjustments only (curves, levels, hue /
+   saturation, colour balance, selective colour); nothing that blurs, sharpens or moves pixels.
+3. Cut the strip back out at exactly 1024 x 32, save it as a PNG in `post/lut/`, and name it in `lut.glsl`'s
+   `#pragma shar_texture` line. The game now grades every frame the way you graded the screenshot.
 
 Cost: all of them together take about 0.25 ms a frame at 1280x720 on a current graphics card; ambient occlusion
 takes up to about 1 ms at 2560x1440.

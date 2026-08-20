@@ -256,6 +256,11 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   with `#pragma shar_original` makes its input the effect's uOriginal (blitted into s_original). SSAO
   (post/ssao.glsl + ssao_apply.glsl): hemisphere samples around depth-reconstructed positions and normals, depth-aware
   blur, faded beyond 40-90 m. The game never calls SetZRange, so depth is 0-1.
+  Images for post passes: `#pragma shar_texture <sampler> <file.png>` (path relative to the pass file; the sampler is
+  declared in the pass header; units 3+) loaded with the bundled libpng 1.0.3 (old API; png.h must come before any
+  setjmp.h include: pngconf.h errors otherwise; include dirs added to pddigl in gen_cmake.py). Tone mapping
+  (post/tonemap.glsl) widens the LDR picture (x / (1 - 0.6x), linear) and applies ACES/Hable/Reinhard with per-curve
+  exposures that keep mid grey (solved numerically); LUTs are ReShade-layout 1024x32 strips (post/lut/, generated).
   Material shaders (2026-10-18, `pddi/gl/glcustom.cpp`): `shaders/materials.ini` [types] (the pddi shader name the
   art asked for, kept by `pglMat::SetTypeName` from `pglDevice::NewShader`), [files] (the chunk file's
   GetFullFilename, '/'-separated: "art/chars/homer_m.p3d"; case as opened, "ART/l1r1.p3d") and [materials] (the

@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <png.h>
 
 //-----------------------------------------------------------------------------
 // Saving and restoring the state a screen pass touches
@@ -109,6 +110,17 @@ static const char* s_passHeader =
     "#line 1\n";
 
 const int MAX_PASSES = 16;
+const int MAX_PASS_TEXTURES = 4;         // "#pragma shar_texture <sampler> <file.png>" per pass, on units 3 and up
+
+// images passes ask for, loaded once per path (and again when the file changes)
+struct Image
+{
+    char path[600];
+    time_t mtime;
+    GLuint texture;             // 0: could not be read
+};
+static Image s_images[MAX_PASSES * 2 * MAX_PASS_TEXTURES];
+static int s_imageCount;
 
 struct Pass
 {
@@ -117,6 +129,9 @@ struct Pass
     pglProgram program;
     bool ok;
     bool beginsEffect;          // "#pragma shar_original": uOriginal is this pass's input from here on
+    int textureCount;
+    GLint textureUniform[MAX_PASS_TEXTURES];
+    int textureImage[MAX_PASS_TEXTURES];    // indices in s_images
     GLint uScene, uOriginal, uDepth, uResolution, uTime, uFrame, uNear, uFar, uProjection, uInverseProjection;
 };
 
@@ -155,6 +170,133 @@ static char* ReadFile(const char* path)
     return text;
 }
 
+static void PngError(png_structp png, png_const_charp message)
+{
+    fprintf(stderr, "PDDI: post-processing: PNG error: %s\n", message);
+    longjmp(*(jmp_buf*)png_get_error_ptr(png), 1);
+}
+
+static void PngWarning(png_structp, png_const_charp)
+{
+}
+
+// a PNG as an RGBA8 texture (rows as stored: the image's top row at v = 0), linear filtering, clamped; 0 on failure
+static GLuint LoadPng(const char* path)
+{
+    FILE* f = fopen(path, "rb");
+    if(!f)
+        return 0;
+    jmp_buf failed;
+    png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, &failed, PngError, PngWarning);
+    png_infop info = png ? png_create_info_struct(png) : NULL;
+    unsigned char* pixels = NULL;
+    png_bytep* rows = NULL;
+    GLuint texture = 0;
+    if(png && info && setjmp(failed) == 0)
+    {
+        png_init_io(png, f);
+        png_read_info(png, info);
+        int depth = png_get_bit_depth(png, info);
+        int type = png_get_color_type(png, info);
+        if(type == PNG_COLOR_TYPE_PALETTE || depth < 8 || png_get_valid(png, info, PNG_INFO_tRNS))
+            png_set_expand(png);
+        if(type == PNG_COLOR_TYPE_GRAY || type == PNG_COLOR_TYPE_GRAY_ALPHA)
+            png_set_gray_to_rgb(png);
+        if(depth == 16)
+            png_set_strip_16(png);
+        if(!(type & PNG_COLOR_MASK_ALPHA) && !png_get_valid(png, info, PNG_INFO_tRNS))
+            png_set_filler(png, 0xff, PNG_FILLER_AFTER);
+        png_set_interlace_handling(png);
+        png_read_update_info(png, info);
+
+        int w = png_get_image_width(png, info);
+        int h = png_get_image_height(png, info);
+        pixels = (unsigned char*)malloc((size_t)w * h * 4);
+        rows = (png_bytep*)malloc(h * sizeof(png_bytep));
+        if(pixels && rows && png_get_rowbytes(png, info) == (png_uint_32)w * 4)
+        {
+            for(int y = 0; y < h; y++)
+                rows[y] = pixels + (size_t)y * w * 4;
+            png_read_image(png, rows);
+            glGenTextures(1, &texture);
+            glBindTexture(GL_TEXTURE_2D, texture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+    }
+    if(png)
+        png_destroy_read_struct(&png, info ? &info : NULL, NULL);
+    free(rows);
+    free(pixels);
+    fclose(f);
+    return texture;
+}
+
+// the image's index in s_images, loading it the first time (or when the file changed); file is relative to the
+// folder of the pass that asks for it (passFile, relative to the shaders folder)
+static int UseImage(const char* passFile, const char* file)
+{
+    char folder[300];
+    snprintf(folder, sizeof(folder), "%s", passFile);
+    char* slash = strrchr(folder, '/');
+    if(slash)
+        slash[1] = 0;
+    else
+        folder[0] = 0;
+    char path[600];
+    snprintf(path, sizeof(path), "%s/%s%s", s_folder, folder, file);
+    time_t mtime = FileTime(path);
+    for(int i = 0; i < s_imageCount; i++)
+    {
+        Image& image = s_images[i];
+        if(strcmp(image.path, path) != 0)
+            continue;
+        if(image.mtime != mtime)
+        {
+            if(image.texture)
+                glDeleteTextures(1, &image.texture);
+            image.texture = LoadPng(path);
+            image.mtime = mtime;
+        }
+        return i;
+    }
+    if(s_imageCount == (int)(sizeof(s_images) / sizeof(s_images[0])))
+        return -1;
+    Image& image = s_images[s_imageCount];
+    snprintf(image.path, sizeof(image.path), "%s", path);
+    image.mtime = mtime;
+    image.texture = LoadPng(path);
+    if(!image.texture)
+        fprintf(stderr, "PDDI: post-processing: can't load %s (PNG)\n", path);
+    return s_imageCount++;
+}
+
+// "#pragma shar_texture <sampler> <file>" lines: the pass's images
+static void FindTextures(Pass& p, const char* source)
+{
+    p.textureCount = 0;
+    for(const char* s = strstr(source, "#pragma shar_texture"); s && p.textureCount < MAX_PASS_TEXTURES;
+        s = strstr(s + 1, "#pragma shar_texture"))
+    {
+        char sampler[64], file[256];
+        if(sscanf(s + strlen("#pragma shar_texture"), " %63s %255s", sampler, file) != 2)
+            continue;
+        int image = UseImage(p.file, file);
+        if(image < 0)
+            continue;
+        glUseProgram(p.program.Handle());
+        p.textureUniform[p.textureCount] = p.program.Uniform(sampler);
+        glUniform1i(p.textureUniform[p.textureCount], 3 + p.textureCount);
+        p.textureImage[p.textureCount] = image;
+        p.textureCount++;
+    }
+    glUseProgram(0);
+}
+
 static void BuildPass(Pass& p)
 {
     char path[800];
@@ -169,8 +311,25 @@ static void BuildPass(Pass& p)
         fprintf(stderr, "PDDI: post-processing: can't read %s\n", path);
         return;
     }
-    p.ok = p.program.Build(path, s_passVertexSource, source, NULL, s_passHeader);
+    // each "#pragma shar_texture <sampler> <file>" declares its sampler: the header gets the declarations, before the
+    // user's line 1
+    char header[4096];
+    snprintf(header, sizeof(header), "%s", s_passHeader);
+    char* lineMark = strstr(header, "#line 1\n");
+    if(lineMark)
+        *lineMark = 0;
+    for(const char* t = strstr(source, "#pragma shar_texture"); t; t = strstr(t + 1, "#pragma shar_texture"))
+    {
+        char sampler[64];
+        if(sscanf(t + strlen("#pragma shar_texture"), " %63s", sampler) == 1 && strlen(header) + 100 < sizeof(header))
+            snprintf(header + strlen(header), sizeof(header) - strlen(header), "uniform sampler2D %s;\n", sampler);
+    }
+    snprintf(header + strlen(header), sizeof(header) - strlen(header), "#line 1\n");
+    p.ok = p.program.Build(path, s_passVertexSource, source, NULL, header);
     p.beginsEffect = strstr(source, "#pragma shar_original") != NULL;
+    p.textureCount = 0;
+    if(p.ok)
+        FindTextures(p, source);
     free(source);
     if(!p.ok)
         return;
@@ -453,6 +612,11 @@ void pglPostRun(pglPostStage stage, int w, int h, pglPipeline* pipeline)
             glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, last ? saved.drawFramebuffer : s_framebuffers[i & 1]);
             glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        }
+        for(int t = 0; t < p.textureCount; t++)
+        {
+            glActiveTexture(GL_TEXTURE3 + t);
+            glBindTexture(GL_TEXTURE_2D, s_images[p.textureImage[t]].texture);
         }
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, input);
