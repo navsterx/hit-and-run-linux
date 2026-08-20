@@ -84,7 +84,7 @@ input. Without it, `uOriginal` is the picture as the stage began.
 | File | Stage | What it does |
 |------|-------|--------------|
 | `ssao.glsl`, `ssao_apply.glsl` | scene | ambient occlusion: darkens corners, recesses and the ground around objects (two passes, in this order; `SHOW_AO` in `ssao_apply.glsl` shows it alone) |
-| `tonemap.glsl` | scene | filmic tone mapping (`CURVE`: ACES, Hable, Reinhard): softer highlights, richer midtones; mid grey stays put |
+| `tonemap.glsl` | scene | filmic tone mapping (`CURVE`: ACES, Hable, Reinhard): softer highlights, richer midtones; mid grey stays put; `SATURATION` sets how much of the curve's colour boost to keep |
 | `grade.glsl` | scene | colour grading: white balance, exposure, contrast, saturation, vibrance, lift / gamma / gain, split toning |
 | `lut.glsl` | scene | colour grading with a lookup-table image (`lut/`: `neutral`, `warm`, `teal_orange`, `cool`); see below |
 | `fxaa.glsl` | scene | anti-aliasing: smooths jagged edges |

@@ -6,6 +6,7 @@
 const int CURVE = 0;                    // 0 = ACES (punchy, as films), 1 = Hable / Uncharted 2 (gentle), 2 = Reinhard
 const float EXPOSURE = 1.0;             // brightness before the curve (1 = mid grey unchanged)
 const float AMOUNT = 0.8;               // 0 = off, 1 = full curve (ACES at full strength lifts bright walls a lot)
+const float SATURATION = 0.25;          // the curve's colour boost: 0 = keep the original saturation, 1 = all of it
 
 const float WIDEN = 0.6;                // how far the brightest parts go beyond white (fixed: the curves are set for it)
 
@@ -31,6 +32,14 @@ void main()
     float white = 1.0 / (1.0 - WIDEN);
     float exposure = (CURVE == 1 ? 2.389 : CURVE == 2 ? 0.732 : 0.663) * EXPOSURE;
     vec3 mapped = Curve(wide * exposure) / Curve(vec3(white * exposure));
+
+    // a curve applied to each channel pulls them apart (more saturation); the same brightness change applied to the
+    // colour as a whole keeps its saturation: blend between the two
+    const vec3 lumaWeights = vec3(0.2126, 0.7152, 0.0722);
+    float lumaIn = dot(linear, lumaWeights);
+    float lumaOut = dot(mapped, lumaWeights);
+    vec3 keepSaturation = linear * (lumaOut / max(lumaIn, 1e-5));
+    mapped = mix(keepSaturation, mapped, SATURATION);
 
     vec3 result = pow(clamp(mapped, 0.0, 1.0), vec3(1.0 / 2.2));
     fragColour = vec4(mix(c, result, AMOUNT), 1.0);
