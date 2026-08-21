@@ -4,6 +4,7 @@
 
 #include <pddi/gl/glpost.hpp>
 #include <pddi/gl/glpipeline.hpp>
+#include <pddi/gl/glcustom.hpp>
 
 #include <SDL2/SDL.h>
 #include <stdio.h>
@@ -532,7 +533,7 @@ static void SetupTargets(int w, int h)
 void pglPostRun(pglPostStage stage, int w, int h, pglPipeline* pipeline)
 {
     CheckForChanges();
-    if(s_state != 1 || w <= 0 || h <= 0)
+    if(s_state != 1 || !g_pglUserShaders || w <= 0 || h <= 0)
         return;
 
     Pass* passes[MAX_PASSES];

@@ -26,6 +26,7 @@
 
 static const char ApplicationName[] = "The Simpsons: Hit & Run";
 static const Win32Platform::Resolution StartingResolution = Win32Platform::Res_800x600;   // as win32platform.cpp
+void pglToggleUserShaders();     // pddi/gl/glcustom.cpp: the M key
 static bool s_swallowLeftUp = false;      // a click that only re-showed the front-end cursor (see PumpEvents)
 
 //==============================================================================
@@ -289,6 +290,29 @@ bool Win32Platform::PumpEvents()
         c = strchr( c, ',' );
         if( c ) c++;
     }
+    // debug: SHAR_KEYPRESS_SCRIPT="M@ms,..." pushes a key press (SDL key name) into the event queue at those times
+    // (tests window-level keys such as the shader toggle; the game's own input reads SHAR_KEY_SCRIPT)
+    static const char* s_keypressScript = getenv( "SHAR_KEYPRESS_SCRIPT" );
+    static unsigned int s_keypressDone = 0;
+    unsigned int keypressIndex = 0;
+    for( const char* c = s_keypressScript; c && *c; keypressIndex++ )
+    {
+        char name[32] = "";
+        unsigned int at = 0;
+        if( sscanf( c, "%31[^@]@%u", name, &at ) == 2 && keypressIndex == s_keypressDone && SDL_GetTicks() >= at )
+        {
+            SDL_Event key;
+            memset( &key, 0, sizeof( key ) );
+            key.type = SDL_KEYDOWN;
+            key.key.state = SDL_PRESSED;
+            key.key.keysym.scancode = SDL_GetScancodeFromName( name );
+            key.key.keysym.sym = SDL_GetKeyFromScancode( key.key.keysym.scancode );
+            SDL_PushEvent( &key );
+            s_keypressDone++;
+        }
+        c = strchr( c, ',' );
+        if( c ) c++;
+    }
     // debug: SHAR_MINIMIZE_SCRIPT="startms-endms,..." minimises the window for those times (tests hidden windows)
     static const char* s_minimizeScript = getenv( "SHAR_MINIMIZE_SCRIPT" );
     static bool s_minimized = false;
@@ -358,6 +382,15 @@ bool Win32Platform::PumpEvents()
                     pFEMouse->getCursor()->SetVisible( true );
                 }
                 break;
+            }
+            break;
+
+        case SDL_KEYDOWN:
+            // Linux port: M turns the user's shaders (shaders/: post-processing and material shaders) on and off,
+            // for comparing; the game's input reads the key as usual
+            if( e.key.keysym.scancode == SDL_SCANCODE_M && !e.key.repeat )
+            {
+                pglToggleUserShaders();
             }
             break;
 

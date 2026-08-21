@@ -18,6 +18,10 @@ void pglCustomUpdate(pglPipeline* pipeline);
 // bumped whenever the rules or shaders are reloaded: materials look themselves up again
 unsigned pglCustomGeneration();
 
+// all the user's shaders (material and post-processing) on or off; the M key (Win32Platform::PumpEvents)
+void pglToggleUserShaders();
+extern bool g_pglUserShaders;
+
 const int pglMaxMaterialPasses = 4;
 
 // the passes a material is drawn in: the custom program slot of each (pglPipeline::Material::custom), -1 for the

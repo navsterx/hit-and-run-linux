@@ -273,8 +273,22 @@ unsigned pglCustomGeneration()
     return s_generation;
 }
 
+bool g_pglUserShaders = true;
+
+void pglToggleUserShaders()
+{
+    g_pglUserShaders = !g_pglUserShaders;
+    s_generation++;         // materials look their shaders up again (none while off)
+    fprintf(stderr, "PDDI: your shaders %s (M toggles)\n", g_pglUserShaders ? "on" : "off");
+}
+
 int pglCustomShadersFor(const char* type, const char* material, const char* file, int* slots)
 {
+    if(!g_pglUserShaders)
+    {
+        slots[0] = -1;
+        return 1;
+    }
     // material rules, then file rules, then type rules; the first match of each kind wins
     const char* subjects[RULE_KINDS] = { material, file, type };
     for(int kind = 0; kind < RULE_KINDS; kind++)

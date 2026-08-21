@@ -8,6 +8,8 @@ within a second):
 - **Material shaders** (`materials.ini`, `materials/`): replace how chosen materials are drawn: toon shading, car
   paint, ... (see [Material shaders](#material-shaders) below)
 
+Press **M** in the game to turn all of them off and on again (for comparing).
+
 A shader that does not compile is reported on the console with its line numbers (in the log,
 `run/logs/last-session.log`, when started by play.sh) and the game carries on without it until it builds again.
 

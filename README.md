@@ -113,8 +113,8 @@ settings): `antialiasing=` 0 (off), 2, 4, 8 or 16; `mipmaps=` yes or no; `anisot
 
 Shaders of your own are GLSL files in `run/shaders/`: post-processing (ambient occlusion, anti-aliasing, bloom,
 colour grading, a CRT look, ...) switched on in its `post.ini`, and material shaders (toon shading, car paint, ...) assigned in its
-`materials.ini`; the examples are all off at first, and everything reloads while the game runs. See
-[`shaders/README.md`](shaders/README.md).
+`materials.ini`; the examples are all off at first, and everything reloads while the game runs. Press M in the game
+to turn them all off and on, for comparing. See [`shaders/README.md`](shaders/README.md).
 
 Each session's console output is also written to `run/logs/last-session.log`. If the game crashes (or exits with
 an error, or is interrupted with Ctrl+C), the log is kept as `run/crashes/crash-<date>-<time>.log`, ending in a
@@ -131,6 +131,7 @@ crash report with the backtrace resolved to source files and lines. Attach that 
 | `SHAR_SHOT_EVERY=n` | Save `shot_NNN.png` in the run directory every n seconds |
 | `SHAR_KEY_SCRIPT="dik@start-end,..."` | Hold DirectInput key codes during time windows (ms; 1000+n = mouse button n) |
 | `SHAR_RESIZE_SCRIPT="WxH@ms,..."` | Resize the window at those times |
+| `SHAR_KEYPRESS_SCRIPT="M@ms,..."` | Press keys (SDL key names) at those times, through the window's event queue |
 | `SHAR_INPUT_LOG`, `SHAR_NO_INPUT`, `SHAR_NO_MOUSE`, `SHAR_FORCE_MOUSELOOK` | Input debugging |
 | `SHAR_ASSERT_ABORT=1` | Make failed asserts abort instead of logging |
 | `SHAR_LOAD_BUDGET_MS=n` | Time per frame given to the background loader |

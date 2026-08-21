@@ -261,6 +261,9 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   setjmp.h include: pngconf.h errors otherwise; include dirs added to pddigl in gen_cmake.py). Tone mapping
   (post/tonemap.glsl) widens the LDR picture (x / (1 - 0.6x), linear) and applies ACES/Hable/Reinhard with per-curve
   exposures that keep mid grey (solved numerically); LUTs are ReShade-layout 1024x32 strips (post/lut/, generated).
+  M (`PumpEvents` SDL_KEYDOWN -> `pglToggleUserShaders`) turns all user shaders off/on: post passes skip, materials
+  re-look-up (generation bump) and get none. The default keyboard bindings do not use M. Test window-level keys with
+  `SHAR_KEYPRESS_SCRIPT="M@ms,..."` (SDL_PushEvent; SHAR_KEY_SCRIPT feeds the game's input layer instead).
   Material shaders (2026-10-18, `pddi/gl/glcustom.cpp`): `shaders/materials.ini` [types] (the pddi shader name the
   art asked for, kept by `pglMat::SetTypeName` from `pglDevice::NewShader`), [files] (the chunk file's
   GetFullFilename, '/'-separated: "art/chars/homer_m.p3d"; case as opened, "ART/l1r1.p3d") and [materials] (the
