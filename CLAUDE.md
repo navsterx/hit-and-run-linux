@@ -341,9 +341,13 @@ The base game is feature-complete but not yet verified end to end. In order:
 5. **Packaging**: install script or AppImage-style bundle (32-bit runtime libraries, FFmpeg, SDL2).
 6. **Steering-wheel force feedback**: only with a wheel to test on.
 7. **Modern OpenGL** (done on `dev`, 2026-10-18): core profile, D3D8 material parity, native DXT, MSAA with
-   alpha-to-coverage, user post-processing and material shaders (see lessons). Possible follow-ups: custom vertex
-   stages (displacement), several mods' Shaders/ folders (only the first mod's is read), a display-menu entry for
-   anti-aliasing, half-resolution post passes.
+   alpha-to-coverage, user post-processing and material shaders (see lessons). Possible follow-ups: several mods'
+   Shaders/ folders (only the first mod's is read), a display-menu entry for anti-aliasing, half-resolution post
+   passes. Sun lighting on the world: prototyped 2026-10-18 and dropped until there is engine work for it (shadow
+   maps). Findings: the game enables its lights (the sun = strongest directional) only around the objects it lights,
+   so pre-lit world draws see none: the pipeline would have to remember the frame's sun for them; the world has no
+   normals, and derivative (per-polygon) normals facet round low-poly things (bushes, trees); without shadows, walls
+   in a building's shadow brighten too; the HUD needs excluding (not perspective).
 8. **Long term**: 64-bit build (pointer/int casts, fixed-size heaps), a possible Rust/Bevy reimplementation
    (`RUST.md`).
 
