@@ -9,3 +9,5 @@ __pycache__/
 simpsons.sh
 simpsons-skipfe.sh
 mod/lmlm
+# port/package.sh output
+dist/
