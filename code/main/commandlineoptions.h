@@ -117,6 +117,9 @@ class CommandLineOptions
         inline static short GetDefaultMission() { return s_defaultMission; }
         // Linux port: "race<N>" with skipfe: start the level's bonus mission N-1 (1-3 street races, 4 wager race)
         inline static short GetDefaultRace() { return s_defaultRace; }
+        // Linux port: "tp<N>" with skipfe: teleport the player to the level's teleport destination N (the
+        // AddTeleportDest list in the level's level.mfk, from 1) once the level is up
+        inline static short GetDefaultTeleport() { return s_defaultTeleport; }
 
     private:
 
@@ -131,6 +134,7 @@ class CommandLineOptions
         static short s_defaultLevel;
         static short s_defaultMission;
         static short s_defaultRace;
+        static short s_defaultTeleport;
 
 };
 

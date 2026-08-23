@@ -72,6 +72,14 @@ srr2 skipfe demo l3                       # level 3's attract demo: the race AI 
                                           # race route, traffic, opponent, HUD), no time limit; for driving tests
 srr2 skipfe incar l7 m3                   # normal gameplay, but 2 s after loading the player is put in the mission's
                                           # car wherever it is parked (not from an interior); for player-driven tests
+srr2 skipfe tp2                           # 2 s after loading, teleport to the level's teleport destination 2 (AddTeleportDest
+                                          # list in level.mfk, from 1; L1 tp2 = Kwik E Mart); SHAR_TP_POS="x,y,z" goes to that
+                                          # point instead (the destination's zones loaded). Interior doors (InteriorEntrance
+                                          # locators in L*_TERRA.p3d; "interior: entering X at x,y,z" is logged on entry):
+                                          # L1/4/7 KwikEMart 213.9,5.2,-302.7, SpringfieldElementary -35.2,4.6,-589.5,
+                                          # SimpsonsHouse 228.9,3.8,-184.1, bartroom (L4/7) 224.7,6.6,-200.8; L2/5 moe
+                                          # -173.6,7.1,24.5, dmv -253.3,6.9,350.7; L3/6 Android 22.4,7.0,-6.2, Observatory
+                                          # 177.2,4.3,487.6. Teleport there and tap E (18) to go in (timing-free under memcheck)
 SHAR_KEY_SCRIPT="17@30000-60000,..."      # scripted input; the retail ini binds Action to E (18), menus take Enter (28)
 SHAR_FILL_ALLOC=0xFF / SHAR_FILL_PDDI=0xFF  # fill new game / renderer allocations to expose uninitialised reads
 SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1 (~3 min to playable), summary at end

@@ -47,6 +47,7 @@ simpsonsUInt64 CommandLineOptions::sOptions = 0;
 short CommandLineOptions::s_defaultLevel = 0;
 short CommandLineOptions::s_defaultMission = 0;
 short CommandLineOptions::s_defaultRace = -1;
+short CommandLineOptions::s_defaultTeleport = -1;
 
 //******************************************************************************
 //
@@ -353,6 +354,14 @@ void CommandLineOptions::HandleOption( const char* const optionIn )
         optionFound = false;
     }
 
+#ifdef RAD_LINUX
+    else if( ( option[ 0 ] == 't' || option[ 0 ] == 'T' ) && ( option[ 1 ] == 'p' || option[ 1 ] == 'P' ) &&
+             option[ 2 ] >= '1' && option[ 2 ] <= '9' )
+    {
+        s_defaultTeleport = (short)( atoi( option + 2 ) - 1 );     // "tp<N>", more than one digit
+        optionFound = false;
+    }
+#endif
     else
     {
         // special case for "l<N>" and "m<N>" commandline options

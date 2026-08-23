@@ -81,6 +81,7 @@
 
 
 #include <worldsim/character/charactermanager.h>
+#include <worldsim/character/character.h>
 #include <worldsim/traffic/trafficmanager.h>
 #include <worldsim/ped/pedestrianmanager.h>
 
@@ -472,6 +473,40 @@ void GameplayContext::OnUpdate( unsigned int elapsedTime )
 #endif
 
 #ifdef RAD_LINUX
+    // Linux port: "tp<N>" test option: two seconds after loading, teleport the player to the level's teleport
+    // destination N (CharacterManager::Teleport, which also loads the zones there)
+    if( CommandLineOptions::GetDefaultTeleport() >= 0 )
+    {
+        static int s_teleportWait = 2000;
+        if( s_teleportWait > 0 && m_state != S_SUSPENDED && !m_PausedAllButPresentation &&
+            !GetLoadingManager()->IsLoading() )
+        {
+            s_teleportWait -= static_cast< int >( elapsedTime );
+            if( s_teleportWait <= 0 )
+            {
+                unsigned int which = (unsigned int)CommandLineOptions::GetDefaultTeleport();
+                if( which < CharacterManager::GetNumTeleportDests() )
+                {
+                    fprintf( stderr, "tp: teleporting to \"%s\"\n", CharacterManager::GetTeleportDest( which ) );
+                    CharacterManager::Teleport( which );
+
+                    // SHAR_TP_POS="x,y,z": then to that point instead (the destination's zones are loaded)
+                    const char* at = getenv( "SHAR_TP_POS" );
+                    rmt::Vector pos;
+                    Character* character = GetCharacterManager()->GetCharacter( 0 );
+                    if( at && sscanf( at, "%f,%f,%f", &pos.x, &pos.y, &pos.z ) == 3 && character && !character->IsInCar() )
+                    {
+                        character->RelocateAndReset( pos, 0 );
+                    }
+                }
+                else
+                {
+                    fprintf( stderr, "tp: the level has %u teleport destinations\n", CharacterManager::GetNumTeleportDests() );
+                }
+            }
+        }
+    }
+
     // Linux port: "incar" test option: two seconds after loading, put the player in the mission's current car
     // (it teleports them to wherever the car is parked; skipped inside an interior)
     if( CommandLineOptions::Get( CLO_START_IN_CAR ) )

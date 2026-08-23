@@ -1299,6 +1299,11 @@ void InteriorManager::Enter(InteriorEntranceLocator* entry, Character* pCharacte
     rmt::Matrix transform = entry->GetTransform();
     rmt::Vector standPosition;
     entry->GetLocation( &standPosition ) ;
+#ifdef RAD_LINUX
+    // Linux port: where the door is, for tests (skipfe tp<N> with SHAR_TP_POS puts the player there)
+    fprintf( stderr, "interior: entering %s at %.1f,%.1f,%.1f\n", entry->GetInteriorFileName(),
+             standPosition.x, standPosition.y, standPosition.z );
+#endif
 
     Action* pAction = 0;
 
