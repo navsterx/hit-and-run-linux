@@ -390,6 +390,10 @@ CollisionAttributes::CollisionAttributes(char* p_sound,char* p_particle,char* p_
         default:
             {
                 printf("ERROR: Unknown ClasstypeID \n");
+                // uninit fix (Linux port): was left unset and read by the loaders right after (seen in Level 1's
+                // time trial). 9 = PROP_ANIM_BREAKABLE in SetClasstypeid has no case here; not added, to keep the
+                // shipped behaviour.
+                mClasstypeid = WTF;
             }
     }
 
