@@ -478,6 +478,7 @@ void GameplayContext::OnUpdate( unsigned int elapsedTime )
     if( CommandLineOptions::GetDefaultTeleport() >= 0 )
     {
         static int s_teleportWait = 2000;
+        static int s_relocateWait = -1;
         if( s_teleportWait > 0 && m_state != S_SUSPENDED && !m_PausedAllButPresentation &&
             !GetLoadingManager()->IsLoading() )
         {
@@ -489,19 +490,36 @@ void GameplayContext::OnUpdate( unsigned int elapsedTime )
                 {
                     fprintf( stderr, "tp: teleporting to \"%s\"\n", CharacterManager::GetTeleportDest( which ) );
                     CharacterManager::Teleport( which );
+                    s_relocateWait = 2000;
+                }
+                else
+                {
+                    fprintf( stderr, "tp: the level has %u teleport destinations\n", CharacterManager::GetNumTeleportDests() );
+                }
+            }
+        }
 
-                    // SHAR_TP_POS="x,y,z": then to that point instead (the destination's zones are loaded)
+        // SHAR_TP_POS="x,y,z": then to that point instead, once the destination's zones have loaded (two seconds
+        // without loading: placed earlier, e.g. under valgrind, the player fell through ground not yet there)
+        if( s_relocateWait > 0 && m_state != S_SUSPENDED && !m_PausedAllButPresentation )
+        {
+            if( GetLoadingManager()->IsLoading() )
+            {
+                s_relocateWait = 2000;
+            }
+            else
+            {
+                s_relocateWait -= static_cast< int >( elapsedTime );
+                if( s_relocateWait <= 0 )
+                {
                     const char* at = getenv( "SHAR_TP_POS" );
                     rmt::Vector pos;
                     Character* character = GetCharacterManager()->GetCharacter( 0 );
                     if( at && sscanf( at, "%f,%f,%f", &pos.x, &pos.y, &pos.z ) == 3 && character && !character->IsInCar() )
                     {
+                        fprintf( stderr, "tp: moving to %.1f,%.1f,%.1f\n", pos.x, pos.y, pos.z );
                         character->RelocateAndReset( pos, 0 );
                     }
-                }
-                else
-                {
-                    fprintf( stderr, "tp: the level has %u teleport destinations\n", CharacterManager::GetNumTeleportDests() );
                 }
             }
         }
