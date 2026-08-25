@@ -67,7 +67,10 @@ srr2 skipfe                               # straight into Level 1; `skipfe l7 m3
                                           # l7 m3 (Pocket Protector) starts outdoors.
 srr2 skipfe race2                         # 2 s after the HUD appears, jump into the level's race N (bonus missions in
                                           # level.mfk order: 1 time trial, 2 circuit, 3 waypoint, 4 wager); the briefing
-                                          # waits for Enter (28), then the player's car is placed at the start line
+                                          # waits for Enter (28), then the player's car is placed at the start line.
+                                          # Only zones already loaded are there (a mission loads its own only on a
+                                          # restart): teleport near far races first, `skipfe tp11 race1` (L1 time trial),
+                                          # `skipfe coins tp4 race4` (L1 wager; `coins` = 1000, the entry fee is 20)
 srr2 skipfe demo l3                       # level 3's attract demo: the race AI drives the family car (demo.mfk/d1i.mfk:
                                           # race route, traffic, opponent, HUD), no time limit; for driving tests
 srr2 skipfe incar l7 m3                   # normal gameplay, but 2 s after loading the player is put in the mission's
@@ -333,8 +336,8 @@ The base game is feature-complete but not yet verified end to end. In order:
    seven levels. Riskiest first: save -> quit -> load round trip (saving from a `skipfe` session works since
    2026-10-17: on PC only the front end's memory card check selected the save drive), the bonus game (Itchy &
    Scratchy racing) with 2-4 pads, street/wager races and time trials, later levels' missions and cutscenes, French/German/Spanish.
-2. **Memcheck coverage** (Claude, unattended; each pass has found real bugs): time trial / wager race, other interiors
-   (Kwik-E-Mart, school, ...), later levels, the bonus game. See item 8 below.
+2. **Memcheck coverage** (Claude, unattended; each pass has found real bugs): the bonus game (needs front-end
+   navigation), later levels' missions (only their attract demos so far). See item 8 below.
 3. **Robustness found along the way**: crashes/asserts from those runs, shutdown paths (window closed in any
    context), missing-data tolerance where cheap. Seen once (2026-10-16, not reproduced): quitting during a level
    load spun in `LoadingManager::CancelPendingRequests` waiting for the current load. Fixed 2026-10-17: shutting
@@ -403,7 +406,13 @@ The base game is feature-complete but not yet verified end to end. In order:
    2026-10-17: Level 1 races 2 (circuit) and 3 (waypoint) (`port/memcheck.sh 1200 skipfe race2`, Enter taps from
    120 s, W held, SHAR_MAX_FRAME_MS=33) clean after two fixes (MouseCursor position, AnimIconDSG::m_Visible). Long key
    scripts used to starve loading under valgrind (each keyboard poll re-parsed the script per key; now parsed once).
-   Not yet covered: the time trial and wager race, other interiors (Kwik-E-Mart, school, ...), the bonus game.
+   2026-10-18/19: Level 1 time trial (incl. its restart after running out of time) and wager race, the interiors
+   (Kwik-E-Mart, school, Simpsons' house/Bart's room, Moe's, DMV, Android's Dungeon, Observatory: `skipfe [lN] tp<N>`
+   + SHAR_TP_POS at the door, E taps), demos of Levels 4-7 (15 min each, SHAR_SHOT_EVERY=60 confirmed they drive):
+   clean after one fix (CollisionEntityDSG class id for unknown ids). Check runs reached gameplay with screenshots:
+   logs show little, and two runs had silently tested nothing (empty ground, no coins). Known noise besides the
+   X11/udev/dbus/SDL startup: libc's vsnprintf %s reading past a terminated string (Rig::ReadFromScript,
+   LoadingManager, HandleOption). Not yet covered: the bonus game, later levels' missions.
 9. (done 2026-10-14) Widescreen verified by the user: scales correctly at all ratios, including extreme ones.
    Borderless fullscreen and the runtime resolution list added the same day.
 10. (in progress 2026-10-15) Mods: Futurama: Hit & Run demo 0.1.3 drives in Level 1; the car shop (seller,
