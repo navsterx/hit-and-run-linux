@@ -501,10 +501,13 @@ void GameplayManager::Update( int elapsedTime )
 #ifdef RAD_LINUX
     // Linux port: "race<N>" test option: two seconds into the Sunday drive, jump into the level's race N
     // (its bonus mission, as the NPC's conversation would), so races can be tested without driving to them; waits
-    // for the HUD (under the level's opening letterbox, the mission load's outro read the not-yet-loaded race's stage)
+    // for the HUD (under the level's opening letterbox, the mission load's outro read the not-yet-loaded race's stage).
+    // The car is put on the start line, but only zones already loaded are there: for a race starting far from the
+    // level's start, teleport near it first ("tp<N>"; Level 1: time trial tp11, wager race tp4); then the
+    // race waits six seconds, counted only while nothing loads
     if ( CommandLineOptions::GetDefaultRace() >= 0 && !mIsDemo )
     {
-        static int s_raceWait = 2000;
+        static int s_raceWait = CommandLineOptions::GetDefaultTeleport() >= 0 ? 6000 : 2000;
         Mission* sundayDrive = GetCurrentMission();
         CGuiManagerInGame* inGameGui = GetGuiSystem()->GetInGameManager();
         if ( s_raceWait > 0 && sundayDrive != NULL && sundayDrive->IsSundayDrive() &&
@@ -517,14 +520,14 @@ void GameplayManager::Update( int elapsedTime )
                 int race = CommandLineOptions::GetDefaultRace();
                 if ( race < mNumBonusMissions )
                 {
-                    rReleasePrintf( "race: starting bonus mission %d\n", race );
+                    fprintf( stderr, "race: starting bonus mission %d\n", race );
                     mDesiredBonusMission = race + MAX_MISSIONS;
                     GetBonusMissionInfo( race )->ResetCharacterPositions();
                     mJumpToBonusMission = true;
                 }
                 else
                 {
-                    rReleasePrintf( "race: the level has no bonus mission %d\n", race );
+                    fprintf( stderr, "race: the level has no bonus mission %d\n", race );
                 }
             }
         }
