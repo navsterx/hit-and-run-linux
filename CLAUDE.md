@@ -6,7 +6,7 @@ Port of the original 2003 source to 32-bit Linux with SDL2 + OpenGL. The untouch
 Status (2026-10-17): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
 dialogue, movies, reverb and rumble, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
 Mod Launcher mods partly supported (8 hacks; the Futurama demo plays Level 1 with its shops and phone booth).
-Missing: steering-wheel force feedback. `README.md` has the user-facing status checklist; `RUST.md` holds notes for a
+Missing: steering-wheel force feedback. `README.md` is the user-facing overview, `TODO.md` the done/to-do checklist; `RUST.md` holds notes for a
 possible future Rust/Bevy reimplementation (not started).
 
 The source is leaked/proprietary: keep everything private and use game data from your own copy.
@@ -333,8 +333,8 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
 The base game is feature-complete but not yet verified end to end. In order:
 
 1. **Verify the base game** (user plays; Claude does not script gameplay it can't see): a full playthrough of all
-   seven levels. Riskiest first: save -> quit -> load round trip (saving from a `skipfe` session works since
-   2026-10-17: on PC only the front end's memory card check selected the save drive), the bonus game (Itchy &
+   seven levels. Save -> quit -> load verified by the user (2026-10-19; saving from a `skipfe` session works since
+   2026-10-17: on PC only the front end's memory card check selected the save drive). Riskiest left: the bonus game (Itchy &
    Scratchy racing) with 2-4 pads, street/wager races and time trials, later levels' missions and cutscenes, French/German/Spanish.
 2. **Memcheck coverage** (Claude, unattended; each pass has found real bugs): the bonus game (needs front-end
    navigation), later levels' missions (only their attract demos so far). See item 8 below.

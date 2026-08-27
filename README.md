@@ -1,79 +1,147 @@
-# The Simpsons: Hit & Run — native Linux port
+# SHAR Native
 
-A port of the original 2003 PC source code of *The Simpsons: Hit & Run* to Linux, running natively
-(no Wine) on SDL2 and OpenGL. The game code is kept as close to the original as possible; Windows-only
-pieces (Direct3D 8, DirectInput, DirectSound/EAX, Bink, Win32 threads and files) are replaced by
-Linux implementations underneath it.
+**A native source port of *The Simpsons: Hit & Run* (2003): the original game, running natively on modern systems.**
 
-> **This repository is private.** It contains proprietary source code and must not be made public.
-> No game data is included: you need your own copy of the PC game.
+> **Private repository.** This port is built on the game's original, proprietary source code. It must never be
+> made public, forked publicly or distributed. No game data is included: you need your own copy of the PC game.
 
-## Status
+---
 
-The game builds, boots, plays through the front end and into gameplay with sound, music, dialogue and
-movies. It works with the retail PC release's data as well as the data from the source dump.
-Mod Launcher mods are partly supported: the Futurama: Hit & Run demo plays its first level, shops and phone booth.
+## What this is
 
-### Done
+*The Simpsons: Hit & Run* shipped in 2003 for Windows XP, Direct3D 8 and 32-bit x86. Twenty years on, the PC
+release survives through compatibility shims, community patches and Wine. Each of those layers stands between the
+player and the game, and any of them can break.
 
-- [x] **Build system** — CMake + Ninja project generated from the original Visual Studio projects
-  (`port/gen_cmake.py`), 32-bit (`-m32`), release and debug (original `RAD_DEBUG`) configurations
-- [x] **Platform layer** — SDL2 window and event loop; Win32 threads, sync, fibers and timers on POSIX;
-  case-insensitive file access to the game data
-- [x] **Renderer** — the OpenGL Pure3D backend on SDL2, with
-  - [x] DXT textures stay compressed on the GPU (decoded in software on drivers without S3TC)
-  - [x] multithreaded loading via shared GL contexts (Direct3D 8 was multithreaded, GL is not)
-  - [x] texture clamping matching Direct3D (no dark seams)
-  - [x] vsync plus a 60 fps cap (physics and AI break at thousands of fps)
-  - [x] colour-write masks and alpha testing matching Direct3D (HUD map, see-through fences and ramps)
-  - [x] OpenGL 3.3 core profile (shaders and GPU vertex buffers in place of fixed-function GL 1.x)
-  - [x] multisample anti-aliasing (4x by default; `antialiasing=` in `simpsons.ini`), with alpha-to-coverage so
-    cut-out textures (fences, foliage) get smooth edges too
-  - [x] mipmapped textures with 16x anisotropic filtering (no shimmering in the distance; `mipmaps=`,
-    `anisotropy=` in `simpsons.ini`)
-  - [x] post-processing shaders of your own (GLSL files in `shaders/`: anti-aliasing, bloom, colour grading, CRT, ...)
-  - [x] material shaders of your own (toon shading, car paint, ...), assigned by material type or name; mods can
-    ship them too
-- [x] **Gameplay** — loads levels and plays; uninitialised reads that were zero by luck under MSVC fixed
-- [x] **Input** — keyboard and mouse (mouse look via relative mode), wired and wireless gamepads through SDL;
-  verified in play; Start pauses; the menu cursor hides while a gamepad is in use
-- [x] **Rumble** — gamepad vibration through SDL (the game's Force Feedback option; the Windows release never
-  rumbled gamepads)
-- [x] **Audio** — software mixer on SDL audio with 3D positioning: sound effects, music, dialogue
-- [x] **EAX reverb** — software reverb in tunnels, sewers and interiors, driven by the game's own presets;
-  verified by ear
-- [x] **Movies** — Bink movies decoded with FFmpeg, audio through the game's mixer
-- [x] **Retail PC data** — split music archives (`music00`–`03.rcf`), Radical ADPCM dialogue,
-  logo movies replaced by stubs in some copies
-- [x] **Any aspect ratio** — 16:9, 16:10, ultrawide and narrower windows; the 3D view widens (Hor+) while
-  the 4:3 UI stays centred; letterbox bars, fades and the front-end TV frame span the window; verified in play,
-  including extreme ratios
-- [x] **Resizable window** — the game adapts live to any window size
-- [x] **Fullscreen** — borderless at the desktop's native resolution, or exclusive at the chosen resolution
-- [x] **Resolution menu** — common PC sizes plus the desktop's own, filtered to what fits the screen;
-  any `WxH` set in `simpsons.ini` is accepted
-- [x] **Launcher** — `port/play.sh` builds if needed, sets up the run directory and starts the game
-- [x] **Missing files** — reported (`File not found: …`) instead of hanging behind the original retry screen
-- [x] **Test launch options** — `skipfe demo l<N>` (the AI drives the attract demo), `skipfe incar l<N> m<N>`
-  (start a mission in the car)
+SHAR Native removes those layers. It is the **original game's own code**, compiled for modern operating systems,
+with everything Windows-specific under it rewritten:
 
-### To do
+| Original (2003) | SHAR Native |
+|---|---|
+| Direct3D 8, fixed-function | OpenGL 3.3 core, GLSL shaders matching Direct3D 8's output |
+| DirectInput | SDL2: keyboard, mouse, any modern gamepad, rumble |
+| DirectSound + EAX hardware reverb | Software 3D mixer with EAX-style reverb in software |
+| Bink video | FFmpeg |
+| Win32 threads, files, windowing | Portable platform layer |
+| 640x480 to 1600x1200, 4:3 | Any resolution, any aspect ratio, resizable window |
 
-- [ ] **Full playthrough** — all seven levels, missions, races, bonus game, cutscenes, saving and loading
-- [ ] **Memory checks** — valgrind memcheck is clean for Level 1, a Level 7 interior and AI driving; still to
-  cover: player driving (`incar`), races, the bonus game, other interiors and later levels
-- [ ] **Steering-wheel force feedback** — wheel effects (springs, dampers) are not wired up; needs a wheel to test
-- [ ] **64-bit build** — the code assumes 32-bit pointers in places
-- [ ] **Modern OpenGL** — the renderer runs on an OpenGL 3.3 core context: GLSL shaders reproduce the
-  original Direct3D 8 renderer's materials and lighting (including car paint reflections, two-sided materials,
-  fading cars and characters), geometry lives in GPU buffers, DXT textures stay compressed, user post-processing
-  shaders, user material shaders (done)
-- [ ] **Mods** — Mod Launcher mods load (custom files, Lua, Ogg audio, HD movies, custom text, car shop sellers,
-  new dialogue characters, 3D phone booth); custom cars, characters, interiors and the other hacks are not
-  implemented yet
-- [ ] **Packaging** — a simple install or AppImage-style bundle of the binary
+It is **not** an emulator, a remake or a reimplementation that approximates the game. The physics, AI, mission
+scripting and timing are the shipped game's. The only gameplay changes are fixes for bugs that showed up once the
+code left MSVC and Windows.
 
-## Building
+## Why it matters
+
+- **Preservation.** The game no longer depends on an old OS, an old graphics API or 32-bit Windows compatibility.
+  It is an ordinary codebase that can be built, debugged and kept running as platforms change.
+- **Fidelity.** Because this is the original code, edge cases, glitches players know and speedrun tricks behave
+  as they always did.
+- **A foundation for modding.** Mods made for Lucas' Mod Launcher load natively, and engine limits that mods once
+  had to patch into a running executable can be changed in the source.
+- **Modern presentation without changing the game.** Widescreen, high resolutions, anti-aliasing and texture
+  filtering, plus optional shaders, all leave the look of the original art untouched by default.
+
+## Platforms
+
+| Platform | Status |
+|---|---|
+| Linux x86 (32-bit) | **Playable.** Tested through Level 7 |
+| Linux x86-64 | Planned (64-bit build in progress) |
+| Windows x64 | Planned |
+| macOS (Apple silicon / Intel) | Planned |
+| Android / handhelds | Possible later: the renderer and input layers already allow it |
+
+## Features
+
+**Display**
+- Any aspect ratio: 16:9, 16:10, ultrawide and narrower. The 3D view widens (Hor+) while the 4:3 interface stays
+  centred and undistorted
+- Resizable window, borderless fullscreen at the desktop resolution, or exclusive fullscreen
+- Multisample anti-aliasing (4x by default) with smooth edges on fences and foliage
+- Mipmapped textures with up to 16x anisotropic filtering
+- Gamma that works in a window and under Wayland
+- Vsync with a 60 fps cap, so physics and AI keep the timing they were written for
+
+**Sound and video**
+- Every sound effect, music track, dialogue line and movie, including the retail release's formats
+- The game's environmental reverb (tunnels, sewers, interiors) in software, no sound card features needed
+
+**Input**
+- Keyboard and mouse, including mouse look
+- Gamepads through SDL with console-style default bindings; Start pauses; gamepad rumble (which the Windows
+  release never supported)
+
+**Shaders (optional, off by default)**
+- Post-processing passes: ambient occlusion, bloom, colour grading, tone mapping, CRT and more
+- Per-material shaders such as toon shading or new car paint, assigned by material type, file or name
+- Everything reloads while the game runs. Press **M** to compare with and without them
+
+**Mods**
+- Lucas' Mod Launcher packages (`.lmlm`) and extracted mod folders, with Lua scripting, Ogg audio, HD movies,
+  custom text, car shops, new dialogue characters and the 3D phone booth preview
+- Custom cars, characters, interiors and the remaining launcher hacks are not supported yet
+
+**Robustness**
+- A missing file is reported by name instead of hanging the game behind a disc-error screen
+- Crashes leave a log with a backtrace resolved to source lines
+
+## What you need
+
+- **A copy of the PC game.** The retail release's data works, as does the data from the source dump. SHAR Native
+  contains no game data and never will.
+- For now, a Linux x86 system with OpenGL 3.3
+
+## Quick start
+
+```bash
+port/play.sh --data "/path/to/The Simpsons - Hit & Run"
+```
+
+The first run builds the game, creates `run/` with links to your game data and its own `simpsons.ini` and save
+files, then starts the game. Your original install is never written to.
+
+Useful options:
+
+```bash
+port/play.sh --data DIR --mod MyMod.lmlm    # load a mod (repeatable; earlier mods win)
+port/play.sh --data DIR --no-build          # skip the build step
+port/play.sh --data DIR skipfe              # straight into Level 1
+```
+
+## Settings
+
+Display mode, resolution and the game's usual options are in the in-game menus. Graphics extras go in the
+`#System` section of `run/simpsons.ini`:
+
+| Setting | Values | Default |
+|---|---|---|
+| `antialiasing=` | 0 (off), 2, 4, 8, 16 | 4 |
+| `mipmaps=` | yes, no | yes |
+| `anisotropy=` | 1 (off) to 16 | 16 |
+| `display=` | window, borderless, fullscreen | from the menu |
+
+Shaders live in `run/shaders/`: turn on post-processing in `post.ini` and assign material shaders in
+`materials.ini`. See [`shaders/README.md`](shaders/README.md).
+
+## Status and roadmap
+
+The base game is feature-complete and plays through to Level 7. The full checklist of what is done and what is
+left is in [`TODO.md`](TODO.md). Next, in order:
+
+1. **Full verification**: a complete playthrough of all seven levels, races, the bonus game
+   with several pads, and the other languages
+2. **Robustness**: fixing whatever those runs turn up, plus continued memory checking (valgrind) of new areas
+3. **Mods**: the remaining Mod Launcher hacks, starting with shop item lists and custom cars
+4. **64-bit build**, then **Windows and macOS**
+5. **Packaging**: a self-contained bundle for each platform
+6. **Steering-wheel force feedback**, once there is a wheel to test with
+
+## Reporting a crash
+
+Every session's output is saved to `run/logs/last-session.log`. After a crash (or an error exit, or Ctrl+C) it is
+kept as `run/crashes/crash-<date>-<time>.log`, ending in a backtrace resolved to source files and lines. Attach
+that file and say what you were doing.
+
+## Building from source
 
 Requirements (Debian/Ubuntu package names; enable i386 with `sudo dpkg --add-architecture i386`):
 
@@ -91,36 +159,14 @@ cmake -B build-linux-debug -G Ninja -DSHAR_RAD_DEBUG=ON    # debug build: assert
 ninja -C build-linux
 ```
 
-`CMakeLists.txt` is generated: change `port/gen_cmake.py` and run `python3 port/gen_cmake.py` instead of editing it.
+Boot movies only play in the release build. `port/package.sh` makes a self-contained tarball for another Linux
+machine. The porting details are in [`CLAUDE.md`](CLAUDE.md).
 
-## Running
+`CMakeLists.txt` is generated from the original Visual Studio projects: change `port/gen_cmake.py`, never the
+generated file.
 
-Point the launcher at your copy's PC data directory (the one containing `art/`, `scripts/` and the `.rcf` files):
-
-```bash
-port/play.sh --data "/path/to/The Simpsons - Hit & Run"
-port/play.sh --data /path/to/game --debug      # use the debug build
-port/play.sh --data /path/to/game --no-build   # skip the build step
-port/play.sh --data /path/to/game skipfe       # extra arguments go to the game (skipfe: straight into Level 1)
-```
-
-On first use it creates `run/` with links to the game data and a private copy of `simpsons.ini` and the save
-files, which the game writes to. Boot movies only play in the release build.
-
-Anti-aliasing (MSAA) is on at 4x, textures are mipmapped with 16x anisotropic filtering. To change them, set these
-in the `#System` section of `run/simpsons.ini` (the game adds the lines itself the first time it saves its
-settings): `antialiasing=` 0 (off), 2, 4, 8 or 16; `mipmaps=` yes or no; `anisotropy=` 1 (off) to 16.
-
-Shaders of your own are GLSL files in `run/shaders/`: post-processing (ambient occlusion, anti-aliasing, bloom,
-colour grading, a CRT look, ...) switched on in its `post.ini`, and material shaders (toon shading, car paint, ...) assigned in its
-`materials.ini`; the examples are all off at first, and everything reloads while the game runs. Press M in the game
-to turn them all off and on, for comparing. See [`shaders/README.md`](shaders/README.md).
-
-Each session's console output is also written to `run/logs/last-session.log`. If the game crashes (or exits with
-an error, or is interrupted with Ctrl+C), the log is kept as `run/crashes/crash-<date>-<time>.log`, ending in a
-crash report with the backtrace resolved to source files and lines. Attach that file when reporting a crash.
-
-### Debug and test switches
+<details>
+<summary>Debug and test switches</summary>
 
 | Variable | Effect |
 |---|---|
@@ -145,13 +191,29 @@ crash report with the backtrace resolved to source files and lines. Attach that 
 
 `port/run.sh [seconds] [args]` rebuilds and runs the game under gdb, printing a backtrace on a crash.
 
-## Layout
+</details>
+
+## Repository layout
 
 | Path | Contents |
 |---|---|
 | `code/` | The game |
-| `libs/` | Radical's libraries: Pure3D renderer, radcore, radsound, radmovie, Scrooby UI, ... |
-| `build/` | Original Visual Studio projects (read by the generator) |
-| `port/` | Everything added for the port: generator, compatibility layer (`compat/`), scripts |
-| `shaders/` | Example post-processing and material shaders, and their documentation (copied to `run/shaders/`) |
+| `libs/` | Radical's libraries: Pure3D renderer, radcore, radsound, radmovie, Scrooby UI and more |
+| `build/` | The original Visual Studio projects, read by the generator |
+| `port/` | Everything added for the port: build generator, platform layer, mod support, scripts |
+| `shaders/` | Example shaders and their documentation |
+| `mod/tools/` | Modding tools (`.lmlm` extractor) |
+| `TODO.md` | Progress checklist: what is done and what is left |
 | `CLAUDE.md` | Detailed porting notes: platform model and the Windows-to-Linux differences that mattered |
+
+## Credits
+
+- *The Simpsons: Hit & Run* was developed by **Radical Entertainment** and published by **Vivendi Universal Games**.
+  *The Simpsons* is a trademark of its owners. This project is not affiliated with or endorsed by any of them.
+- The mod format and hack definitions come from **Lucas' Mod Launcher** by the Donut Team.
+- Built with SDL2, FFmpeg, Lua 5.4 (MIT) and libpng.
+
+## Legal
+
+The source code in this repository is proprietary and is not licensed to anyone. This port exists for private
+preservation and research. Do not publish, share or distribute it, its builds or any part of it.
