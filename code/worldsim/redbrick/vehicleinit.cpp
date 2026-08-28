@@ -1440,6 +1440,11 @@ Vehicle::~Vehicle()
 
 
     int id = mpEventLocator->GetData();    
+#ifdef RAD_LINUX
+    // Linux port: closing the window during a level load destroys the vehicles in DestroySingletons, after the
+    // action button manager (the level was never unloaded): it is gone, and its buttons with it
+    if( GetActionButtonManager() != NULL )
+#endif
     GetActionButtonManager()->RemoveActionByIndex( id );
     
 

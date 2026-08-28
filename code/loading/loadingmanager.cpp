@@ -32,6 +32,7 @@
 #include <cheats/cheatinputsystem.h>
 
 #include <mission/gameplaymanager.h>
+#include <sound/soundmanager.h>
 
 //******************************************************************************
 //
@@ -307,7 +308,15 @@ void LoadingManager::OnLoadFileComplete( void* pUserData )
     mRequestHead = (mRequestHead + 1) % MAX_REQUESTS;
     mLoading = false;
 
+#ifdef RAD_LINUX
+    // Linux port: while cancelling (only on the way out of the game) the requests queued after this one are
+    // dropped, so its completion callback would carry on with half-loaded data: closing the window as a level
+    // finished loading set up a car whose model request had just been dropped (crash in
+    // Vehicle::SetupPhysicsProperties)
+    if(request.pCallback && !mCancellingLoads)
+#else
     if(request.pCallback)
+#endif
     {
         request.pCallback->OnProcessRequestsComplete(request.pUserData);
     }
@@ -397,6 +406,16 @@ void LoadingManager::CancelPendingRequests()
     while ( mLoading )
     {
         ::radFileService();
+#ifdef RAD_LINUX
+        // Sound loads (SoundFileHandler) only report completion from the sound manager's services: music and
+        // ambience scripts from Update, sound clusters from UpdateOncePerFrame (as the main loop calls them when
+        // paused for errors). Without them, closing the window while one was in flight spun here for good.
+        if ( SoundManager::GetInstance() != NULL )
+        {
+            SoundManager::GetInstance()->Update();
+            SoundManager::GetInstance()->UpdateOncePerFrame( 0, NUM_CONTEXTS, false, true );
+        }
+#endif
         p3d::loadManager->SwitchTask();
         p3d::loadManager->TriggerCallbacks();      
     }

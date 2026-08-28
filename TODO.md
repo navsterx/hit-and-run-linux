@@ -12,6 +12,8 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
   case-insensitive file access to the game data
 - [x] **Launcher**: `port/play.sh` builds if needed, sets up the run directory and starts the game
 - [x] **Crash reports**: each session logged; crashes kept with the backtrace resolved to source lines
+- [x] **Closing the window during boot or loading**: no longer hangs or crashes (sound loads, file errors at unmount,
+  radscript teardown, vehicles destroyed after their managers, load callbacks while cancelling)
 - [x] **Missing files**: reported (`File not found: …`) instead of hanging behind the original retry screen
 - [x] **Self-contained Linux build**: `port/package.sh` bundles the game with its 32-bit libraries and a launcher
 
@@ -89,9 +91,10 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [ ] Later levels' missions (only their attract demos so far)
 
 ### Robustness
-- [ ] Shutdown paths: closing the window in every context
+- [ ] Shutdown paths: closing the window in every context. Release build swept with `SHAR_QUIT_AT` (boot, front end,
+  Level 1/7 load and gameplay, pause, interior, car, race, demo) and five bugs fixed; still to do: the debug build,
+  the bonus game, missions in progress, a denser sweep of the end of a level load
 - [ ] Debug-build asserts on Ctrl+C inside a level (`SimEnvironment`, `SimUnits::Reset`, radFileSystem leaks)
-- [ ] Quitting during a level load once spun in `LoadingManager::CancelPendingRequests` (not reproduced)
 - [ ] Missing-data tolerance where it is cheap (`art\wrench.p3d` missing still crashes later)
 
 ### Mods

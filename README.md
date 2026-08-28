@@ -177,6 +177,7 @@ generated file.
 | `SHAR_SHOT_EVERY=n` | Save `shot_NNN.png` in the run directory every n seconds |
 | `SHAR_KEY_SCRIPT="dik@start-end,..."` | Hold DirectInput key codes during time windows (ms; 1000+n = mouse button n) |
 | `SHAR_RESIZE_SCRIPT="WxH@ms,..."` | Resize the window at those times |
+| `SHAR_QUIT_AT=ms` | Close the window at that time (tests shutting down from any context) |
 | `SHAR_KEYPRESS_SCRIPT="M@ms,..."` | Press keys (SDL key names) at those times, through the window's event queue |
 | `SHAR_INPUT_LOG`, `SHAR_NO_INPUT`, `SHAR_NO_MOUSE`, `SHAR_FORCE_MOUSELOOK` | Input debugging |
 | `SHAR_ASSERT_ABORT=1` | Make failed asserts abort instead of logging |

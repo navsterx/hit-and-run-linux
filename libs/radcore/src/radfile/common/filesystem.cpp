@@ -1012,6 +1012,16 @@ bool radFileSystem::DriveUnmount( const char* pDriveSpec )
         while( pDrive->OutstandingRequests( ) )
         {
             ::radFileService( );
+#ifdef RAD_LINUX
+            // The drive is off the list now, so radFileService no longer services it: a request that hit an error
+            // waited for an error handler that was never called (closing the window during a load hung here).
+            // The drive is going away, so fail the request.
+            if ( pDrive->CheckForErrorState( ) )
+            {
+                rReleasePrintf( "radFile: unmounting drive with a failed request (error %d): cancelled\n", (int) pDrive->GetLastError( ) );
+                pDrive->ResumeRequest( false );
+            }
+#endif
             ::radThreadSleep( 0 );
         }
 

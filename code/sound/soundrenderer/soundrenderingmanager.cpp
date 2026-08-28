@@ -636,7 +636,9 @@ void daSoundRenderingManager::Terminate( void )
         }
 #endif
         rAssert( m_pScript == NULL );
+#ifndef RAD_LINUX
         ::radScriptTerminate( );
+#endif
 
         //
         // Release the cement file
@@ -649,6 +651,12 @@ void daSoundRenderingManager::Terminate( void )
         // Uninitialize
         m_IsInitialized = false;
     }
+#ifdef RAD_LINUX
+    // radscript is initialised when the manager is created, not when the sound scripts have loaded: closing the
+    // window during the boot screens skipped this, and the type info system's static ref was then released at
+    // process exit, after the game's heaps were gone (crash)
+    ::radScriptTerminate( );
+#endif
 }
 
 //=============================================================================

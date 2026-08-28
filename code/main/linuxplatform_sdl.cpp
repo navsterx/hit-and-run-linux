@@ -313,6 +313,18 @@ bool Win32Platform::PumpEvents()
         c = strchr( c, ',' );
         if( c ) c++;
     }
+    // debug: SHAR_QUIT_AT=ms closes the window at that time (tests shutting down from any context; Ctrl+C is the same)
+    static const char* s_quitAt = getenv( "SHAR_QUIT_AT" );
+    static bool s_quitPushed = false;
+    if( s_quitAt && !s_quitPushed && SDL_GetTicks() >= (unsigned int) atoi( s_quitAt ) )
+    {
+        SDL_Event quitEvent;
+        memset( &quitEvent, 0, sizeof( quitEvent ) );
+        quitEvent.type = SDL_QUIT;
+        SDL_PushEvent( &quitEvent );
+        s_quitPushed = true;
+        fprintf( stderr, "SHAR_QUIT_AT: closing the window\n" );
+    }
     // debug: SHAR_MINIMIZE_SCRIPT="startms-endms,..." minimises the window for those times (tests hidden windows)
     static const char* s_minimizeScript = getenv( "SHAR_MINIMIZE_SCRIPT" );
     static bool s_minimized = false;

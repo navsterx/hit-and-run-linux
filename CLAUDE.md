@@ -83,6 +83,8 @@ srr2 skipfe tp2                           # 2 s after loading, teleport to the l
                                           # SimpsonsHouse 228.9,3.8,-184.1, bartroom (L4/7) 224.7,6.6,-200.8; L2/5 moe
                                           # -173.6,7.1,24.5, dmv -253.3,6.9,350.7; L3/6 Android 22.4,7.0,-6.2, Observatory
                                           # 177.2,4.3,487.6. Teleport there and tap E (18) to go in (timing-free under memcheck)
+SHAR_QUIT_AT=ms                           # close the window at that time (SDL_QUIT, as Ctrl+C); "Window closed (context N)"
+                                          # is logged (contextenum.h: 1 bootup, 2 front end, 8 loading, 9 gameplay, 10 pause)
 SHAR_KEY_SCRIPT="17@30000-60000,..."      # scripted input; the retail ini binds Action to E (18), menus take Enter (28)
 SHAR_FILL_ALLOC=0xFF / SHAR_FILL_PDDI=0xFF  # fill new game / renderer allocations to expose uninitialised reads
 SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe   # memcheck into Level 1 (~3 min to playable), summary at end
@@ -339,8 +341,11 @@ The base game is feature-complete but not yet verified end to end. In order:
 2. **Memcheck coverage** (Claude, unattended; each pass has found real bugs): the bonus game (needs front-end
    navigation), later levels' missions (only their attract demos so far). See item 8 below.
 3. **Robustness found along the way**: crashes/asserts from those runs, shutdown paths (window closed in any
-   context), missing-data tolerance where cheap. Seen once (2026-10-16, not reproduced): quitting during a level
-   load spun in `LoadingManager::CancelPendingRequests` waiting for the current load. Fixed 2026-10-17: shutting
+   context), missing-data tolerance where cheap. Shutdown sweep 2026-10-19 (release, `SHAR_QUIT_AT`): fixed a hang in
+   `CancelPendingRequests` (sound loads complete only from SoundManager::Update/UpdateOncePerFrame), a hang in
+   `DriveUnmount` (drive off the list, its request stuck in the error wait: now failed), radscript never terminated
+   before sound init (static ref freed after the heaps), ~Vehicle after ActionButtonManager in DestroySingletons, and
+   load completion callbacks running while cancelling (car set up without its model). Fixed 2026-10-17: shutting
    down with a vehicle sound playing overflowed the stack (`~PositionalSoundPlayer` deleted its owner).
    Debug build, Ctrl+C from inside a level (2026-10-17): `SimEnvironment::GetCurrentDefaultSimEnvironment() == NULL`
    and `SimUnits::Reset: there is still some instances` assert during teardown (harmless so far); with a file
