@@ -42,6 +42,15 @@ bool Win32Platform::InitializeWindow( HINSTANCE hInstance )
     // reports a spurious one-pixel motion every frame under XWayland
     SDL_SetHint( SDL_HINT_MOUSE_RELATIVE_MODE_WARP, "0" );
 
+    // In a Wayland session run as a native Wayland client (SDL2 picks X11 first). Under XWayland a window
+    // covering the screen on mirrored outputs made XWayland allocate a new screen-sized buffer per frame that
+    // the compositor did not hand back: gigabytes within minutes, until the out-of-memory killer struck.
+    // SDL_VIDEODRIVER=x11 (or SHAR_X11=1) still chooses X11.
+    if( getenv( "SDL_VIDEODRIVER" ) == NULL && getenv( "WAYLAND_DISPLAY" ) != NULL && getenv( "SHAR_X11" ) == NULL )
+    {
+        SDL_SetHint( SDL_HINT_VIDEODRIVER, "wayland,x11" );
+    }
+
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC ) != 0 )
     {
         fprintf( stderr, "SDL_Init failed: %s\n", SDL_GetError() );
@@ -73,7 +82,10 @@ bool Win32Platform::InitializeWindow( HINSTANCE hInstance )
     SDL_Window* window = SDL_CreateWindow( ApplicationName,
                                            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                            x, y,
-                                           SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE );
+                                           SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE |
+                                           SDL_WINDOW_ALLOW_HIGHDPI );     // Wayland with display scaling: render
+                                                                           // at the screen's pixels (the display
+                                                                           // follows SDL_GL_GetDrawableSize)
     if( window == NULL )
     {
         fprintf( stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError() );

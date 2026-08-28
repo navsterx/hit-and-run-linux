@@ -127,7 +127,16 @@ static void AttachWorkerContext( void )
     pthread_mutex_unlock( &s_WorkerLock );
     if( ctx != NULL )
     {
-        SDL_GL_MakeCurrent( s_WorkerWindow, ctx );
+        // Workers never draw to the window: no surface where the platform allows it (EGL, i.e. Wayland, where
+        // the window's surface may be current on one thread only, so binding it failed while the render thread
+        // held it); GLX needs a drawable and lets several threads share the window's.
+        if( SDL_GL_MakeCurrent( NULL, ctx ) != 0 && SDL_GL_MakeCurrent( s_WorkerWindow, ctx ) != 0 )
+        {
+            fprintf( stderr, "PDDI: cannot attach a worker GL context: %s\n", SDL_GetError( ) );
+            pthread_mutex_lock( &s_WorkerLock );
+            s_WorkerContexts[ s_WorkerContextCount++ ] = ctx;      // back to the pool
+            pthread_mutex_unlock( &s_WorkerLock );
+        }
     }
     else
     {

@@ -196,6 +196,19 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   Gameplay only captures the pointer when mouse-look is on (`FEMouse::SetupInGameMode`; only PC_CAM reads the mouse).
   The game's own drawn menu cursor hides (and stops hovering) after gamepad input until the mouse moves or clicks
   (`FEMouse::SetHiddenForGamepad`, fed from `PumpEvents`; the revealing click is swallowed).
+- **Native Wayland (2026-10-19)**: in a Wayland session SDL is asked for its Wayland driver (`linuxplatform_sdl.cpp`;
+  `SHAR_X11=1` or `SDL_VIDEODRIVER=x11` for X11). Why: on the user's laptop (Intel iris, screens mirrored to a TV,
+  133% scale) an X11 game window covering the screen (borderless or exclusive fullscreen; not windowed) made
+  XWayland allocate a screen-sized buffer per frame that gnome-shell did not hand back: +1-2.7 GB in 20 s, kept after
+  exit, then the OOM killer (srr2 itself held ~100 MB; the memory shows as Shmem and in Xwayland's DRM fdinfo
+  `drm-total-system0`, not in any RSS). Wayland specifics: worker GL contexts are made current surfaceless
+  (`SDL_GL_MakeCurrent(NULL, ctx)`, EGL lets the window surface be current on one thread only, so binding it failed
+  and the pool ran dry: "no GL context left"); GLX falls back to the window. Mouse-look uses SDL relative mode there
+  (pointer lock; no warping on Wayland), X11 keeps the re-centring. The window is SDL_WINDOW_ALLOW_HIGHDPI: windowed
+  sizes are logical (1280x720 at 133% = 1707x960 pixels), mouse coordinates are normalised by the window size,
+  rendering follows `SDL_GL_GetDrawableSize`; exclusive fullscreen is SDL's emulated mode (rendered at the mode
+  size, scaled by the compositor). Tested 2026-10-19: borderless/fullscreen/windowed + resize, Level 1 demo 3 min,
+  flat memory. Not yet checked by hand: mouse-look feel, gamepads, minimised-window pacing.
 - **Missing files**: the original retried a failed read forever behind an error screen (the consoles' "put the disc
   back" loop), so a missing file hung the game for good. `Win32Platform::OnDriveError` now prints
   `File not found: <path>` and fails the request; Pure3D's `tFileFTT` loads a file that failed to open as empty

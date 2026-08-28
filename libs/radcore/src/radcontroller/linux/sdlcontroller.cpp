@@ -677,6 +677,12 @@ public:
         {
         case SDL_MOUSEMOTION:
             if ( getenv( "SHAR_NO_MOUSE" ) || getenv( "SHAR_NO_INPUT" ) ) break;   // debug: ignore the mouse
+            if ( m_MouseLook && NativeWayland( ) )
+            {
+                m_pMouse->m_MotionX += e->motion.xrel;      // relative mode (see SetMouseLook)
+                m_pMouse->m_MotionY += e->motion.yrel;
+                break;
+            }
             HandleMouseMotion( e->motion.windowID, e->motion.x, e->motion.y );
             break;
         case SDL_MOUSEWHEEL:
@@ -709,6 +715,14 @@ public:
     void SetMouseLook( bool on )
     {
         m_MouseLook = on;
+        if ( NativeWayland( ) )
+        {
+            // Wayland clients cannot warp the pointer, but there SDL's relative mode is the compositor's pointer
+            // lock and relative-motion events, without XWayland's re-centring error
+            SDL_SetRelativeMouseMode( on ? SDL_TRUE : SDL_FALSE );
+            m_HaveLastPos = false;
+            return;
+        }
         SDL_Window* w = SDL_GetMouseFocus( ) ? SDL_GetMouseFocus( ) : SDL_GetKeyboardFocus( );
         if ( w != NULL )
         {
@@ -721,6 +735,12 @@ public:
         // re-centre left it. Elsewhere the cursor stays "shown" as the near-invisible cursor
         // Win32Platform::ShowTheCursor sets (the front end draws its own), which ends the lock straight away.
         SDL_ShowCursor( on ? SDL_DISABLE : SDL_ENABLE );
+    }
+
+    static bool NativeWayland( void )
+    {
+        static const bool s_wayland = SDL_GetCurrentVideoDriver( ) != NULL && strcmp( SDL_GetCurrentVideoDriver( ), "wayland" ) == 0;
+        return s_wayland;
     }
 
     void Recentre( SDL_Window* w )
