@@ -79,6 +79,9 @@ public:
     // Had to workaround our nice clean design cause FTech must be init'ed
     // before anything else is done.
     static bool InitializeWindow( HINSTANCE hInstance );
+#ifdef RAD_LINUX
+    static struct SDL_Window* CreateGameWindow();
+#endif
     static void InitializeFoundation();
     static void InitializeMemory();
     static void ShutdownMemory();

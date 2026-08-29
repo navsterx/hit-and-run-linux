@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <radcontroller.hpp>
 #include <raddebug.hpp>
@@ -49,6 +50,16 @@ bool Win32Platform::InitializeWindow( HINSTANCE hInstance )
     if( getenv( "SDL_VIDEODRIVER" ) == NULL && getenv( "WAYLAND_DISPLAY" ) != NULL && getenv( "SHAR_X11" ) == NULL )
     {
         SDL_SetHint( SDL_HINT_VIDEODRIVER, "wayland,x11" );
+
+        // NVIDIA: the 32-bit egl-wayland2 platform (09_nvidia_wayland2.json, tried first) fails every window surface
+        // with EGL_BAD_ALLOC (driver 595, 2026-10-19); the older egl-wayland works. Point NVIDIA's EGL at that one
+        // unless the user chose. Mesa does not read this variable.
+        static const char* const nvidiaWayland = "/usr/share/egl/egl_external_platform.d/10_nvidia_wayland.json";
+        if( getenv( "__EGL_EXTERNAL_PLATFORM_CONFIG_FILENAMES" ) == NULL &&
+            getenv( "__EGL_EXTERNAL_PLATFORM_CONFIG_DIRS" ) == NULL && access( nvidiaWayland, R_OK ) == 0 )
+        {
+            setenv( "__EGL_EXTERNAL_PLATFORM_CONFIG_FILENAMES", nvidiaWayland, 0 );
+        }
     }
 
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC ) != 0 )
@@ -59,6 +70,33 @@ bool Win32Platform::InitializeWindow( HINSTANCE hInstance )
 
     fprintf( stderr, "SDL video driver: %s\n", SDL_GetCurrentVideoDriver( ) );
 
+    SDL_Window* window = CreateGameWindow();
+    if( window == NULL && strcmp( SDL_GetCurrentVideoDriver( ), "wayland" ) == 0 )
+    {
+        // A Wayland window can still fail where X11 works (a driver's EGL platform): fall back to XWayland
+        fprintf( stderr, "SDL_CreateWindow failed on Wayland (%s): trying X11\n", SDL_GetError() );
+        SDL_QuitSubSystem( SDL_INIT_VIDEO );
+        SDL_SetHint( SDL_HINT_VIDEODRIVER, "x11" );
+        if( SDL_InitSubSystem( SDL_INIT_VIDEO ) == 0 )
+        {
+            fprintf( stderr, "SDL video driver: %s\n", SDL_GetCurrentVideoDriver( ) );
+            window = CreateGameWindow();
+        }
+    }
+    if( window == NULL )
+    {
+        fprintf( stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError() );
+        return false;
+    }
+
+    mhWnd = (HWND) window;
+    ShowTheCursor( false );
+    return true;
+}
+
+// The GL attributes belong to the video subsystem: set them again after it is restarted
+SDL_Window* Win32Platform::CreateGameWindow()
+{
     // Pure3D's GL renderer runs on an OpenGL 3.3 core context (pddi/gl/glpipeline.hpp). SHAR_GL_DEBUG=1 asks for a
     // debug context: the driver's errors and warnings are printed as they happen.
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
@@ -86,15 +124,7 @@ bool Win32Platform::InitializeWindow( HINSTANCE hInstance )
                                            SDL_WINDOW_ALLOW_HIGHDPI );     // Wayland with display scaling: render
                                                                            // at the screen's pixels (the display
                                                                            // follows SDL_GL_GetDrawableSize)
-    if( window == NULL )
-    {
-        fprintf( stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError() );
-        return false;
-    }
-
-    mhWnd = (HWND) window;
-    ShowTheCursor( false );
-    return true;
+    return window;
 }
 
 //==============================================================================

@@ -209,6 +209,12 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   rendering follows `SDL_GL_GetDrawableSize`; exclusive fullscreen is SDL's emulated mode (rendered at the mode
   size, scaled by the compositor). Tested 2026-10-19: borderless/fullscreen/windowed + resize, Level 1 demo 3 min,
   flat memory. Not yet checked by hand: mouse-look feel, gamepads, minimised-window pacing.
+  NVIDIA (desktop, driver 595, 2026-10-19): the 32-bit egl-wayland2 platform (09_nvidia_wayland2.json, loaded first)
+  fails every window surface with EGL_BAD_ALLOC; the older egl-wayland (10_nvidia_wayland.json) works, so
+  `InitializeWindow` sets `__EGL_EXTERNAL_PLATFORM_CONFIG_FILENAMES` to it when the file exists and the user set neither
+  that nor `..._CONFIG_DIRS` (Mesa ignores it). If a Wayland window still fails, SDL video restarts on X11
+  (`CreateGameWindow` sets the GL attributes again). gnome-shell's VRAM still grows ~11 MB per game run on Wayland
+  (~45 MB under XWayland; 7 GB after a day of quit sweeps): log out/in after long test sessions.
 - **Missing files**: the original retried a failed read forever behind an error screen (the consoles' "put the disc
   back" loop), so a missing file hung the game for good. `Win32Platform::OnDriveError` now prints
   `File not found: <path>` and fails the request; Pure3D's `tFileFTT` loads a file that failed to open as empty
