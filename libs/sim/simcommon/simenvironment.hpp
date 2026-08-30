@@ -110,7 +110,13 @@ public:
 #ifndef RAD_RELEASE
     static TList<SimulatedObject*>* sListOfActiveSimulatedObject;
     static void AddObject(SimulatedObject* inObject) { sListOfActiveSimulatedObject->Add(inObject); }
+#ifdef RAD_LINUX
+    // Linux port: objects that outlive ResetSimulation (a level closed while still loading: its vehicles are only
+    // destroyed with their singletons) found the list deleted; ResetSimulation's assert reports them already
+    static void RemoveObject(SimulatedObject* inObject) { if (sListOfActiveSimulatedObject) sListOfActiveSimulatedObject->Remove(inObject); }
+#else
     static void RemoveObject(SimulatedObject* inObject) { sListOfActiveSimulatedObject->Remove(inObject); }
+#endif
 #else
     static void AddObject(SimulatedObject* inObject) { }
     static void RemoveObject(SimulatedObject* inObject) { }

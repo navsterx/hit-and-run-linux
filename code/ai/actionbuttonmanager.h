@@ -50,6 +50,9 @@ public:
     static ActionButtonManager* GetInstance( );
     static ActionButtonManager* CreateInstance( );
     static void DestroyInstance();
+#ifdef RAD_LINUX
+    static bool Exists( );  // without GetInstance's assert (teardown order)
+#endif
 
     void EnterGame( void );
     void Destroy( void );

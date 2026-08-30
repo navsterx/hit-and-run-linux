@@ -91,10 +91,10 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [ ] Later levels' missions (only their attract demos so far)
 
 ### Robustness
-- [ ] Shutdown paths: closing the window in every context. Release build swept with `SHAR_QUIT_AT` (boot, front end,
-  Level 1/7 load and gameplay, pause, interior, car, race, demo) and five bugs fixed; still to do: the debug build,
-  the bonus game, missions in progress, a denser sweep of the end of a level load
-- [ ] Debug-build asserts on Ctrl+C inside a level (`SimEnvironment`, `SimUnits::Reset`, radFileSystem leaks)
+- [ ] Shutdown paths: closing the window in every context. Release and debug builds swept with `SHAR_QUIT_AT` (boot,
+  front end, Level 1/7 load (100 ms steps across its end) and gameplay, pause, interior, car, race, demo): no hangs or
+  crashes left; still to do: the bonus game, missions in progress, cutscenes, the front end's Quit, quitting while saving
+- [x] Debug-build teardown: no crashes; the asserts left come from the original teardown order (see CLAUDE.md)
 - [ ] Missing-data tolerance where it is cheap (`art\wrench.p3d` missing still crashes later)
 
 ### Mods

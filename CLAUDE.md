@@ -369,9 +369,15 @@ The base game is feature-complete but not yet verified end to end. In order:
    before sound init (static ref freed after the heaps), ~Vehicle after ActionButtonManager in DestroySingletons, and
    load completion callbacks running while cancelling (car set up without its model). Fixed 2026-10-17: shutting
    down with a vehicle sound playing overflowed the stack (`~PositionalSoundPlayer` deleted its owner).
-   Debug build, Ctrl+C from inside a level (2026-10-17): `SimEnvironment::GetCurrentDefaultSimEnvironment() == NULL`
-   and `SimUnits::Reset: there is still some instances` assert during teardown (harmless so far); with a file
-   request in flight also radFileSystem "not all files/requests were destroyed" and `s_ThreadTable[ i ] == NULL`.
+   Debug build quit sweep (2026-10-19, 20 contexts): no crashes after one fix (`SimEnvironment::RemoveObject` with
+   the debug-only active-object list already deleted: a level quit mid-load keeps its vehicles until
+   DestroySingletons, after WorldPhysicsManager). Asserts left, all teardown, all from the original code: every exit
+   (gameplay, pause, front end) `SimEnvironment::GetCurrentDefaultSimEnvironment() == NULL` + `SimUnits::Reset` (sim
+   refs never released); quitting mid-load also the loading managers' `state != LOADING`, `ClipLoadState_Idle`,
+   `m_playa == NULL`, EventListener not removed (up to 28), the active-object list not empty, and radLoadObject
+   "directly deleted" (`~VehicleCentral` deletes leftover vehicles with delete, not Release: one delete, harmless);
+   with a file request in flight radFileSystem "not all files/requests were destroyed", `m_pNumRefFiles == 0`,
+   `s_ThreadTable[ i ] == NULL`. Release ignores them; not worth reworking the original teardown order.
 4. **Mods, small to large**: CustomShopSupport item lists (PhoneBooth/SkinShop Free/Included/ExcludedItems),
    3D phone booth DarkenLockedCars, CustomDialogueCharacterCodes outfit voices, CustomText Language setting; then
    CustomCarSupport (unblocks the Futurama demo's cars), custom characters, interiors, audio, traffic and the rest

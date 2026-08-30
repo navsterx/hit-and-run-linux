@@ -282,6 +282,13 @@ Return:         ActionButtonManager
 
 =============================================================================
 */
+#ifdef RAD_LINUX
+bool ActionButtonManager::Exists( void )
+{
+    return spActionButtonManager != 0;
+}
+
+#endif
 ActionButtonManager* ActionButtonManager::GetInstance( void )
 {
 	rAssertMsg( spActionButtonManager != 0, "ActionButtonManager has not been created yet.\n" );
