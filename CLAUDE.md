@@ -214,7 +214,10 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   `InitializeWindow` sets `__EGL_EXTERNAL_PLATFORM_CONFIG_FILENAMES` to it when the file exists and the user set neither
   that nor `..._CONFIG_DIRS` (Mesa ignores it). If a Wayland window still fails, SDL video restarts on X11
   (`CreateGameWindow` sets the GL attributes again). gnome-shell's VRAM still grows ~11 MB per game run on Wayland
-  (~45 MB under XWayland; 7 GB after a day of quit sweeps): log out/in after long test sessions.
+  (~45 MB under XWayland; 7 GB after a day of quit sweeps): log out/in after long test sessions. Not the game's:
+  a minimal SDL window that only clears (1280x720, 3 s, own process) leaks the same in gnome-shell, 32- or 64-bit:
+  ~8-10 MB per window on Wayland, ~15 MB on XWayland, kept after exit (GNOME Shell/mutter 50.1, NVIDIA 595.99.02;
+  about one window's buffer set). The same test showed egl-wayland2 fails only in 32-bit (64-bit works).
 - **Missing files**: the original retried a failed read forever behind an error screen (the consoles' "put the disc
   back" loop), so a missing file hung the game for good. `Win32Platform::OnDriveError` now prints
   `File not found: <path>` and fails the request; Pure3D's `tFileFTT` loads a file that failed to open as empty
