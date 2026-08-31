@@ -42,6 +42,7 @@ mod/tools/                 modding tools: lmlm_extract.py (unpacks Mod Launcher 
 port/third_party/lua/      Lua 5.4.8 (MIT), for mods' scripts
 build-linux/               release build (RAD_RELEASE)     cmake -B build-linux -G Ninja
 build-linux-debug/         debug build (RAD_DEBUG: asserts + Radical's debug output)   -DSHAR_RAD_DEBUG=ON
+build-linux64/             -DSHAR_64BIT=ON: x86-64 build (work in progress on branch x64; 32-bit stays the default)
 build-linux-audit/         -DSHAR_UNINIT_AUDIT=ON -DCMAKE_BUILD_TYPE=Release: all warnings on; grep -Wuninitialized /
                            -Wmaybe-uninitialized (2 left 2026-10-13, both false positives: actordsg.cpp, opticlensflare.cpp)
 run/                      run dir (git-ignored): symlinks to game data, private simpsons.ini/Save1-4 (play.sh sets it
@@ -392,7 +393,9 @@ The base game is feature-complete but not yet verified end to end. In order:
    so pre-lit world draws see none: the pipeline would have to remember the frame's sun for them; the world has no
    normals, and derivative (per-polygon) normals facet round low-poly things (bushes, trees); without shadows, walls
    in a building's shadow brighten too; the HUD needs excluding (not perspective).
-8. **Long term**: 64-bit build (pointer/int casts, fixed-size heaps), a possible Rust/Bevy reimplementation
+8. **Long term**: 64-bit build (in progress 2026-10-19: tag `32bit-baseline` = last 32-bit-only state, branch `x64`
+   off dev, merged back often; fixes valid for both sizes go to dev; `SHAR_64BIT` option; pointer/int casts,
+   fixed-size heaps, radscript vtables/InvokeVf, save/data struct layouts), a possible Rust/Bevy reimplementation
    (`RUST.md`).
 
 ## Known issues / next steps
