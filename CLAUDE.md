@@ -22,6 +22,8 @@ port/                      everything added for the port
   gen_dinput.py            generates compat/dinput.h from the bundled DX8 header
   syntax_survey.py         g++ -fsyntax-only over every source, groups first errors
   check.py FILE...         syntax-check files with their target's exact flags
+  survey64.py [--sites]    64-bit survey: -fsyntax-only over build-linux64's compile commands with the pointer-size
+                           diagnostics on; each cast site once, by kind and library, plus plain `long` counts (port/survey64.json)
   run.sh [secs] [args]     rebuild + run under gdb from the run dir, print backtrace on crash
   play.sh --data DIR       build if needed, set up the run dir from DIR (game data), start the game normally
                            (--debug, --no-build, --mod .lmlm|FOLDER (repeatable); extra args go to the game)

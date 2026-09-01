@@ -1184,7 +1184,11 @@ int VsnPrintf( char *buffer, size_t count, const char *format, va_list argptr )
     
 bool stream_printf( stream_info * p_si, const char * fmt, ... )
 {
+#ifdef RAD_LINUX
+    va_list va_alist;       // x86-64: va_list is an array type (no = {0}); va_start sets it
+#else
     va_list va_alist = {0}; 
+#endif
     char    printfstr[ RAD_DEBUG_PRINT_MAX_LENGTH ];
 
     va_start( va_alist, fmt ); 

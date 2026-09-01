@@ -11,3 +11,5 @@ simpsons-skipfe.sh
 mod/lmlm
 # port/package.sh output
 dist/
+port/survey64.json
+port/syntax_survey.json

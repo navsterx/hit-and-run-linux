@@ -97,7 +97,11 @@ class radMoviePlayerBink
         HBINK m_BinkHandle;
         float m_Volume;
         float m_Pan;
+#ifdef RAD_LINUX
+        unsigned int m_AudioTrackIndex;     // Bink's U32 (unsigned long was 32-bit under MSVC only)
+#else
         unsigned long m_AudioTrackIndex;
+#endif
         bool m_IsPresentationOutstanding;
         bool m_CheckAudio;
 };
