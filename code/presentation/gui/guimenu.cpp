@@ -149,8 +149,8 @@ CGuiMenu::~CGuiMenu()
 // Return:      N/A.
 //
 //===========================================================================
-void CGuiMenu::HandleMessage( eGuiMessage message, unsigned int param1,
-                                                   unsigned int param2 )
+void CGuiMenu::HandleMessage( eGuiMessage message, GuiParam param1,
+                                                   GuiParam param2 )
 {
     if( m_isSelectionMade && this->IsControllerMessage( message ) )
     {
@@ -1247,8 +1247,8 @@ CGuiMenu2D::~CGuiMenu2D()
 }
 
 void
-CGuiMenu2D::HandleMessage( eGuiMessage message, unsigned int param1,
-                                                unsigned int param2 )
+CGuiMenu2D::HandleMessage( eGuiMessage message, GuiParam param1,
+                                                GuiParam param2 )
 {
     if( m_isSelectionMade && this->IsControllerMessage( message ) )
     {

@@ -148,7 +148,7 @@ void daSoundResourceManager::AllocateResource
     //
     // Allocate this resource
     //
-    radKey32 soundKey = (radKey32) pResource;
+    radKey32 soundKey = shar_PointerKey( pResource );
 
     // Find out if it already exists...
     daSoundAllocatedResource* pAllocatedResource =
@@ -191,7 +191,7 @@ void daSoundResourceManager::DeallocateResource
     //
     // Deallocate the resource
     //
-    radKey32 soundKey = (radKey32) pResource;
+    radKey32 soundKey = shar_PointerKey( pResource );
 
     bool result = m_xIOL_AllocatedResources->RemoveObject( soundKey );
     rAssertMsg( result, "Resource deallocated prematurely?" );
@@ -288,7 +288,7 @@ daSoundAllocatedResource* daSoundResourceManager::FindAllocatedResource
     rAssert( pResource != NULL );
 
     // Generate a key based on the resource
-    radKey32 soundKey = (radKey32) pResource;
+    radKey32 soundKey = shar_PointerKey( pResource );
 
     // Find the allocated resource for the resource
     daSoundAllocatedResource* pAllocatedResource =

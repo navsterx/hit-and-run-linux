@@ -75,8 +75,8 @@ CGuiScreenPauseDisplay::~CGuiScreenPauseDisplay()
 void CGuiScreenPauseDisplay::HandleMessage
 (
 	eGuiMessage message, 
-	unsigned int param1,
-	unsigned int param2 
+	GuiParam param1,
+	GuiParam param2 
 )
 {
     if( m_state == GUI_WINDOW_STATE_RUNNING )

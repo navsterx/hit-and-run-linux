@@ -850,7 +850,7 @@ void GotoScreen::SetEventData( void* eventData )
 // Return:      N/A.
 //
 //=============================================================================
-void GotoScreen::SetParam1( const unsigned int param1 )
+void GotoScreen::SetParam1( const GuiParam param1 )
 {
     mParam1 = param1;
 }
@@ -865,7 +865,7 @@ void GotoScreen::SetParam1( const unsigned int param1 )
 // Return:      N/A.
 //
 //=============================================================================
-void GotoScreen::SetParam2( const unsigned int param2 )
+void GotoScreen::SetParam2( const GuiParam param2 )
 {
     mParam2 = param2;
 }

@@ -647,7 +647,7 @@ void LoadingManager::ProcessNextRequest()
 
                 request.pFileHandler->LoadFile( request.filename, 
                     this, 
-                    (void*)mRequestHead,
+                    (void*)(intptr_t)mRequestHead,
                     heap );
             }
             else

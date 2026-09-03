@@ -732,7 +732,7 @@ public:
 
 				locator = new EventLocator;
 				locator->SetEventType( LocatorEvent::GAG );
-				locator->SetData((unsigned int)this);
+				locator->SetData((uintptr_t)this);
 
 				trigger = new SphereTriggerVolume(binding->triggerPos, binding->triggerRadius);
 				trigger->SetLocator(locator);
@@ -926,7 +926,7 @@ void GagDrawable::Display()
     if((sparkleStrength > 0.0f) && gag->sparkle)
     {
         float size = gag->binding->interiorUID == static_cast< tUID >( 0 ) ? 1.0f : 0.5f;
-        GetSparkleManager()->AddGagSparkle(gag->binding->triggerPos, size, sparkleStrength, (unsigned int)this);
+        GetSparkleManager()->AddGagSparkle(gag->binding->triggerPos, size, sparkleStrength, shar_PointerKey( this ));
     }
 }
 
@@ -1542,7 +1542,7 @@ void InteriorManager::HandleEvent( EventEnum id, void* pEventData )
             EventLocator* loc = (EventLocator*)pEventData;
             for(int i = 0; i < mGagCount; i++)
             {
-                if(loc->GetData() == (unsigned int)gags[i])
+                if(loc->GetData() == (uintptr_t)gags[i])
                 {
                     gags[i]->Trigger(loc);
                 }

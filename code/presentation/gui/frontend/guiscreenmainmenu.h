@@ -47,8 +47,8 @@ public:
     virtual ~CGuiScreenMainMenu();
 
 	virtual void HandleMessage( eGuiMessage message, 
-			                    unsigned int param1 = 0,
-								unsigned int param2 = 0 );
+			                    GuiParam param1 = 0,
+								GuiParam param2 = 0 );
 
     void InitMenu();
     virtual CGuiMenu* HasMenu() { return m_pMenu; }
@@ -128,8 +128,8 @@ public:
     virtual ~CGuiScreenIntroTransition();
 
 	virtual void HandleMessage( eGuiMessage message, 
-			                    unsigned int param1 = 0,
-								unsigned int param2 = 0 );
+			                    GuiParam param1 = 0,
+								GuiParam param2 = 0 );
 
     static bool s_introTransitionPlayed;
 

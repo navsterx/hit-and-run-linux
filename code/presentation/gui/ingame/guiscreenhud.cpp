@@ -496,8 +496,8 @@ CGuiScreenHud::~CGuiScreenHud()
 void CGuiScreenHud::HandleMessage
 (
 	eGuiMessage message, 
-	unsigned int param1,
-	unsigned int param2 
+	GuiParam param1,
+	GuiParam param2 
 )
 {
     if( message == GUI_MSG_MENU_PROMPT_RESPONSE )
@@ -574,7 +574,7 @@ void CGuiScreenHud::HandleMessage
                     // already another mission overlay enabled, need to
                     // scale and translate the secondary one
                     //
-                    unsigned int secondaryOverlay = rmt::Max( otherOverlayIndex, param1 );
+                    unsigned int secondaryOverlay = rmt::Max( otherOverlayIndex, (unsigned int)param1 );
 
                     m_overlays[ secondaryOverlay ]->ResetTransformation();
                     m_overlays[ secondaryOverlay ]->ScaleAboutPoint( SECONDARY_MISSION_OVERLAY_SCALE, 0, 0 );
@@ -1300,7 +1300,7 @@ CGuiScreenHud::HandleEvent( EventEnum id, void* pEventData )
         }
         case EVENT_STAGE_COMPLETE:
         {
-            unsigned int showStageComplete = reinterpret_cast<unsigned int>( pEventData );
+            unsigned int showStageComplete = (unsigned int)(uintptr_t)( pEventData );
             if( showStageComplete > 0 )
             {
                 rAssert( m_hudEventHandlers[ HUD_EVENT_HANDLER_MISSION_PROGRESS ] != NULL );
@@ -1311,7 +1311,7 @@ CGuiScreenHud::HandleEvent( EventEnum id, void* pEventData )
         }
         case EVENT_SHOW_MISSION_OBJECTIVE:
         {
-            int messageID = reinterpret_cast<unsigned int>( pEventData );
+            int messageID = (int)(intptr_t)( pEventData );
 
             HudMissionObjective* hudMissionObjective = static_cast<HudMissionObjective*>( m_hudEventHandlers[ HUD_EVENT_HANDLER_MISSION_OBJECTIVE ] );
             if( messageID != -1 )
@@ -1399,7 +1399,7 @@ CGuiScreenHud::HandleEvent( EventEnum id, void* pEventData )
         {
             rAssert( m_hudEventHandlers[ HUD_EVENT_HANDLER_ITEM_DROPPED ] != NULL );
 
-            int numActiveItems = reinterpret_cast<int>( pEventData );
+            int numActiveItems = (int)(intptr_t)( pEventData );
             if( numActiveItems > 0 )
             {
                 m_hudEventHandlers[ HUD_EVENT_HANDLER_ITEM_DROPPED ]->Start();

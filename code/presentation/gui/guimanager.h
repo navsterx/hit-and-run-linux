@@ -91,8 +91,8 @@ class CGuiManager : public CGuiEntity,
         virtual void Start( CGuiWindow::eGuiWindowID initialWindow = CGuiWindow::GUI_WINDOW_ID_UNDEFINED ) = 0;
 
 		virtual void HandleMessage( eGuiMessage message, 
-			                        unsigned int param1 = 0,
-									unsigned int param2 = 0 );
+			                        GuiParam param1 = 0,
+									GuiParam param2 = 0 );
 
         Scrooby::Project* GetScroobyProject() const { return m_pScroobyProject; }
 
@@ -188,8 +188,8 @@ class CGuiManager : public CGuiEntity,
         CGuiWindow::eGuiWindowID m_windowHistory[ MAX_WINDOW_HISTORY ];
         int m_windowHistoryCount;
 
-        unsigned int m_gotoScreenUserParam1;
-        unsigned int m_gotoScreenUserParam2;
+        GuiParam m_gotoScreenUserParam1;
+        GuiParam m_gotoScreenUserParam2;
 };
 
 inline void

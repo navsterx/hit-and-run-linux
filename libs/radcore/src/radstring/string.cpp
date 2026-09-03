@@ -367,7 +367,9 @@ class radString
 
     virtual void Append( const void * pPointer )
     {
-        Append( ( unsigned int ) pPointer );
+        char string[ 32 ];
+        sprintf( string, "%p", pPointer );     // Linux port: the full address (was its 32-bit value)
+        Append( string );
     }
     //========================================================================
     // radString::Append

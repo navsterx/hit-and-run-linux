@@ -57,8 +57,8 @@ public:
     void            SetID( unsigned int id );
     unsigned int    GetID() const;
 
-    void            SetData( unsigned int data );
-    unsigned int    GetData() const;
+    void            SetData( uintptr_t data );   // Linux port: pointer-sized (interior gags store their address)
+    uintptr_t       GetData() const;
 
     virtual LocatorType::Type GetDataType() const;  //MUST OVERRIDE THIS!
 
@@ -77,7 +77,7 @@ public:
 
 private:
     unsigned int    mID;       // Used to number-id locators.
-    unsigned int    mData;     // Here is the data in the locator
+    uintptr_t       mData;     // Here is the data in the locator
     unsigned int    mFlags;    // Flags, we don't need no... oh wait, maybe we do.
     
     rmt::Vector mLocation;  //Where am I?
@@ -165,7 +165,7 @@ inline unsigned int Locator::GetID() const
 // Return:      void 
 //
 //=============================================================================
-inline void Locator::SetData( unsigned int data )
+inline void Locator::SetData( uintptr_t data )
 {
     mData = data;
 }
@@ -180,7 +180,7 @@ inline void Locator::SetData( unsigned int data )
 // Return:      unsigned 
 //
 //=============================================================================
-inline unsigned int Locator::GetData() const
+inline uintptr_t Locator::GetData() const
 {
     return mData;
 }

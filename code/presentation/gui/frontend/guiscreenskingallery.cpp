@@ -197,8 +197,8 @@ CGuiScreenSkinGallery::~CGuiScreenSkinGallery()
 void CGuiScreenSkinGallery::HandleMessage
 (
 	eGuiMessage message,
-	unsigned int param1,
-	unsigned int param2
+	GuiParam param1,
+	GuiParam param2
 )
 {
     if( m_screenState == SCREEN_STATE_GOTO_VIEW ||

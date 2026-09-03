@@ -493,8 +493,8 @@ CGuiManagerInGame::Start( CGuiWindow::eGuiWindowID initialWindow )
 void CGuiManagerInGame::HandleMessage
 (
     eGuiMessage message, 
-    unsigned int param1,
-    unsigned int param2
+    GuiParam param1,
+    GuiParam param2
 )
 {
     if( m_state == GUI_FE_DYNAMIC_LOADING )
@@ -1210,7 +1210,7 @@ CGuiManagerInGame::HandleEvent( EventEnum id, void* pEventData )
                 if( s_currentHUD != NULL && s_currentHUD->IsActive() )
                 {
                     //This is a player who triggered this.
-                    s_currentHUD->HandleMessage( GUI_MSG_DEATH_VOLUME_START, reinterpret_cast< unsigned int >( pEventData ) );
+                    s_currentHUD->HandleMessage( GUI_MSG_DEATH_VOLUME_START, reinterpret_cast< GuiParam >( pEventData ) );
                 }
                 else
                 {

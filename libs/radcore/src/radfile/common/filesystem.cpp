@@ -278,7 +278,7 @@ void radFileSystem::ProcessFileName
     char* p = strchr( pFileName, ':' );
     if( simpleName==false && p != NULL )
     {
-        length = (unsigned int) p - (unsigned int) pFileName + 1;
+        length = (unsigned int)( p - pFileName ) + 1;
         strncpy( driveSpec, pFileName, length );
         driveSpec[ length ] = '\0';
         fname = &pFileName[ length ];

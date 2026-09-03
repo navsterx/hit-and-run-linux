@@ -54,6 +54,15 @@ static inline char* shar_strlwr(char* s) { char* p = s; for(; p && *p; ++p) *p =
 #ifndef _MAX_PATH
 #define _MAX_PATH 260
 #endif
+
+/* A pointer used only as a 32-bit identity (map keys, "who used this" ids). Exact on 32-bit; on 64-bit the high half
+   is folded in, which is unique unless two live objects share a fold (64-bit port: search for this to revisit). */
+#include <stdint.h>
+static inline unsigned int shar_PointerKey(const void* p)
+{
+    uintptr_t v = (uintptr_t)p;
+    return (unsigned int)(v ^ (v >> 16 >> 16));
+}
 #ifndef MAX_PATH
 #define MAX_PATH 260
 #endif

@@ -629,7 +629,7 @@ void MusicPlayer::HandleEvent( EventEnum id, void* pEventData )
                 lastSpecialMusic = MEVENT_MOVIE;
                 // bmc: play music if just declined restarting of a mission
                 if ( GetGameplayManager()->IsSundayDrive() &&
-                    GetInteriorManager()->GetInterior() == static_cast< tUID >( 0 ) && (int)pEventData == 0 )
+                    GetInteriorManager()->GetInterior() == static_cast< tUID >( 0 ) && pEventData == NULL )
                 {
                     startMusic();
                 }
@@ -648,7 +648,7 @@ void MusicPlayer::HandleEvent( EventEnum id, void* pEventData )
 
 #if defined( RAD_XBOX ) || defined( RAD_WIN32 )
                 // XBox seems to like this syntax better.
-                bool jumpStage = reinterpret_cast<bool>( pEventData );
+                bool jumpStage = ( pEventData != NULL );
 #else
                 bool jumpStage = (bool)( pEventData );
 #endif

@@ -83,8 +83,8 @@ PlayerMenu::PlayerMenu()
 }
 
 void
-PlayerMenu::HandleMessage( eGuiMessage message, unsigned int param1,
-                                                unsigned int param2 )
+PlayerMenu::HandleMessage( eGuiMessage message, GuiParam param1,
+                                                GuiParam param2 )
 {
     if( m_currentSubMenu < NUM_SUB_MENUS )
     {
@@ -580,8 +580,8 @@ CGuiScreenMiniMenu::~CGuiScreenMiniMenu()
 //
 //===========================================================================
 void CGuiScreenMiniMenu::HandleMessage(	eGuiMessage message,
-                                        unsigned int param1,
-                                        unsigned int param2 )
+                                        GuiParam param1,
+                                        GuiParam param2 )
 {
     if( message == GUI_MSG_MENU_PROMPT_RESPONSE )
     {

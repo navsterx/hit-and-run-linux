@@ -55,8 +55,8 @@ struct PlayerMenu
     PlayerMenu();
 
     void HandleMessage( eGuiMessage message,
-                        unsigned int param1 = 0,
-                        unsigned int param2 = 0 );
+                        GuiParam param1 = 0,
+                        GuiParam param2 = 0 );
 
     CGuiMenu* GetCurrentSubMenu() const;
     void SetActive( bool isActive, int controllerID = -1 );
@@ -85,8 +85,8 @@ public:
     virtual ~CGuiScreenMiniMenu();
 
 	virtual void HandleMessage( eGuiMessage message, 
-			                    unsigned int param1 = 0,
-								unsigned int param2 = 0 );
+			                    GuiParam param1 = 0,
+								GuiParam param2 = 0 );
     virtual CGuiMenu* HasMenu() { return m_pTrackMenu; }
 #ifdef RAD_WIN32
     virtual eFEHotspotType CheckCursorAgainstHotspots( float x, float y );

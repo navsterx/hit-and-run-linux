@@ -122,8 +122,8 @@ CGuiScreenLoadSave::~CGuiScreenLoadSave()
 
 void
 CGuiScreenLoadSave::HandleMessage( eGuiMessage message,
-                                   unsigned int param1,
-                                   unsigned int param2 )
+                                   GuiParam param1,
+                                   GuiParam param2 )
 {
     switch( message )
     {
@@ -400,8 +400,8 @@ CGuiScreenMemoryCard::~CGuiScreenMemoryCard()
 void CGuiScreenMemoryCard::HandleMessage
 (
 	eGuiMessage message, 
-	unsigned int param1,
-	unsigned int param2 
+	GuiParam param1,
+	GuiParam param2 
 )
 {
     if ( message==GUI_MSG_PROMPT_START_RESPONSE )

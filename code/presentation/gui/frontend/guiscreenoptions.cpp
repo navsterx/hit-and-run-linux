@@ -203,8 +203,8 @@ CGuiScreenOptions::~CGuiScreenOptions()
 void CGuiScreenOptions::HandleMessage
 (
 	eGuiMessage message, 
-	unsigned int param1,
-	unsigned int param2 
+	GuiParam param1,
+	GuiParam param2 
 )
 {
     if( GetCheatInputSystem()->IsCheatEnabled( CHEAT_ID_MOTHER_OF_ALL_CHEATS ) )

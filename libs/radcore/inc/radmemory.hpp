@@ -265,9 +265,10 @@ void radVMMGetStats( gcnVMMStats *stats );
 // Helper functions for aligning sizes
 //
 
-unsigned int radMemoryRoundUp( unsigned int value, unsigned int alignment );
-unsigned int radMemoryRoundDown( unsigned int value, unsigned int alignemnt );
-bool radMemoryIsAligned( unsigned int value, unsigned int alignment );
+// Linux port: pointer-sized (called with addresses as well as sizes); unsigned int on 32-bit, as before
+uintptr_t radMemoryRoundUp( uintptr_t value, unsigned int alignment );
+uintptr_t radMemoryRoundDown( uintptr_t value, unsigned int alignemnt );
+bool radMemoryIsAligned( uintptr_t value, unsigned int alignment );
 
 //=============================================================================
 // R E M O T E  M E M O R Y  F U N C T I O N S

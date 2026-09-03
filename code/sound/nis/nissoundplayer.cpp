@@ -338,7 +338,7 @@ void NISSoundPlayer::HandleEvent( EventEnum id, void* pEventData )
     switch( id )
     {
         case EVENT_FE_GAG_INIT:
-            gagName = reinterpret_cast<radKey32>( pEventData );
+            gagName = (radKey32)(uintptr_t)( pEventData );
             loadFEGag( gagName );
             break;
 

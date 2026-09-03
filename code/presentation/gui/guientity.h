@@ -42,6 +42,12 @@
     const int PLATFORM_TEXT_INDEX = 2;
 #endif
 
+#include <stdint.h>
+
+// Linux port: GUI message parameters carry pointers too (Scrooby projects, vehicles, locators): pointer-sized
+// (unsigned int on 32-bit, as before)
+typedef uintptr_t GuiParam;
+
 enum eGuiMessage
 {
 	GUI_MSG_UPDATE,                         // GUI system -> Manager -> current screen
@@ -155,8 +161,8 @@ public:
     virtual ~CGuiEntity();
 
 	virtual void HandleMessage( eGuiMessage message, 
-			                    unsigned int param1 = 0,
-								unsigned int param2 = 0 ) = 0;
+			                    GuiParam param1 = 0,
+								GuiParam param2 = 0 ) = 0;
 
     static bool IsControllerMessage( eGuiMessage message );
 

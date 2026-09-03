@@ -395,7 +395,7 @@ int rDebugValidPointer32_Implementation
         return( 0 );
     }
 
-    if( (unsigned int) p & 3 )
+    if( (uintptr_t) p & 3 )
     {
         //
         // Must be 32 bit aligned

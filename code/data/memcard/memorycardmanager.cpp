@@ -868,7 +868,7 @@ MemoryCardManager::OnDriveOperationsComplete( void* pUserData )
 	}
     else if( m_currentState == STATE_OPENING_DRIVES )
     {
-        unsigned int driveIndex = reinterpret_cast<unsigned int>( pUserData );
+        unsigned int driveIndex = (unsigned int)(uintptr_t)( pUserData );
         rAssert( driveIndex < NUM_SAVE_GAME_DRIVES );
 
         m_numDrivesOpened++;

@@ -84,8 +84,8 @@ class CGuiScreen : public CGuiWindow
         virtual ~CGuiScreen();
 
         virtual void HandleMessage( eGuiMessage message, 
-			                        unsigned int param1 = 0,
-							        unsigned int param2 = 0 );
+			                        GuiParam param1 = 0,
+							        GuiParam param2 = 0 );
 
         void SetScroobyScreen( Scrooby::Screen* pScreen ) { m_pScroobyScreen = pScreen; }
         Scrooby::Screen* GetScroobyScreen() const { return m_pScroobyScreen; }

@@ -146,8 +146,8 @@ CGuiScreenPauseMission::~CGuiScreenPauseMission()
 void CGuiScreenPauseMission::HandleMessage
 (
 	eGuiMessage message, 
-	unsigned int param1,
-	unsigned int param2 
+	GuiParam param1,
+	GuiParam param2 
 )
 {
     if( message == GUI_MSG_MENU_PROMPT_RESPONSE )

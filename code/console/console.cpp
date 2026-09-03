@@ -771,7 +771,7 @@ void Console::LogMessage(int channel, char* msg, bool warning)
     if (mLogMode == LOGMODE_ON || mLogMode == LOGMODE_APPEND)
     {
         //see if there's enough room in the buffer to store the string
-        int bytesUsed = int(gConsoleMsgBufferPtr) - int(gConsoleMsgBuffer[gConsoleBufferIndex]);
+        int bytesUsed = int(gConsoleMsgBufferPtr - gConsoleMsgBuffer[gConsoleBufferIndex]);
         int bytesLeft = (MAX_STRING_LENGTH * MAX_BUFFERS) - bytesUsed;
         int strLength = strlen(logMessage);
 
@@ -827,7 +827,7 @@ void Console::FlushLogFile()
     if (mLogMode == LOGMODE_ON || mLogMode == LOGMODE_APPEND)
     {
         //see if there's enough room in the buffer to store the string
-        int bytesUsed = int(gConsoleMsgBufferPtr) - int(gConsoleMsgBuffer[gConsoleBufferIndex]);
+        int bytesUsed = int(gConsoleMsgBufferPtr - gConsoleMsgBuffer[gConsoleBufferIndex]);
 
         //if there is info waiting in the buffer to be written out...
         if (bytesUsed > 0)

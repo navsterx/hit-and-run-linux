@@ -347,7 +347,7 @@ void radCementLibrary::OnFileOperationsComplete( void* pUserData )
     //
     // Get the action to perform
     //
-    unsigned int whatToDo = ( unsigned int ) pUserData;
+    unsigned int whatToDo = ( unsigned int )( uintptr_t ) pUserData;
 
     //
     // Check out what we should do

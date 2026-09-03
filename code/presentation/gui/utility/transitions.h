@@ -20,6 +20,7 @@
 // Nested Includes
 //===========================================================================
 #include <p3d/entity.hpp>
+#include <presentation/gui/guientity.h>   // GuiParam
 #include "events/eventenum.h"
 #include "events/eventlistener.h"
 #include <input/controller.h>
@@ -213,15 +214,15 @@ public:
     GotoScreen( const tName& name );
     void Activate();
     void SetEventData( void* eventData );
-    void SetParam1( const unsigned int param1 );
-    void SetParam2( const unsigned int param2 );
+    void SetParam1( const GuiParam param1 );
+    void SetParam2( const GuiParam param2 );
     void SetScreen( CGuiWindow::eGuiWindowID screen );
     void SetWindowOptions( const unsigned int windowOptions );
 
 protected:
     CGuiWindow::eGuiWindowID   mScreen;
-    unsigned int               mParam1;
-    unsigned int               mParam2;
+    GuiParam                   mParam1;
+    GuiParam                   mParam2;
     void*                      mEventData;
     unsigned int               mWindowOptions;
 };

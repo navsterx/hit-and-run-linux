@@ -35,8 +35,8 @@ public:
     virtual ~CGuiScreenBootupLoad();
 
 	virtual void HandleMessage( eGuiMessage message, 
-			                    unsigned int param1 = 0,
-								unsigned int param2 = 0 );
+			                    GuiParam param1 = 0,
+								GuiParam param2 = 0 );
 
 protected:
     void InitIntro();

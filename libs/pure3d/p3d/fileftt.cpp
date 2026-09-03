@@ -527,7 +527,7 @@ void tFileFTT::OpenFile( void )
         fileSize = m_pIRadFile->GetSize( );
 
         // Align to a 128 byte boundary for improved PS2 performance.
-        cache[0] = (char*) (((unsigned int) (globalCache) & 0xffffff80) + 0x80);
+        cache[0] = (char*) (((uintptr_t) (globalCache) & ~(uintptr_t)0x7f) + 0x80);
         cache[1] = cache[0] + CACHE_SIZE;
         bufferSize = rmt::Min(CACHE_SIZE, fileSize);
 

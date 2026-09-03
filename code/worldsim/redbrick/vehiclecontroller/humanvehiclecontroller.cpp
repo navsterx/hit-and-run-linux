@@ -329,7 +329,7 @@ void HumanVehicleController::Reset( void )
     if( !mDisableReset )
     {
     Vehicle* vehicle = GetVehicle();
-	GetGuiSystem()->HandleMessage( GUI_MSG_MANUAL_RESET, reinterpret_cast< unsigned int >( vehicle ) );
+	GetGuiSystem()->HandleMessage( GUI_MSG_MANUAL_RESET, reinterpret_cast< GuiParam >( vehicle ) );
     }
 }
 

@@ -596,8 +596,8 @@ void CGuiSystem::Update( unsigned int elapsedTime )
 void CGuiSystem::HandleMessage
 (
 	eGuiMessage message, 
-	unsigned int param1,
-	unsigned int param2
+	GuiParam param1,
+	GuiParam param2
 )
 {
 	switch( message )
@@ -988,8 +988,8 @@ MEMTRACK_POP_GROUP("CGUISystem");
 //
 //===========================================================================
 void CGuiSystem::GotoScreen( unsigned int screenID,
-                             unsigned int param1,
-                             unsigned int param2,
+                             GuiParam param1,
+                             GuiParam param2,
                              unsigned int windowOptions )
 {
     CGuiManager* currentManager = this->GetCurrentManager();

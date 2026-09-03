@@ -88,16 +88,16 @@ public:
     void Update( unsigned int elapsedTime );
 
     virtual void HandleMessage( eGuiMessage message, 
-			                    unsigned int param1 = 0,
-								unsigned int param2 = 0 );
+			                    GuiParam param1 = 0,
+								GuiParam param2 = 0 );
 
     // Implements Scrooby::LoadProjectCallback interface.
     //
     virtual void OnProjectLoadComplete( Scrooby::Project* pProject );
 
     void GotoScreen( unsigned int screenID,
-                     unsigned int param1 = 0,
-                     unsigned int param2 = 0,
+                     GuiParam param1 = 0,
+                     GuiParam param2 = 0,
                      unsigned int windowOptions = 0 );
 
     Scrooby::Project* GetCurrentScroobyProject() const { return m_pProject; }

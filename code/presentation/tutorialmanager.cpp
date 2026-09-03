@@ -264,7 +264,7 @@ void TutorialManager::HandleEvent( EventEnum id, void* pEventData )
         }
         case EVENT_BONUS_MISSION_CHARACTER_APPROACHED:
         {
-            int missionNum = reinterpret_cast< int >( pEventData );
+            int missionNum = (int)(intptr_t)( pEventData );
             Mission* mission = GetMissionManager()->GetMission( missionNum );
             bool raceMission = mission->IsRaceMission();
             bool wagerMission = mission->IsWagerMission();

@@ -586,7 +586,7 @@ unsigned CharacterManager::LoadModel(const char* model, LoadingManager::ProcessR
         HeapMgr()->PopHeap( GMA_LEVEL_OTHER );
 
         GetLoadingManager()->AddRequest( FILEHANDLER_PURE3D, modelName, GMA_CHARS_AND_GAGS, modelSection);
-        GetLoadingManager()->AddCallback(this, (void*)loadIndex);
+        GetLoadingManager()->AddCallback(this, (void*)(intptr_t)loadIndex);
     }
 
     return loadIndex;
@@ -631,7 +631,7 @@ unsigned CharacterManager::LoadAnimation(const char* anim)
         HeapMgr()->PopHeap( GMA_TEMP );
         GetLoadingManager()->AddRequest( FILEHANDLER_PURE3D, animName, GMA_LEVEL_OTHER, animSection);
         GetLoadingManager()->AddRequest( FILEHANDLER_CHOREO, choreoName, GMA_LEVEL_OTHER, animSection);
-        GetLoadingManager()->AddCallback(this, (void*)(0x10000000 | loadIndex));
+        GetLoadingManager()->AddCallback(this, (void*)(intptr_t)(0x10000000 | loadIndex));
     }
 
     return loadIndex;
@@ -1533,7 +1533,7 @@ int CharacterManager::AddCharacter( Character* pCharacter, CharacterType type )
 
 void CharacterManager::OnProcessRequestsComplete( void* pUserData )
 {
-    unsigned index = (unsigned)pUserData;
+    unsigned index = (unsigned)(uintptr_t)pUserData;
 
 
     if(index & 0x10000000)
@@ -2429,13 +2429,13 @@ void CharacterManager::AddTeleportDest(int argc, char** argv)
         strcpy(s_teleportDests[s_numTeleportDests].zone, argv[5]);
         s_teleportDests[s_numTeleportDests].useLoc = false;
     }
-    radDbgWatchAddFunction( argv[1], &DoTeleport, (void*)s_numTeleportDests, "Teleport");
+    radDbgWatchAddFunction( argv[1], &DoTeleport, (void*)(intptr_t)s_numTeleportDests, "Teleport");
     s_numTeleportDests++;
 }
 
 void CharacterManager::DoTeleport(void* data)
 {
-    int which = (int)data; 
+    int which = (int)(intptr_t)data; 
     GetRenderManager()->mpLayer( RenderEnums::LevelSlot )->DumpAllDynaLoads(1, GetRenderManager()->mEntityDeletionList );
 
     tRefCounted::Assign(s_dynaloadLoc,new(GetGameplayManager()->GetCurrentMissionHeap()) ZoneEventLocator);

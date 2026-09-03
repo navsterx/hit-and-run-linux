@@ -211,8 +211,8 @@ CGuiScreenViewCredits::~CGuiScreenViewCredits()
 void CGuiScreenViewCredits::HandleMessage
 (
 	eGuiMessage message, 
-	unsigned int param1,
-	unsigned int param2 
+	GuiParam param1,
+	GuiParam param2 
 )
 {
     if( message == GUI_MSG_WINDOW_ENTER )
@@ -497,7 +497,7 @@ CGuiScreenViewCredits::OnNewLineDisplayed( int lineNumber )
     {
         // trigger this event for the sound manager to play line-specific dialog
         //
-        GetEventManager()->TriggerEvent( EVENT_FE_CREDITS_NEW_LINE, (void*)lineNumber );
+        GetEventManager()->TriggerEvent( EVENT_FE_CREDITS_NEW_LINE, (void*)(intptr_t)lineNumber );
     }
 }
 
