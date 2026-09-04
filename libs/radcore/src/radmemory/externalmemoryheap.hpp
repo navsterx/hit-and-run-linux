@@ -92,7 +92,7 @@ class ExternalMemoryHeap
 
     private:
 
-        inline unsigned int CalculateUnalignment( unsigned int val, unsigned int align );
+        inline unsigned int CalculateUnalignment( uintptr_t val, unsigned int align );
 
 		bool CanFree( void * pMemory );
         void Map( void );
@@ -121,7 +121,7 @@ class ExternalMemoryHeap
     friend class ExternalMemoryObject;
 };
 
-inline unsigned int ExternalMemoryHeap::CalculateUnalignment( unsigned int val, unsigned int align )
+inline unsigned int ExternalMemoryHeap::CalculateUnalignment( uintptr_t val, unsigned int align )
 {
     unsigned int mod = val % align;
 

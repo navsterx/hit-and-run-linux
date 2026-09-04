@@ -72,7 +72,10 @@ struct IRadMemoryAllocator;
 // Platform Alignment and Caching Macros
 //=============================================================================
 
-#if defined (RAD_WIN32) || defined (RAD_XBOX)
+#if defined (RAD_WIN32) && defined (__LP64__)
+#define STANDARD_ALIGNMENT  16      // Linux port, x86-64: pointers and the ABI's malloc alignment (4 split 8-byte fields)
+#define UNCACHE_BIT         0x00000000
+#elif defined (RAD_WIN32) || defined (RAD_XBOX)
 #define STANDARD_ALIGNMENT  4
 #define UNCACHE_BIT         0x00000000
 #endif

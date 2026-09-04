@@ -254,7 +254,7 @@ void ExternalMemoryHeap::operator delete( void * pMemory )
     ExternalMemoryObject * pEmo_Free = m_pEmo_First;
 
     while ( ( pEmo_Free != NULL ) &&
-            ( pEmo_Free->m_ClientAddress != reinterpret_cast< unsigned int >( pMemory ) ) )
+            ( pEmo_Free->m_ClientAddress != reinterpret_cast< uintptr_t >( pMemory ) ) )
     {
         pEmo_Free = pEmo_Free->m_pEmo_Next;
     }
@@ -293,7 +293,7 @@ void ExternalMemoryHeap::operator delete( void * pMemory )
 
     ExternalMemoryObject * pEmo_Free = m_pEmo_First;
 
-    while( ( pEmo_Free != NULL ) && ( pEmo_Free->m_ClientAddress != reinterpret_cast< unsigned int >( pMemory ) ) )
+    while( ( pEmo_Free != NULL ) && ( pEmo_Free->m_ClientAddress != reinterpret_cast< uintptr_t >( pMemory ) ) )
     {
         pEmo_Free = pEmo_Free->m_pEmo_Next;
     }
@@ -426,7 +426,7 @@ void ExternalMemoryHeap::Map( void )
         rDebugPrintf( "    [%s][%20s]Addr:[0x%6x]Size:[0x%6x]B[%6d]B[%6.2f]K[%6.2f]M\n",
             pSearch->m_ReferenceCount == 0 ? "-" : "*",
             pSearch->GetName( ),
-            pSearch->m_Address, pSearch->m_Size,
+            (unsigned int) pSearch->m_Address, pSearch->m_Size,      // debug listing: low 32 bits
             pSearch->m_Size,
             fptodp( (float) pSearch->m_Size / 1024.0f ),
             fptodp( (float) pSearch->m_Size / ( 1024.0f * 1024.0f ) ) );
@@ -434,7 +434,7 @@ void ExternalMemoryHeap::Map( void )
         rDebugPrintf( "    [%s][%20s]Addr:[0x%6x]Size:[0x%6x]B[%6d]B[%6.2f]K[%6.2f]M\n",
             pSearch->m_ReferenceCount == 0 ? "-" : "*",
             pSearch->GetName( ),
-            pSearch->m_Address, pSearch->m_Size,
+            (unsigned int) pSearch->m_Address, pSearch->m_Size,      // debug listing: low 32 bits
             pSearch->m_Size,
             (float) pSearch->m_Size / 1024.0f,
             (float) pSearch->m_Size / ( 1024.0f * 1024.0f ) );
@@ -482,7 +482,7 @@ void ExternalMemoryHeap::Initialize
     pEmo_FreeMem->Initialize(
         this,
         0,
-        reinterpret_cast< unsigned int >( pStartOfExternalMemory ),
+        reinterpret_cast< uintptr_t >( pStartOfExternalMemory ),
         sizeOfExternalMemory,
         NULL,
         NULL

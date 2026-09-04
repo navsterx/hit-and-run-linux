@@ -103,8 +103,15 @@ HeapType AllocatorType( GameMemoryAllocator allocator )
 // Return:      N/A.
 //
 //=============================================================================
-void CreateHeap ( GameMemoryAllocator allocator, const unsigned int size )
+void CreateHeap ( GameMemoryAllocator allocator, const unsigned int heapSize )
 {
+#if defined( RAD_LINUX ) && defined( __LP64__ )
+    // Linux port, x86-64: the sizes were tuned for 32-bit objects; pointers (and vtable pointers) double, so
+    // allow for objects made entirely of them
+    const unsigned int size = heapSize * 2;
+#else
+    const unsigned int size = heapSize;
+#endif
     unsigned int index = static_cast< unsigned int >( allocator );
     rAssert( g_HeapArray[ index ] == NULL );
 

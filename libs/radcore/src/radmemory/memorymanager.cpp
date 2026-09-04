@@ -1031,7 +1031,7 @@ radMemoryAllocator radMemoryGetCurrentAllocator( void )
     //
     // Return the current allocator.
     //
-    return( (radMemoryAllocator) g_CurrentAllocator->GetValue( ) );
+    return( (radMemoryAllocator)(intptr_t) g_CurrentAllocator->GetValue( ) );
 }
 
 //============================================================================
@@ -1069,9 +1069,9 @@ radMemoryAllocator radMemorySetCurrentAllocator( radMemoryAllocator allocator )
     //
     // Get old value and set new value.  
     //
-    radMemoryAllocator prevAllocator = (radMemoryAllocator) g_CurrentAllocator->GetValue( );
+    radMemoryAllocator prevAllocator = (radMemoryAllocator)(intptr_t) g_CurrentAllocator->GetValue( );
 
-    g_CurrentAllocator->SetValue( (void*) allocator );
+    g_CurrentAllocator->SetValue( (void*)(intptr_t) allocator );
 
     return prevAllocator;
 }

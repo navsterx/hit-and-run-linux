@@ -171,12 +171,17 @@ void * radMemoryPlatAllocAligned( unsigned int numberOfBytes, unsigned int align
 		// Roll our own with Os allocator
 		//
 
-		unsigned int pMemory = (unsigned int ) radMemoryPlatAlloc( numberOfBytes + alignment );
+		// Linux port: the original pointer is kept just below the aligned block, so leave room for a whole pointer
+		if ( alignment < sizeof( uintptr_t ) )
+		{
+			alignment = sizeof( uintptr_t );
+		}
+		uintptr_t pMemory = (uintptr_t ) radMemoryPlatAlloc( numberOfBytes + alignment );
 		rAssert( numberOfBytes == 0 || pMemory != 0 ); 
 
-		unsigned int pAlignedMemory = pMemory + ( alignment - ( pMemory % alignment ) );
+		uintptr_t pAlignedMemory = pMemory + ( alignment - ( pMemory % alignment ) );
 
-		((unsigned int*)pAlignedMemory)[ -1 ] = pMemory;   
+		((uintptr_t*)pAlignedMemory)[ -1 ] = pMemory;   
 
 		return (void*) pAlignedMemory;
 
@@ -202,7 +207,7 @@ void radMemoryPlatFreeAligned( void * pAlignedMemory )
 		    // UnRoll our own using Os allocator
 		    //
 
-		    radMemoryPlatFree( (void*) ((unsigned int*)pAlignedMemory)[ -1 ] );
+		    radMemoryPlatFree( (void*) ((uintptr_t*)pAlignedMemory)[ -1 ] );
         }
 
 	#endif

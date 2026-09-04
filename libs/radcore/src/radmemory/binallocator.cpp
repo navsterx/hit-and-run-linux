@@ -296,7 +296,7 @@ void* radMemoryBinAllocator::GetMemoryAligned( unsigned int size, unsigned int a
         //
 
         pMemory = GetMemoryUnAligned( size + alignment );
-        pMemory = (void*) ::radMemoryRoundUp( (unsigned int) pMemory, alignment );
+        pMemory = (void*) ::radMemoryRoundUp( (uintptr_t) pMemory, alignment );
     }
 
     #ifdef RADMEMORYMONITOR

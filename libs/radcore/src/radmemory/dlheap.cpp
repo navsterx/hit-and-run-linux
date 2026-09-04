@@ -25,7 +25,9 @@
 //
 // Set the doug alignment to our standard alignment.
 //
-#if defined RAD_WIN32 || defined RAD_XBOX || defined RAD_GAMECUBE
+#if defined( RAD_WIN32 ) && defined( __LP64__ )
+#define MALLOC_ALIGNMENT 16          // Linux port, x86-64: 2 * SIZE_SZ (dlmalloc's minimum) and the ABI's malloc alignment
+#elif defined RAD_WIN32 || defined RAD_XBOX || defined RAD_GAMECUBE
 #define MALLOC_ALIGNMENT 8
 #elif defined RAD_PS2
 #define MALLOC_ALIGNMENT 16
@@ -48,7 +50,9 @@
 // You should notice that longs have been defined as ints here!!
 //
 //
+#ifndef __LP64__              // Linux port: on LP64 long is pointer-sized, which dlmalloc's (unsigned long) casts need
 #define long int
+#endif
 //
 //
 //
@@ -60,10 +64,10 @@
 // individual allocator
 //
 
-unsigned int g_StartOfMemory = 0;
+uintptr_t g_StartOfMemory = 0;      // Linux port: addresses pointer-sized
 unsigned int g_SizeOfMemory = 0;
-unsigned int g_EndOfMemory = 0;
-unsigned int * g_pSBrkPointer = NULL;
+uintptr_t g_EndOfMemory = 0;
+uintptr_t * g_pSBrkPointer = NULL;
 
 //----------------------------------------------------------------------------
 // malloc code starts here
@@ -5569,7 +5573,7 @@ public radRefCount
 
 	bool CanFree( void* pMemory )
 	{
-		unsigned int memory = (unsigned int) pMemory;
+		uintptr_t memory = (uintptr_t) pMemory;
 		
 		if ( ( memory >= m_StartOfMemory && memory < m_EndOfMemory ) || pMemory == NULL )
 		{
@@ -5653,12 +5657,12 @@ public radRefCount
 	{
         radMemoryMonitorIdentifyAllocation( this, g_nameFTech, "radMemoryDlAllocator" );
         m_SizeOfMemory = size;
-		m_StartOfMemory = (unsigned int)::radMemoryAlloc( allocator, size );
+		m_StartOfMemory = (uintptr_t)::radMemoryAlloc( allocator, size );
 		m_EndOfMemory = m_StartOfMemory + m_SizeOfMemory;
 		m_SBrkPointer = m_StartOfMemory;
         m_HighWaterMark = 0;
 
-        rReleasePrintf("DLHeap %s StartMem:0x%x, EndMem:0x%x\n", pName, m_StartOfMemory, m_EndOfMemory );
+        rReleasePrintf("DLHeap %s StartMem:%p, EndMem:%p\n", pName, (void*)m_StartOfMemory, (void*)m_EndOfMemory );
 
 		::memset( & m_MallocState, 0, sizeof ( m_MallocState ) );
 
@@ -5682,7 +5686,7 @@ public radRefCount
         radMemoryMonitorIdentifyAllocation( this, g_nameFTech, "radMemoryDlAllocator" );
         m_SizeOfMemory = size;
         m_HighWaterMark = 0;
-		m_StartOfMemory = (unsigned int)pMem;
+		m_StartOfMemory = (uintptr_t)pMem;
 		m_EndOfMemory = m_StartOfMemory + m_SizeOfMemory;
 		m_SBrkPointer = m_StartOfMemory;
 
@@ -5713,11 +5717,11 @@ public radRefCount
 #endif
     }
 	
-	unsigned int m_StartOfMemory;
+	uintptr_t m_StartOfMemory;
     unsigned int m_HighWaterMark;
-	unsigned int m_EndOfMemory;
+	uintptr_t m_EndOfMemory;
 	unsigned int m_SizeOfMemory;
-	unsigned int m_SBrkPointer;
+	uintptr_t m_SBrkPointer;
 	
 	malloc_state m_MallocState;
 	

@@ -428,7 +428,7 @@ void StaticHeap::GetStatus
 //=============================================================================
 void  StaticHeap::PrintOutOfMemoryMessage( size_t requested )
 {
-    size_t available = reinterpret_cast< unsigned int >( m_End ) - reinterpret_cast< unsigned int >( m_CurrentPointer ); 
+    size_t available = m_End - m_CurrentPointer; 
     rReleasePrintf( "Static heap full - requested:%d.\tavailable:%d.\toverflow:%d.\n", requested, available, m_Overflow );
     //rReleaseAssert( false );
 }
