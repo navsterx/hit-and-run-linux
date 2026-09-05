@@ -577,7 +577,10 @@ inline bool IRadScript::OnBeginMethod(
     ref< IRadTypeInfoParam > pIRadTypeInfoParam;
 
     // stack of parameters pointer
-    unsigned int nInvokeParams[ MAX_PARAM_SIZE ];
+    // Linux port: one pointer-sized slot per parameter (strings and ref: objects are stored as pointers; on
+    // 64-bit a 32-bit slot truncated them and a char* overwrote the next slot)
+    uintptr_t nInvokeParams[ MAX_PARAM_SIZE ];
+    memset( nInvokeParams, 0, sizeof( nInvokeParams ) );
 
     //
     // Check parameter size
@@ -641,7 +644,7 @@ inline bool IRadScript::OnBeginMethod(
         else if ( strncmp( pParamString, "ref:", 4 ) == 0 )
         {
             IRefCount * pIRefCount = m_xIRadNameSpace_Context->GetInstance( pParamString + 4 );
-            *((int*) &(nInvokeParams[ nParamIndex ]) ) = (int) pIRefCount;
+            nInvokeParams[ nParamIndex ] = (uintptr_t) pIRefCount;
         }
     }
 

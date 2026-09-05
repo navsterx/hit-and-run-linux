@@ -152,7 +152,7 @@ struct radTypeInfoLoader
         // size of string in byte, always multiple of 4 ( PS2/GCN alignment )
         unsigned int uStringLength = **p; (*p)++; uStringLength = radEndianLittleToPlat( uStringLength );
         char * pName = reinterpret_cast< char * >( *p );
-        (*p) += uStringLength * sizeof( char ) / sizeof( *p );
+        (*p) += uStringLength * sizeof( char ) / sizeof( **p );     // Linux port: words of the file (was sizeof( *p ), a pointer: 8 on 64-bit)
         return pName;
     }
 

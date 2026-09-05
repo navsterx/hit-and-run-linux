@@ -1642,11 +1642,17 @@ tEventChannel* tChannelLoader::LoadEventChannel(tChunkFile *file, tEntityStore* 
                                 break;
                                 case 's':
                                 {
+#if defined( __LP64__ )
+                                    // Linux port, x86-64: the file holds a 32-bit offset here; an 8-byte pointer
+                                    // does not fit in its slot. Nothing reads generic event data back, so leave it
+                                    dataPosition += 4;
+#else
                                     char** stringAddress = (char **)&data[dataPosition];
                                     long  pointerOffset  = (long)data[dataPosition];
                                     char* stringPosition = data+pointerOffset;
                                     *stringAddress = stringPosition;
                                     dataPosition += sizeof(char*);
+#endif
                                 }
                                 break;
 

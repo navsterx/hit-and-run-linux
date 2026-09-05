@@ -483,6 +483,34 @@ void radCementLibrary::OnFileOperationsComplete( void* pUserData )
         unsigned int bytesRead = 
             ::radMemoryRoundUp( sizeof( radCFHeader ), m_pDataFile->GetOptimalSize( ) );
 
+#if defined( __LP64__ )
+        //
+        // Linux port, x86-64: on disk the header is its three 32-bit fields plus a 32-bit placeholder for
+        // m_pHashedFileEntries (16 bytes), and the hash table follows it. In memory the pointer is 8 bytes
+        // (sizeof( radCFHeader ) is 24): copying the block as-is put the table 8 bytes off and the pointer over
+        // its first entry. Copy the fields, and place the table after the in-memory header.
+        //
+        const unsigned int headerOnDisk = 3 * sizeof( unsigned int ) + 4;
+        const unsigned int tableSize = sizeof( radCFHeader::HFE ) * numFiles;
+        char* table = (char*) m_Header + sizeof( radCFHeader );
+
+        memcpy( m_Header, m_TmpBuffer, 3 * sizeof( unsigned int ) );
+        m_Header->m_pHashedFileEntries = ( radCFHeader::HFE* ) table;
+
+        unsigned int tableBytesRead = bytesRead > headerOnDisk ? bytesRead - headerOnDisk : 0;
+        if ( tableBytesRead > tableSize )
+        {
+            tableBytesRead = tableSize;
+        }
+        memcpy( table, m_TmpBuffer + headerOnDisk, tableBytesRead );
+
+        // the file position is just past what was read (headerOnDisk + tableBytesRead into the header)
+        unsigned int bytesToRead = tableSize - tableBytesRead;
+        if ( bytesToRead > 0 )
+        {
+            m_pDataFile->ReadAsync( table + tableBytesRead, bytesToRead );
+        }
+#else
         memcpy( m_Header, m_TmpBuffer, bytesRead );
 
         //
@@ -496,6 +524,7 @@ void radCementLibrary::OnFileOperationsComplete( void* pUserData )
         {
             m_pDataFile->ReadAsync( &headPtr[ bytesRead ], bytesToRead );
         }
+#endif
 
         //
         // One last callback to say we're done.
