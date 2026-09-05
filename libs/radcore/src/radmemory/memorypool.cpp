@@ -1077,6 +1077,6 @@ uintptr_t RoundUpAlignment
 	unsigned int alignment
 )
 {
-	return( value + (alignment - 1) & (~(alignment - 1)) );
+	return( value + (alignment - 1) & (~(uintptr_t)(alignment - 1)) );   // Linux port: a pointer-wide mask (a 32-bit one cleared the top half of addresses)
 }
 

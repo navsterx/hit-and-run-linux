@@ -140,6 +140,8 @@ def main():
         "# static C++ runtime + no exported runtime symbols: the game's own operator new must not leak into",
         "# shared libraries (GPU drivers) the way it would by default on ELF (see SHAR_LOCAL in msvc_compat.h)",
         "set(CMAKE_EXE_LINKER_FLAGS \"${CMAKE_EXE_LINKER_FLAGS} ${SHAR_ARCH} -static-libstdc++ -static-libgcc -Wl,--exclude-libs,ALL\")",
+        "# the game's operator new/delete stay out of the dynamic symbol table (port/compat/srr2.map)",
+        f"set(CMAKE_EXE_LINKER_FLAGS \"${{CMAKE_EXE_LINKER_FLAGS}} -Wl,--version-script=${{CMAKE_SOURCE_DIR}}/{COMPAT_DIR}/srr2.map\")",
         "# Lua for mods' scripts (port/third_party/lua, port/compat/shar_modlua.cpp): plain C, so declared before the",
         "# game-wide definitions and the force-included MSVC compat header below",
         f"add_library(lua STATIC {' '.join(LUA_SOURCES)})",
@@ -199,8 +201,10 @@ def main():
                f"{COMPAT_DIR}/pddi_heap.cpp {COMPAT_DIR}/shar_mods.cpp {COMPAT_DIR}/shar_modlua.cpp "
                f"{COMPAT_DIR}/shar_crash.cpp)")
     out.append("# the renderer allocates from its own heap, as pddidx8.dll did on Windows (port/compat/pddi_heap.cpp)")
+    # operator new's mangled name carries its size type: unsigned int (j) on 32-bit, unsigned long (m) on 64-bit
+    out.append("if(SHAR_64BIT)\n  set(SHAR_NEW_SYM m)\nelse()\n  set(SHAR_NEW_SYM j)\nendif()")
     out.append("add_custom_command(TARGET pddigl POST_BUILD COMMAND objcopy "
-               "--redefine-sym _Znwj=pddi_heap_new --redefine-sym _Znaj=pddi_heap_new_array "
+               "--redefine-sym _Znw${SHAR_NEW_SYM}=pddi_heap_new --redefine-sym _Zna${SHAR_NEW_SYM}=pddi_heap_new_array "
                "--redefine-sym _ZdlPv=pddi_heap_delete --redefine-sym _ZdaPv=pddi_heap_delete_array "
                "$<TARGET_FILE:pddigl> VERBATIM)")
     out.append(f"target_include_directories(shar_compat PRIVATE {COMPAT_DIR} {LUA_DIR})")

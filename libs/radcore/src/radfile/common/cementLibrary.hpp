@@ -238,7 +238,7 @@ struct radCFHeader
     {
         unsigned int low = 0;
         unsigned int mid;
-        unsigned int high = pHeader->m_NumFiles;
+        unsigned int high = pHeader->m_NumFiles - 1;   // Linux port: the last entry (m_NumFiles read one past the table)
 
         //
         // Bail out with not-found result if the cement library is empty.

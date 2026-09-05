@@ -155,7 +155,8 @@ typedef struct _DDSURFACEDESC2
      } DUMMYUNIONNAMEN(2);
      unsigned int               dwAlphaBitDepth;        // depth of alpha buffer requested
      unsigned int               dwReserved;             // reserved
-     void *              lpSurface;              // pointer to the associated surface memory
+     unsigned int        lpSurface;              // pointer to the associated surface memory (Linux port: a 32-bit field of the
+                                                 // DDS header on disk; as void* the 64-bit layout shifted every later field)
      union
      {
           DDCOLORKEY      ddckCKDestOverlay;      // color key for destination overlay use
@@ -221,7 +222,7 @@ static void LoadDXTNFile(tFile* file,  tImageHandler::Builder* builder)
 ////    we should call another new func to add the read-in data to texture
 ///  
      // get palette
-     long ids;
+     unsigned int ids;     // Linux port: the 4-byte magic number (long is 8 bytes on 64-bit, half left unset)
 
      //read magic number
      file->GetData(&ids, 1, tFile::DWORD);

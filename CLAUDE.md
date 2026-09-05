@@ -44,7 +44,7 @@ mod/tools/                 modding tools: lmlm_extract.py (unpacks Mod Launcher 
 port/third_party/lua/      Lua 5.4.8 (MIT), for mods' scripts
 build-linux/               release build (RAD_RELEASE)     cmake -B build-linux -G Ninja
 build-linux-debug/         debug build (RAD_DEBUG: asserts + Radical's debug output)   -DSHAR_RAD_DEBUG=ON
-build-linux64/             -DSHAR_64BIT=ON: x86-64 build (work in progress on branch x64; 32-bit stays the default)
+build-linux64/             -DSHAR_64BIT=ON: x86-64 build (plays; 32-bit stays the default for now); also -asan, -debug variants
 build-linux-audit/         -DSHAR_UNINIT_AUDIT=ON -DCMAKE_BUILD_TYPE=Release: all warnings on; grep -Wuninitialized /
                            -Wmaybe-uninitialized (2 left 2026-10-13, both false positives: actordsg.cpp, opticlensflare.cpp)
 run/                      run dir (git-ignored): symlinks to game data, private simpsons.ini/Save1-4 (play.sh sets it
@@ -116,6 +116,12 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
 - **Allocator isolation**: the game replaces global `operator new`. On ELF that leaks into every shared library.
   Fixed by `-static-libstdc++ -static-libgcc -Wl,--exclude-libs,ALL`, `SHAR_LOCAL` (hidden) on the game's
   operators, and objcopy-renaming pddigl's new/delete to `pddi_heap_*` (as pddidx8.dll had its own heap).
+  GCC ignores visibility("hidden") on the *replaceable* global operator new/delete (`<new>` declares them; -w hides the
+  warning), so until 2026-10-19 the executable exported them and C++ code in shared libraries (libavcodec's static
+  init on amd64) allocated from the game's heaps and freed through sized delete into glibc: heap corruption on
+  64-bit. Now `port/compat/srr2.map` (linker version script) keeps them local; check with
+  `nm -D --defined-only srr2 | grep _Zn` (expect nothing). The objcopy rename uses `_Znw<j|m>` per architecture
+  (`SHAR_NEW_SYM`): a failed POST_BUILD objcopy leaves the library un-renamed and ninja does not redo it (delete it).
 - **Compat layer must never use C++ new** (it runs inside the game's lazy heap initialisation): malloc only.
 - **CreateThread stack size is a commit size**: Windows still reserves 1 MB; pthreads get >= 1 MB.
 - **D3D8 is multithreaded, GL is not**: Pure3D loads/sets state on worker threads. Workers get shared GL
@@ -395,10 +401,20 @@ The base game is feature-complete but not yet verified end to end. In order:
    so pre-lit world draws see none: the pipeline would have to remember the frame's sun for them; the world has no
    normals, and derivative (per-polygon) normals facet round low-poly things (bushes, trees); without shadows, walls
    in a building's shadow brighten too; the HUD needs excluding (not perspective).
-8. **Long term**: 64-bit build (in progress 2026-10-19: tag `32bit-baseline` = last 32-bit-only state, branch `x64`
-   off dev, merged back often; fixes valid for both sizes go to dev; `SHAR_64BIT` option; pointer/int casts,
-   fixed-size heaps, radscript vtables/InvokeVf, save/data struct layouts), a possible Rust/Bevy reimplementation
-   (`RUST.md`).
+8. **64-bit build** (2026-10-19, branch `x64`, merged to dev; tag `32bit-baseline` = last 32-bit-only state): boots,
+   plays movies, front end, Level 1/7, races, interiors, pause, driving demos, with sound (same level as 32-bit),
+   behaviour identical to 32-bit in timed screenshots; AddressSanitizer clean on all of those; 64-bit debug build has
+   no asserts during play. Build: `cmake -B build-linux64 -G Ninja -DSHAR_64BIT=ON` (amd64 -dev packages of SDL2,
+   GL, OpenAL, FFmpeg); `build-linux64-asan` (-fsanitize=address) and `build-linux64-debug` (-DSHAR_RAD_DEBUG=ON).
+   `port/survey64.py` lists pointer-size casts (none left). What changed (all identical on 32-bit): GUI message
+   params `GuiParam` (uintptr_t), Locator data, radMemoryRound*, `shar_PointerKey()` for pointer ids; dlmalloc `long`
+   not redefined on LP64, MALLOC_ALIGNMENT/STANDARD_ALIGNMENT 16, heaps x2 (`CreateHeap`), animation memory blocks
+   x2 + 8-byte aligned (sizes in the art are 32-bit); radscript args pointer-sized and sorted into SysV registers
+   (`InvokeVf64`); RCF header (on-disk 32-bit pointer placeholder), DDS header (`lpSurface` 32-bit), type info
+   strings (sizeof(**p)); 32-bit masks/products applied to addresses (`RoundUpAlignment`, movie negative pitch).
+   Saves are layout-identical (CharacterSheet 7140, SaveGameInfoData 16). Not yet: memcheck (valgrind tooling is
+   i386-only; ASan covers overflows), long play sessions, the bonus game, mods, packaging a 64-bit bundle.
+   NVIDIA's egl-wayland2 works in 64-bit (only the 32-bit one fails). Possible future: Rust/Bevy (`RUST.md`).
 
 ## Known issues / next steps
 

@@ -683,7 +683,8 @@ void radMoviePlayerBink::Service( void )
 
                         if( dest.m_DestPitch < 0 )
                         {
-                            pDest = ( char * ) dest.m_pDest + ( dest.m_Height - 1 ) * dest.m_DestPitch;
+                            // Linux port: signed (an unsigned 32-bit product wrapped round on 32-bit, but lands ~4 GB away on 64-bit)
+                            pDest = ( char * ) dest.m_pDest + ( (int) dest.m_Height - 1 ) * (int) dest.m_DestPitch;
                         }
 
                         if( 0 == ::BinkCopyToBufferRect( m_BinkHandle, pDest,

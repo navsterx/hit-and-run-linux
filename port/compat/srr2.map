@@ -1,0 +1,10 @@
+/* Linker version script for the game executable (port/gen_cmake.py). The game replaces the global operator
+   new/delete with its heap manager (code/memory/srrmemory.cpp). GCC ignores visibility("hidden") on those
+   replaceable functions, so the executable exported them and shared libraries with C++ code (FFmpeg, GL drivers)
+   allocated from the game's heaps, then freed through operators the game does not define (sized delete) into
+   glibc's malloc: heap corruption. Keep them local: the game's own calls still bind to them. */
+{
+    local:
+        _Znwj; _Znaj; _Znwm; _Znam;
+        _ZdlPv; _ZdaPv;
+};

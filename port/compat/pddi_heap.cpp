@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern "C" void* pddi_heap_new(unsigned int size)
+extern "C" void* pddi_heap_new(size_t size)
 {
     void* p = malloc(size ? size : 1);
     if(!p) abort();
@@ -24,6 +24,6 @@ extern "C" void* pddi_heap_new(unsigned int size)
     return p;
 }
 
-extern "C" void* pddi_heap_new_array(unsigned int size)  { return pddi_heap_new(size); }
+extern "C" void* pddi_heap_new_array(size_t size)        { return pddi_heap_new(size); }
 extern "C" void  pddi_heap_delete(void* p)               { free(p); }
 extern "C" void  pddi_heap_delete_array(void* p)         { free(p); }

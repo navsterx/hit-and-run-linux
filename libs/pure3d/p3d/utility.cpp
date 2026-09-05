@@ -119,7 +119,11 @@ void print(const char* s)
 // oct30/2001 amb - this function couldnt be inlined because use of va_args
 void printf(const char* s, ...)
 {
+#ifdef RAD_LINUX
+    va_list va_alist;       // x86-64: va_list is an array type (no = {0}); va_start sets it
+#else
     va_list va_alist = {0}; 
+#endif
     char    printfstr[ 1024 ];
 
     va_start( va_alist, s ); 

@@ -948,7 +948,12 @@ tAnimationMemoryBlock::tAnimationMemoryBlock(unsigned int size) :
     block(NULL)
 {
     P3DASSERT(size>0);
-    block = new char[size];
+#if defined( __LP64__ )
+    // Linux port, x86-64: the size in the file was computed for the 32-bit channel objects built in this block;
+    // their pointers (and vtable pointers) double
+    blockSize = size * 2;
+#endif
+    block = new char[blockSize];
 
 }
 
@@ -976,6 +981,9 @@ char* tAnimationMemoryBlock::Allocate(unsigned int size, int alignment)
             break;
         }
     }
+#if defined( __LP64__ )
+    alignmentSize = 7;      // Linux port, x86-64: the objects built here hold 8-byte pointers
+#endif
     usedBlocks = ((usedBlocks+alignmentSize) & ~alignmentSize);    
     char* newBlock = &(block[usedBlocks]);
     usedBlocks += size;

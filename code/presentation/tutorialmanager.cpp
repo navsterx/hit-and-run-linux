@@ -146,7 +146,7 @@ TutorialManager::TutorialManager() :
     // same size or else we're in big trouble
     size_t sizeOfEnum = sizeof( TutorialMode );
     size_t sizeOfVoid = sizeof( void* );
-    rReleaseAssert( sizeOfEnum == sizeOfVoid );
+    rReleaseAssert( sizeOfEnum <= sizeOfVoid );     // Linux port: enums only need to fit (64-bit: void* is wider)
 #endif
     m_Queue.reserve( 16 );
 

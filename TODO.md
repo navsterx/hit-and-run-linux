@@ -108,7 +108,8 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [ ] Shaders from more than the first mod's `Shaders/` folder
 
 ### Platforms
-- [ ] **64-bit build**: pointer/int casts (~80 pointer-to-int, ~35 int-to-pointer), fixed-size game heaps
+- [x] **64-bit build** boots and plays: movies, front end, Levels 1/7, races, interiors, driving, sound; AddressSanitizer clean
+- [ ] **64-bit verification**: long play sessions, the bonus game, mods, a 64-bit packaged bundle, memcheck tooling for x86-64
 - [ ] **Windows x64**
 - [ ] **macOS** (Apple silicon and Intel)
 - [ ] **Packaging**: an AppImage-style bundle per platform (Linux has a tarball from `port/package.sh`)
