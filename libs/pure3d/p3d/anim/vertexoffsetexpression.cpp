@@ -603,7 +603,7 @@ expressionLoop++;
                         curOffset++;     
                     }
 
-                } while ( (exprIndex == curOffset->expressionIndex) && (curOffset->vertex == vertex) );
+                } while ( curOffset < endOffset && (exprIndex == curOffset->expressionIndex) && (curOffset->vertex == vertex) ); // bounds: Linux port
 
 
                 if(m_diagnose)
@@ -619,7 +619,7 @@ expressionLoop++;
                 //
                 // Found high and low bounding keys so advance to the next expression
                 //
-                while( (exprIndex == curOffset->expressionIndex) && (curOffset->vertex == vertex) )
+                while( curOffset < endOffset && (exprIndex == curOffset->expressionIndex) && (curOffset->vertex == vertex) ) // bounds: Linux port
                 {
                     curOffset++;
                 }
@@ -629,7 +629,7 @@ expressionLoop++;
                 curOffset++;
             }
 
-        } while(curOffset->vertex == vertex);
+        } while(curOffset < endOffset && curOffset->vertex == vertex); // bounds: Linux port (read one Offset past the array)
 
         //
         // Average the offsets from expressions to get the contribution of a blendstage
@@ -923,7 +923,7 @@ void tVertexOffsetExpressionMixer::Update()
                         curOffset++;     
                     }
 
-                } while ( (exprIndex == curOffset->expressionIndex) && (curOffset->vertex == vertex) );
+                } while ( curOffset < endOffset && (exprIndex == curOffset->expressionIndex) && (curOffset->vertex == vertex) ); // bounds: Linux port
 
 
                 if(m_diagnose)
@@ -939,7 +939,7 @@ void tVertexOffsetExpressionMixer::Update()
                 //
                 // Found high and low bounding keys so advance to the next expression
                 //
-                while( (exprIndex == curOffset->expressionIndex) && (curOffset->vertex == vertex) )
+                while( curOffset < endOffset && (exprIndex == curOffset->expressionIndex) && (curOffset->vertex == vertex) ) // bounds: Linux port
                 {
                     curOffset++;
                 }
@@ -949,7 +949,7 @@ void tVertexOffsetExpressionMixer::Update()
                 curOffset++;
             }
 
-        } while(curOffset->vertex == vertex);
+        } while(curOffset < endOffset && curOffset->vertex == vertex); // bounds: Linux port (read one Offset past the array)
 
         //
         // Average the offsets from expressions to get the contribution of a blendstage
