@@ -118,6 +118,12 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [ ] Anti-aliasing entry in the display menu
 - [ ] Half-resolution post-processing passes
 - [ ] Sun lighting on the world (needs shadow maps; prototyped and dropped)
+- [ ] **Vulkan renderer** (shelved 2026-10-19): a third pddi beside GL, GL kept as fallback. Reuses the GL
+  pipeline's CPU state tracking and GLSL (compiled to SPIR-V with glslang); new work is pipeline objects/cache,
+  memory and frame sync, swapchain, texture Lock/readbacks. For Android, macOS (MoltenVK), low-power devices,
+  loading threads without the shared GL context pool, ray-traced shadows, DLSS/FSR. Not for desktop speed.
+  Cheaper alternative to evaluate first: `pddidx8` on DXVK-native's D3D8 (loses the GL extras). Start after 64-bit
+  is the default, with the legal screen and front end compared to GL by screenshot
 
 ### Other
 - [ ] **Steering-wheel force feedback**: springs and dampers; needs a wheel to test with

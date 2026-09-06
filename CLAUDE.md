@@ -401,6 +401,7 @@ The base game is feature-complete but not yet verified end to end. In order:
    so pre-lit world draws see none: the pipeline would have to remember the frame's sun for them; the world has no
    normals, and derivative (per-polygon) normals facet round low-poly things (bushes, trees); without shadows, walls
    in a building's shadow brighten too; the HUD needs excluding (not perspective).
+   Vulkan renderer: shelved 2026-10-19 (a third pddi; plan and benefits in TODO.md, Renderer extras).
 8. **64-bit build** (2026-10-19, branch `x64`, merged to dev; tag `32bit-baseline` = last 32-bit-only state): boots,
    plays movies, front end, Level 1/7, races, interiors, pause, driving demos, with sound (same level as 32-bit),
    behaviour identical to 32-bit in timed screenshots; AddressSanitizer clean on all of those; 64-bit debug build has
