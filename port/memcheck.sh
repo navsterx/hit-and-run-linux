@@ -3,7 +3,8 @@
 # where the memory came from (which allocation / stack frame), most frequent first.
 # usage: port/memcheck.sh [seconds] [game args...]          e.g. port/memcheck.sh 330 skipfe
 # env:   SHAR_RUN    run directory (default run/; use a scratch one with display=window, resolution=640x480)
-#        SHAR_BUILD  build dir (default build-linux: -O0 -g, which keeps memcheck's line numbers exact)
+#        SHAR_BUILD  build dir (default build-linux: -O0 -g, which keeps memcheck's line numbers exact; build-linux64
+#                    for the x86-64 build)
 #        VG_TOOLS    where valgrind and its helpers are unpacked (default ~/.cache/shar-memcheck)
 #        VG_OPTS     extra valgrind options
 # Output: $RUN/memcheck.log (raw), $RUN/memcheck.txt (summary). Other SHAR_* variables pass through to the game,
@@ -21,23 +22,34 @@ BUILD=${SHAR_BUILD:-$ROOT/build-linux}
 T=${VG_TOOLS:-$HOME/.cache/shar-memcheck}
 SECS=${1:-330}; shift || true
 
-# One-time setup, no root needed: valgrind (ships the x86 tools), and the i386 glibc debug symbols merged into a
-# private copy of ld-linux.so.2 (valgrind needs ld.so's strlen symbol; the system one is stripped). The game is
-# run as a copy whose ELF interpreter points at that loader.
-if [ ! -x "$T/vg/usr/bin/valgrind" ] || [ ! -f "$T/ld-linux.so.2" ]; then
+# One-time setup, no root needed: valgrind (ships the x86 and amd64 tools), and glibc's debug symbols merged into a
+# private copy of the ELF loader (valgrind needs ld.so's strlen symbol; the system one is stripped). The game is run
+# as a copy whose ELF interpreter points at that loader. The loader and debug package follow the build's ELF class
+# (32-bit: ld-linux.so.2 + libc6-dbg:i386; 64-bit: ld-linux-x86-64.so.2 + libc6-dbg, from the system if installed).
+if [ "$(readelf -h "$BUILD/srr2" | awk '/Class:/{print $2}')" = ELF64 ]; then
+    L=/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2; DBG=libc6-dbg:amd64
+else
+    L=/usr/lib/i386-linux-gnu/ld-linux.so.2; DBG=libc6-dbg:i386
+fi
+LDCOPY="$T/$(basename "$L")"
+if [ ! -x "$T/vg/usr/bin/valgrind" ] || [ ! -f "$LDCOPY" ]; then
     mkdir -p "$T/deb" && cd "$T/deb"
-    apt-get download valgrind libc6-dbg:i386 elfutils patchelf libelf1t64 libdw1t64 > /dev/null
+    [ -x "$T/vg/usr/bin/valgrind" ] || apt-get download valgrind elfutils patchelf libelf1t64 libdw1t64 > /dev/null
     for d in valgrind_*.deb; do dpkg-deb -x "$d" "$T/vg"; done
-    for d in libc6-dbg_*.deb elfutils_*.deb patchelf_*.deb libelf*.deb libdw*.deb; do dpkg-deb -x "$d" "$T/tools"; done
-    L=/usr/lib/i386-linux-gnu/ld-linux.so.2
+    for d in elfutils_*.deb patchelf_*.deb libelf*.deb libdw*.deb; do dpkg-deb -x "$d" "$T/tools"; done
     ID=$(readelf -n "$L" | awk '/Build ID/{print $3}')
-    LD_LIBRARY_PATH="$T/tools/usr/lib/x86_64-linux-gnu" "$T/tools/usr/bin/eu-unstrip" -o "$T/ld-linux.so.2" "$L" \
-        "$T/tools/usr/lib/debug/.build-id/${ID:0:2}/${ID:2}.debug"
+    SYM="/usr/lib/debug/.build-id/${ID:0:2}/${ID:2}.debug"
+    if [ ! -f "$SYM" ]; then
+        rm -f libc6-dbg_*"${DBG#*:}".deb; apt-get download "$DBG" > /dev/null
+        for d in libc6-dbg_*"${DBG#*:}".deb; do dpkg-deb -x "$d" "$T/tools"; done
+        SYM="$T/tools$SYM"
+    fi
+    LD_LIBRARY_PATH="$T/tools/usr/lib/x86_64-linux-gnu" "$T/tools/usr/bin/eu-unstrip" -o "$LDCOPY" "$L" "$SYM"
 fi
 
 ninja -C "$BUILD" -j"$(nproc)" > "$ROOT/port/build.log" 2>&1 || { grep -E "error|FAILED" "$ROOT/port/build.log" | head -20; exit 1; }
 cp "$BUILD/srr2" "$T/srr2"
-LD_LIBRARY_PATH="$T/tools/usr/lib/x86_64-linux-gnu" "$T/tools/usr/bin/patchelf" --set-interpreter "$T/ld-linux.so.2" "$T/srr2"
+LD_LIBRARY_PATH="$T/tools/usr/lib/x86_64-linux-gnu" "$T/tools/usr/bin/patchelf" --set-interpreter "$LDCOPY" "$T/srr2"
 
 cd "$RUN"
 set +e

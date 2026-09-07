@@ -524,7 +524,8 @@ void CGuiScreenMainMenu::HandleMessage
                     if( param2 == MAIN_MENU_MINI_GAME ) // special case for mini-game
                     {
                         if( !GetCharacterSheetManager()->IsMiniGameUnlocked() &&
-                            !CommandLineOptions::Get( CLO_SKIP_FE ) )
+                            !CommandLineOptions::Get( CLO_SKIP_FE ) &&
+                            !CommandLineOptions::Get( CLO_UNLOCK_BONUS ) ) // Linux port test option
                         {
                             // don't turn on glowing track
                             //

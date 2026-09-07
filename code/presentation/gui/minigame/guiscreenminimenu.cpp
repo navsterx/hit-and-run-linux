@@ -1116,7 +1116,7 @@ void CGuiScreenMiniMenu::InitIntro()
     // disable track(s) that are not unlocked
     //
     rAssert( m_pTrackMenu != NULL );
-    if( !CommandLineOptions::Get( CLO_SKIP_FE ) )
+    if( !CommandLineOptions::Get( CLO_SKIP_FE ) && !CommandLineOptions::Get( CLO_UNLOCK_BONUS ) ) // Linux port test option
     {
         for( int i = 0; i < NUM_TRACKS; i++ )
         {

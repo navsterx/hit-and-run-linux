@@ -2011,6 +2011,12 @@ SoundManager::~SoundManager()
     delete( GMA_PERSISTENT, m_musicPlayer);
     delete( GMA_PERSISTENT, m_soundLoader);
 
+#ifdef RAD_LINUX
+    // Linux port: closing the window during the bonus game shuts down without ending gameplay, leaving the sound
+    // avatars alive; the member's destructor stopped their players after the renderer had freed them.
+    m_avatarSoundPlayer.OnEndGameplay();
+#endif
+
     Sound::daSoundRenderingManagerTerminate();
 
     delete( GMA_PERSISTENT, m_debugDisplay);

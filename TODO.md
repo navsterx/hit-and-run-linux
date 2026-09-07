@@ -109,7 +109,8 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 
 ### Platforms
 - [x] **64-bit build** boots and plays: movies, front end, Levels 1/7, races, interiors, driving, sound; AddressSanitizer clean
-- [ ] **64-bit verification**: long play sessions, the bonus game, mods, a 64-bit packaged bundle, memcheck tooling for x86-64
+- [ ] **64-bit verification**: long play sessions; the bonus game (plays; ASan overflow in `SuperSprintManager::LoadCharacters`
+  still open). Done: mods under ASan, memcheck tooling (Level 1 clean), packaged bundle (`port/package.sh --64`)
 - [ ] **Windows x64**
 - [ ] **macOS** (Apple silicon and Intel)
 - [ ] **Packaging**: an AppImage-style bundle per platform (Linux has a tarball from `port/package.sh`)

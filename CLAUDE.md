@@ -86,6 +86,8 @@ srr2 skipfe tp2                           # 2 s after loading, teleport to the l
                                           # SimpsonsHouse 228.9,3.8,-184.1, bartroom (L4/7) 224.7,6.6,-200.8; L2/5 moe
                                           # -173.6,7.1,24.5, dmv -253.3,6.9,350.7; L3/6 Android 22.4,7.0,-6.2, Observatory
                                           # 177.2,4.3,487.6. Teleport there and tap E (18) to go in (timing-free under memcheck)
+srr2 bonus                                # Bonus Game and all tracks selectable without completed card decks; from the main
+                                          # menu (up ~65 s after boot): Left x2, Enter, then Enter x3 (track, character, car)
 SHAR_QUIT_AT=ms                           # close the window at that time (SDL_QUIT, as Ctrl+C); "Window closed (context N)"
                                           # is logged (contextenum.h: 1 bootup, 2 front end, 8 loading, 9 gameplay, 10 pause)
 SHAR_KEY_SCRIPT="17@30000-60000,..."      # scripted input; the retail ini binds Action to E (18), menus take Enter (28)
@@ -413,8 +415,12 @@ The base game is feature-complete but not yet verified end to end. In order:
    x2 + 8-byte aligned (sizes in the art are 32-bit); radscript args pointer-sized and sorted into SysV registers
    (`InvokeVf64`); RCF header (on-disk 32-bit pointer placeholder), DDS header (`lpSurface` 32-bit), type info
    strings (sizeof(**p)); 32-bit masks/products applied to addresses (`RoundUpAlignment`, movie negative pitch).
-   Saves are layout-identical (CharacterSheet 7140, SaveGameInfoData 16). Not yet: memcheck (valgrind tooling is
-   i386-only; ASan covers overflows), long play sessions, the bonus game, mods, packaging a 64-bit bundle.
+   Saves are layout-identical (CharacterSheet 7140, SaveGameInfoData 16). Also on 64-bit (2026-10-19): both mods
+   under ASan (Futurama front end/New Game/skipfe, Remastered), Lua output identical to 32-bit; `port/memcheck.sh`
+   with SHAR_BUILD=build-linux64 (loader picked by ELF class), Level 1 clean; `port/package.sh --64` bundle runs
+   from a fresh extract; the bonus game plays (`bonus` option). Open: ASan global-buffer-overflow in
+   `SuperSprintManager::LoadCharacters` (supersprintmanager.cpp:2179, reads 8 bytes before CHARACTER_NAMES: index -1,
+   likely from an unjoined player slot, probably 32-bit too). Not yet: long play sessions.
    NVIDIA's egl-wayland2 works in 64-bit (only the 32-bit one fails). Possible future: Rust/Bevy (`RUST.md`).
 
 ## Known issues / next steps
