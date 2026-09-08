@@ -15,12 +15,21 @@ endif()
 if(NOT SHAR_RAD_DEBUG)
   set(SHAR_WARN "${SHAR_WARN} -D_GLIBCXX_NO_ASSERTIONS")
 endif()
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32 -g -fno-strict-aliasing ${SHAR_WARN}")
+# SHAR_64BIT: x86-64 build (work in progress, branch x64); the default stays the 32-bit game. Libraries are
+# linked by name, so -m64 picks the amd64 packages (libsdl2-dev, libgl-dev, libopenal-dev, FFmpeg's -dev)
+option(SHAR_64BIT "Build for x86-64 instead of 32-bit x86 (work in progress)" OFF)
+if(SHAR_64BIT)
+  set(SHAR_ARCH -m64)
+  message(STATUS "SHAR: 64-bit build (work in progress)")
+else()
+  set(SHAR_ARCH -m32)
+endif()
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SHAR_ARCH} -g -fno-strict-aliasing ${SHAR_WARN}")
 # gnu++98 + permissive: closest to what 2003-era MSVC accepted
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32 -g -std=gnu++98 -fpermissive -fno-strict-aliasing ${SHAR_WARN}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SHAR_ARCH} -g -std=gnu++98 -fpermissive -fno-strict-aliasing ${SHAR_WARN}")
 # static C++ runtime + no exported runtime symbols: the game's own operator new must not leak into
 # shared libraries (GPU drivers) the way it would by default on ELF (see SHAR_LOCAL in msvc_compat.h)
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -m32 -static-libstdc++ -static-libgcc -Wl,--exclude-libs,ALL")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SHAR_ARCH} -static-libstdc++ -static-libgcc -Wl,--exclude-libs,ALL")
 # Lua for mods' scripts (port/third_party/lua, port/compat/shar_modlua.cpp): plain C, so declared before the
 # game-wide definitions and the force-included MSVC compat header below
 add_library(lua STATIC port/third_party/lua/lapi.c port/third_party/lua/lauxlib.c port/third_party/lua/lbaselib.c port/third_party/lua/lcode.c port/third_party/lua/lcorolib.c port/third_party/lua/lctype.c port/third_party/lua/ldblib.c port/third_party/lua/ldebug.c port/third_party/lua/ldo.c port/third_party/lua/ldump.c port/third_party/lua/lfunc.c port/third_party/lua/lgc.c port/third_party/lua/linit.c port/third_party/lua/liolib.c port/third_party/lua/llex.c port/third_party/lua/lmathlib.c port/third_party/lua/lmem.c port/third_party/lua/loadlib.c port/third_party/lua/lobject.c port/third_party/lua/lopcodes.c port/third_party/lua/loslib.c port/third_party/lua/lparser.c port/third_party/lua/lstate.c port/third_party/lua/lstring.c port/third_party/lua/lstrlib.c port/third_party/lua/ltable.c port/third_party/lua/ltablib.c port/third_party/lua/ltm.c port/third_party/lua/lundump.c port/third_party/lua/lutf8lib.c port/third_party/lua/lvm.c port/third_party/lua/lzio.c)
