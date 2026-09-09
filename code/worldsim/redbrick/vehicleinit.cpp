@@ -1454,13 +1454,22 @@ Vehicle::~Vehicle()
     {
         // DO NOT remove a pedestrian manually! 
         // We need them for recycling within the level. 
-        if( mpDriver->GetRole() != Character::ROLE_PEDESTRIAN )
+        if( mpDriver->GetRole() != Character::ROLE_PEDESTRIAN
+#ifdef RAD_LINUX
+            && CharacterManager::Exists() // Linux port: see ClearTargetVehicle below
+#endif
+          )
         {
            GetCharacterManager()->RemoveCharacter(mpDriver);
         }
         tRefCounted::Release(mpDriver);
     }
 
+#ifdef RAD_LINUX
+    // Linux port: closing the window while the bonus race loads destroys its vehicles in DestroySingletons, after
+    // the character manager
+    if( CharacterManager::Exists() )
+#endif
     GetCharacterManager()->ClearTargetVehicle(this);
 
     rAssert( mName != NULL );

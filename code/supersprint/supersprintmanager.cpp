@@ -2176,7 +2176,9 @@ void SuperSprintManager::LoadCharacters()
                 unsigned int k;
                 for ( k = 0; k < SuperSprintData::NUM_PLAYERS && !found; ++k )
                 {
-                    if ( SuperSprintData::CHARACTER_NAMES[ mPlayers[ k ].mCharacterIndex ] != '\0' && 
+                    // Linux port: was CHARACTER_NAMES[ index ] != '\0', reading before the array for a slot with
+                    // no character yet (index -1); the index comparison below decides either way.
+                    if ( mPlayers[ k ].mCharacterIndex >= 0 && 
                        ( mPlayers[ k ].mCharacterIndex == static_cast<int>( whichName ) ) )
                     {
                         //This name is taken.

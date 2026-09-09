@@ -378,7 +378,11 @@ The base game is feature-complete but not yet verified end to end. In order:
    `CancelPendingRequests` (sound loads complete only from SoundManager::Update/UpdateOncePerFrame), a hang in
    `DriveUnmount` (drive off the list, its request stuck in the error wait: now failed), radscript never terminated
    before sound init (static ref freed after the heaps), ~Vehicle after ActionButtonManager in DestroySingletons, and
-   load completion callbacks running while cancelling (car set up without its model). Fixed 2026-10-17: shutting
+   load completion callbacks running while cancelling (car set up without its model). Bonus game (2026-10-19): a
+   close in the race now goes through EXIT like gameplay (`SuperSprintContext::OnStop` tears it down; the dashboard
+   path left DestroySingletons freeing managers the race's cars still used), a close during its load waits for the
+   race to start and then does the same (`game.cpp`), ~SoundManager ends the sound avatars before the renderer goes;
+   menu (5), load (6) and race (7) quit clean under ASan. Fixed 2026-10-17: shutting
    down with a vehicle sound playing overflowed the stack (`~PositionalSoundPlayer` deleted its owner).
    Debug build quit sweep (2026-10-19, 20 contexts): no crashes after one fix (`SimEnvironment::RemoveObject` with
    the debug-only active-object list already deleted: a level quit mid-load keeps its vehicles until
@@ -418,9 +422,9 @@ The base game is feature-complete but not yet verified end to end. In order:
    Saves are layout-identical (CharacterSheet 7140, SaveGameInfoData 16). Also on 64-bit (2026-10-19): both mods
    under ASan (Futurama front end/New Game/skipfe, Remastered), Lua output identical to 32-bit; `port/memcheck.sh`
    with SHAR_BUILD=build-linux64 (loader picked by ELF class), Level 1 clean; `port/package.sh --64` bundle runs
-   from a fresh extract; the bonus game plays (`bonus` option). Open: ASan global-buffer-overflow in
-   `SuperSprintManager::LoadCharacters` (supersprintmanager.cpp:2179, reads 8 bytes before CHARACTER_NAMES: index -1,
-   likely from an unjoined player slot, probably 32-bit too). Not yet: long play sessions.
+   from a fresh extract; the bonus game plays (`bonus` option), ASan clean
+   (race with player 1 driving; fixed: `LoadCharacters` read CHARACTER_NAMES[-1] for slots without a character), no
+   asserts during the race in the debug build. Not yet: long play sessions.
    NVIDIA's egl-wayland2 works in 64-bit (only the 32-bit one fails). Possible future: Rust/Bevy (`RUST.md`).
 
 ## Known issues / next steps

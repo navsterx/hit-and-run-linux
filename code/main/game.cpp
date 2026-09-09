@@ -546,6 +546,13 @@ void Game::Run()
         // Service the windows message loop.
         //
 #ifdef RAD_LINUX
+        // A close during the bonus race's load waits for the race to start, then exits through it (below).
+        static bool s_quitWhenRaceLoaded = false;
+        if( s_quitWhenRaceLoaded && GetGameFlow()->GetCurrentContext() == CONTEXT_SUPERSPRINT )
+        {
+            s_quitWhenRaceLoaded = false;
+            mpGameFlow->SetContext( CONTEXT_EXIT );
+        }
         if( Win32Platform::PumpEvents() )       // SDL2: true when the window was closed (WM_QUIT)
         {
             fprintf( stderr, "Window closed (context %d)\n", (int) GetGameFlow()->GetCurrentContext() );
@@ -557,9 +564,19 @@ void Game::Run()
                 fflush( NULL );
                 _exit( 0 );
             }
+            // Mid-load the race's managers are half set up and DestroySingletons' order does not fit them (its AI
+            // cars were deleted while the trigger volume tracker still held them): finish loading first.
+            if ( GetGameFlow()->GetCurrentContext() == CONTEXT_LOADING_SUPERSPRINT )
+            {
+                s_quitWhenRaceLoaded = true;
+            }
+            else
+            // The bonus race goes through EXIT too, so SuperSprintContext::OnStop tears the race down first: with
+            // the dashboard path DestroySingletons freed managers its vehicles still called (~Vehicle).
             if ( GetGameFlow()->GetCurrentContext() != CONTEXT_FRONTEND &&
                  GetGameFlow()->GetCurrentContext() != CONTEXT_GAMEPLAY &&
-                 GetGameFlow()->GetCurrentContext() != CONTEXT_PAUSE )
+                 GetGameFlow()->GetCurrentContext() != CONTEXT_PAUSE &&
+                 GetGameFlow()->GetCurrentContext() != CONTEXT_SUPERSPRINT )
             {
                 GetGame()->GetPlatform()->LaunchDashboard();
                 return;

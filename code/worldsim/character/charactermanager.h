@@ -37,6 +37,9 @@ public:
 	static CharacterManager* GetInstance( );
 	static CharacterManager* CreateInstance( );
     static void DestroyInstance( );
+#ifdef RAD_LINUX
+    static bool Exists( );  // without GetInstance's assert (teardown order)
+#endif
 
     // Called before loading begins to preload a little neccesary data
     //

@@ -171,7 +171,17 @@ void CharacterManager::DestroyInstance( void )
 {
 	rAssertMsg( spCharacterManager != 0, "CharacterManager has not been created.\n" );
 	delete ( GMA_PERSISTENT, spCharacterManager );
+#ifdef RAD_LINUX
+    spCharacterManager = 0; // Linux port: Exists() after teardown
+#endif
 }
+
+#ifdef RAD_LINUX
+bool CharacterManager::Exists( void )
+{
+    return spCharacterManager != 0;
+}
+#endif
 
 /*
 ==============================================================================
