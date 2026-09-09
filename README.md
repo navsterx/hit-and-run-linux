@@ -45,7 +45,7 @@ code left MSVC and Windows.
 | Platform | Status |
 |---|---|
 | Linux x86 (32-bit) | **Playable.** Tested through Level 7 |
-| Linux x86-64 | **Boots and plays** (tested: movies, front end, Levels 1 and 7, races, interiors); wider testing in progress |
+| Linux x86-64 | **Boots and plays** (tested: movies, front end, levels, races, interiors, the bonus game, mods); long play sessions in progress |
 | Windows x64 | Planned |
 | macOS (Apple silicon / Intel) | Planned |
 | Android / handhelds | Possible later: the renderer and input layers already allow it |
@@ -105,6 +105,7 @@ Useful options:
 port/play.sh --data DIR --mod MyMod.lmlm    # load a mod (repeatable; earlier mods win)
 port/play.sh --data DIR --no-build          # skip the build step
 port/play.sh --data DIR skipfe              # straight into Level 1
+port/play.sh --data DIR bonus               # Bonus Game and its tracks open without completed card decks
 ```
 
 ## Settings
@@ -159,8 +160,15 @@ cmake -B build-linux-debug -G Ninja -DSHAR_RAD_DEBUG=ON    # debug build: assert
 ninja -C build-linux
 ```
 
-Boot movies only play in the release build. `port/package.sh` makes a self-contained tarball for another Linux
-machine. The porting details are in [`CLAUDE.md`](CLAUDE.md).
+The 64-bit build needs the same packages without `:i386` (and no multilib):
+
+```bash
+cmake -B build-linux64 -G Ninja -DSHAR_64BIT=ON && ninja -C build-linux64
+port/play.sh --64 --data DIR                # builds and runs it (configures build-linux64 if needed)
+```
+
+Boot movies only play in the release build. `port/package.sh` (`--64` for the 64-bit build) makes a self-contained
+tarball for another Linux machine. The porting details are in [`CLAUDE.md`](CLAUDE.md).
 
 `CMakeLists.txt` is generated from the original Visual Studio projects: change `port/gen_cmake.py`, never the
 generated file.

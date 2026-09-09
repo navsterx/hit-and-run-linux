@@ -26,7 +26,7 @@ port/                      everything added for the port
                            diagnostics on; each cast site once, by kind and library, plus plain `long` counts (port/survey64.json)
   run.sh [secs] [args]     rebuild + run under gdb from the run dir, print backtrace on crash
   play.sh --data DIR       build if needed, set up the run dir from DIR (game data), start the game normally
-                           (--debug, --no-build, --mod .lmlm|FOLDER (repeatable); extra args go to the game)
+                           (--debug, --64, --no-build, --mod .lmlm|FOLDER (repeatable); extra args go to the game)
                            console output -> run/logs/last-session.log; on a crash / non-zero exit / Ctrl+C it is
                            kept as run/crashes/crash-<date>-<time>.log, backtrace resolved (crash_symbolize.py)
   crash_symbolize.py BIN [LOG]  resolve a crash report's module+offset frames with addr2line
@@ -410,7 +410,8 @@ The base game is feature-complete but not yet verified end to end. In order:
    Vulkan renderer: shelved 2026-10-19 (a third pddi; plan and benefits in TODO.md, Renderer extras).
 8. **64-bit build** (2026-10-19, branch `x64`, merged to dev; tag `32bit-baseline` = last 32-bit-only state): boots,
    plays movies, front end, Level 1/7, races, interiors, pause, driving demos, with sound (same level as 32-bit),
-   behaviour identical to 32-bit in timed screenshots; AddressSanitizer clean on all of those; 64-bit debug build has
+   behaviour identical to 32-bit in timed screenshots; AddressSanitizer clean on all of those and on Levels 2-6
+   (gameplay start and attract demo each), Moe's and Android's Dungeon; 64-bit debug build has
    no asserts during play. Build: `cmake -B build-linux64 -G Ninja -DSHAR_64BIT=ON` (amd64 -dev packages of SDL2,
    GL, OpenAL, FFmpeg); `build-linux64-asan` (-fsanitize=address) and `build-linux64-debug` (-DSHAR_RAD_DEBUG=ON).
    `port/survey64.py` lists pointer-size casts (none left). What changed (all identical on 32-bit): GUI message
