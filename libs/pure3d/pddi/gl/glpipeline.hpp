@@ -151,7 +151,7 @@ public:
     void FrameStats();
     void FrameEnd();            // from EndFrame: GPU and CPU time of the frame's rendering
     struct Stats { unsigned frames, draws, streamDraws, matrixUploads, lightUploads, materialUploads, bufferUploads, bufferBytes;
-                   double gpuMs, cpuMs; unsigned gpuFrames; } stats;
+                   double gpuMs, gpuMaxMs, cpuMs; unsigned gpuFrames; } stats;
 
 private:
     // state groups; each program keeps the version of each it last received

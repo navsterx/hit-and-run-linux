@@ -40,6 +40,14 @@ static const int BILLBOARD_PERSPECTIVE_INFO_VERSION = 0;
 
 using namespace RadicalMathLibrary;
 
+// NaN fix (Linux port): the dot product of two unit vectors rounds to just over 1 when the camera lines up with a
+// quad's normal (LOCAL_Y_AXIS glows in Level 1, a few times a minute), and acos is NaN there: the quad's rotation and
+// all four corners were NaN
+static inline float ClampedACos(float x)
+{
+    return ACos(Clamp(x, -1.0f, 1.0f));
+}
+
 //*****************************************************************************
 // NOTE:
 //  If i ever need to have camera angle and quad angle working together such
@@ -250,16 +258,16 @@ tBillboardQuad::Display(pddiPrimStream* stream, const Matrix& world, const Matri
                 projectedUp.Scale(heading.Dot(up)/up.Dot(up),up);
                 projectedNormal.Scale(heading.Dot(normal)/normal.Dot(normal),normal);
                 projectedHeading.Add(projectedUp,projectedNormal);
-                projectedHeading.Normalize();
+                projectedHeading.NormalizeSafe();     // NaN fix (Linux port): zero when the camera is on the axis
 
                 objectToWorld.Identity();
                 if (up.Dot(projectedHeading) > 0.0f)
                 {
-                    objectToWorld.FillRotateX(ACos(normal.Dot(projectedHeading)));
+                    objectToWorld.FillRotateX(ClampedACos(normal.Dot(projectedHeading)));
                 }
                 else
                 {
-                    objectToWorld.FillRotateX(-ACos(normal.Dot(projectedHeading)));
+                    objectToWorld.FillRotateX(-ClampedACos(normal.Dot(projectedHeading)));
                 }                
                 objectToWorld.Mult(transform);
                 objectToWorld.Mult(world);
@@ -286,17 +294,17 @@ tBillboardQuad::Display(pddiPrimStream* stream, const Matrix& world, const Matri
                 projectedRight.Scale(heading.Dot(right)/right.Dot(right),right);
                 projectedNormal.Scale(heading.Dot(normal)/normal.Dot(normal),normal);
                 projectedHeading.Add(projectedRight,projectedNormal);
-                projectedHeading.Normalize();
+                projectedHeading.NormalizeSafe();     // NaN fix (Linux port): zero when the camera is on the axis
 
                 normal.Normalize();
                 objectToWorld.Identity();
                 if (right.Dot(projectedHeading) > 0.0f)
                 {
-                    objectToWorld.FillRotateY(-ACos(normal.Dot(projectedHeading)));
+                    objectToWorld.FillRotateY(-ClampedACos(normal.Dot(projectedHeading)));
                 }
                 else
                 {
-                    objectToWorld.FillRotateY(ACos(normal.Dot(projectedHeading)));
+                    objectToWorld.FillRotateY(ClampedACos(normal.Dot(projectedHeading)));
                 }                
                 objectToWorld.Mult(transform);
                 objectToWorld.Mult(world);
@@ -610,7 +618,7 @@ tBillboardQuad::Calculate()
         else
         {
             dotProduct = objectDirection.Dot(objectNormal);
-            angle = Fabs(ACos(Fabs(dotProduct)));
+            angle = Fabs(ClampedACos(Fabs(dotProduct)));
             if (angle < sourceRange)
             {
                 intensity = 1.0f;
@@ -637,7 +645,7 @@ tBillboardQuad::Calculate()
             float objectIntensity = 0.0f;
 
             dotProduct = objectDirection.Dot(objectNormal);
-            angle = Fabs(ACos(Fabs(dotProduct)));
+            angle = Fabs(ClampedACos(Fabs(dotProduct)));
             if (angle < sourceRange)
             {
                 objectIntensity = 1.0f;
@@ -656,7 +664,7 @@ tBillboardQuad::Calculate()
             }
 
             dotProduct = cameraDirection.Dot(cameraNormal);
-            angle = Fabs(ACos(Fabs(dotProduct)));
+            angle = Fabs(ClampedACos(Fabs(dotProduct)));
             if (angle < sourceRange)
             {
                 cameraIntensity = 1.0f;
@@ -840,16 +848,16 @@ tCamRelativeBillboardQuad::Display(pddiPrimStream* stream, const rmt::Matrix& wo
                 projectedUp.Scale(heading.Dot(up)/up.Dot(up),up);
                 projectedNormal.Scale(heading.Dot(normal)/normal.Dot(normal),normal);
                 projectedHeading.Add(projectedUp,projectedNormal);
-                projectedHeading.Normalize();
+                projectedHeading.NormalizeSafe();     // NaN fix (Linux port): zero when the camera is on the axis
 
                 objectToWorld.Identity();
                 if (up.Dot(projectedHeading) > 0.0f)
                 {
-                    objectToWorld.FillRotateX(ACos(normal.Dot(projectedHeading)));
+                    objectToWorld.FillRotateX(ClampedACos(normal.Dot(projectedHeading)));
                 }
                 else
                 {
-                    objectToWorld.FillRotateX(-ACos(normal.Dot(projectedHeading)));
+                    objectToWorld.FillRotateX(-ClampedACos(normal.Dot(projectedHeading)));
                 }                
                 objectToWorld.Mult(transform);
                 objectToWorld.Mult(world);
@@ -876,16 +884,16 @@ tCamRelativeBillboardQuad::Display(pddiPrimStream* stream, const rmt::Matrix& wo
                 projectedRight.Scale(heading.Dot(right)/right.Dot(right),right);
                 projectedNormal.Scale(heading.Dot(normal)/normal.Dot(normal),normal);
                 projectedHeading.Add(projectedRight,projectedNormal);
-                projectedHeading.Normalize();
+                projectedHeading.NormalizeSafe();     // NaN fix (Linux port): zero when the camera is on the axis
 
                 objectToWorld.Identity();
                 if (right.Dot(projectedHeading) > 0.0f)
                 {
-                    objectToWorld.FillRotateY(-ACos(normal.Dot(projectedHeading)));
+                    objectToWorld.FillRotateY(-ClampedACos(normal.Dot(projectedHeading)));
                 }
                 else
                 {
-                    objectToWorld.FillRotateY(ACos(normal.Dot(projectedHeading)));
+                    objectToWorld.FillRotateY(ClampedACos(normal.Dot(projectedHeading)));
                 }                
                 objectToWorld.Mult(transform);
                 objectToWorld.Mult(world);

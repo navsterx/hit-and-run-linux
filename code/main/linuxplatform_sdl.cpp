@@ -30,6 +30,43 @@ static const Win32Platform::Resolution StartingResolution = Win32Platform::Res_8
 void pglToggleUserShaders();     // pddi/gl/glcustom.cpp: the M key
 static bool s_swallowLeftUp = false;      // a click that only re-showed the front-end cursor (see PumpEvents)
 
+// Intel Ice Lake (Gen11) with Mesa: the GPU hangs within a minute or two of gameplay ("Resetting rcs0 for preemption
+// time out" in the kernel log, Iris Plus ICL GT1.5, Mesa 26.0.8, kernel 7.0, 2026-10-20), whatever the window system,
+// shaders, MSAA or filtering; after three resets the context is banned and the screen stays black while the game runs
+// on. Never with the depth buffer's HiZ off (or INTEL_DEBUG=sync); costs ~5% GPU time. Not traced to one operation
+// (partial depth clears and stencil were ruled out). Must be set before the driver loads. The user's own INTEL_DEBUG
+// or SHAR_INTEL_HIZ=1 keeps HiZ.
+static void DisableHizOnIceLake()
+{
+    if( getenv( "INTEL_DEBUG" ) != NULL || getenv( "SHAR_INTEL_HIZ" ) != NULL )
+        return;
+    for( int card = 0; card < 8; card++ )
+    {
+        char path[ 64 ];
+        unsigned vendor = 0, device = 0;
+        snprintf( path, sizeof( path ), "/sys/class/drm/card%d/device/vendor", card );
+        FILE* f = fopen( path, "r" );
+        if( f == NULL )
+            continue;
+        if( fscanf( f, "%x", &vendor ) != 1 )
+            vendor = 0;
+        fclose( f );
+        snprintf( path, sizeof( path ), "/sys/class/drm/card%d/device/device", card );
+        f = fopen( path, "r" );
+        if( f == NULL )
+            continue;
+        if( fscanf( f, "%x", &device ) != 1 )
+            device = 0;
+        fclose( f );
+        if( vendor == 0x8086 && ( device & 0xff00 ) == 0x8a00 )    // Ice Lake graphics: 0x8a50-0x8a71
+        {
+            setenv( "INTEL_DEBUG", "nohiz", 0 );
+            fprintf( stderr, "PDDI: Intel Ice Lake GPU: depth HiZ off (it hangs the GPU; SHAR_INTEL_HIZ=1 keeps it)\n" );
+            return;
+        }
+    }
+}
+
 //==============================================================================
 // Win32Platform::InitializeWindow
 //==============================================================================
@@ -61,6 +98,7 @@ bool Win32Platform::InitializeWindow( HINSTANCE hInstance )
             setenv( "__EGL_EXTERNAL_PLATFORM_CONFIG_FILENAMES", nvidiaWayland, 0 );
         }
     }
+    DisableHizOnIceLake( );
 
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC ) != 0 )
     {

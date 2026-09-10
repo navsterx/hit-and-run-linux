@@ -759,6 +759,8 @@ void pglDisplay ::SwapBuffers()
     SDL_GL_GetDrawableSize( window, &w, &h );
     if( w > 0 && h > 0 )
     {
+        if( w != winWidth || h != winHeight )
+            fprintf( stderr, "PDDI: drawing at %dx%d\n", w, h );
         winWidth = w;
         winHeight = h;
     }

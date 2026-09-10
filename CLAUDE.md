@@ -245,6 +245,15 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   making GL calls without a context. Now an error dialog and exit; `GetMaxTextureDimension` never calls GL; a texture
   upload failing with GL_OUT_OF_MEMORY is reported once and retried. Reproduce with a VRAM filler (a GL program
   allocating 4096x4096 textures until ~450 MB are left).
+- **Intel Ice Lake GPU hangs (2026-10-20, the user's laptop: Iris Plus ICL GT1.5, Mesa 26.0.8)**: "GPU spikes, then a
+  black screen while sound and gameplay go on" = `i915 ... Resetting rcs0 for preemption time out` / `context reset due
+  to GPU hang` in `journalctl -k`; after three resets the context is banned (black for good). Hung within 20-110 s of
+  every Level 1 demo, with or without user shaders, MSAA, mipmaps/anisotropy, under Wayland or X11; never with
+  `INTEL_DEBUG=nohiz` (or `sync`), so `linuxplatform_sdl.cpp` sets INTEL_DEBUG=nohiz on Ice Lake (PCI 0x8a..) before
+  SDL loads the driver (~5% GPU time; `SHAR_INTEL_HIZ=1` keeps HiZ). Not traced to one operation: full-buffer depth
+  clears and stencil off did not help. Error dumps: `pkexec cat /sys/class/drm/card1/error` (root; the kernel keeps
+  the first hang). Under `SHAR_GL_STATS=1` a reset blocks the main thread in the timer query. Found on the way: NaN
+  billboard quads (`billboardobject.cpp`, acos of a dot product just over 1), fixed; not the cause.
 - radcore's `radoptions.hpp` enables debug comm / watcher / memory monitor in debug builds: off on Linux.
 - **OpenGL 3.3 core renderer** (2026-10-17, branch dev): the GL pddi was fixed-function GL 1.x. Now
   `pddi/gl/glpipeline.cpp` keeps that state on the CPU (matrices, 8 lights, fog, material, the "current"

@@ -824,6 +824,8 @@ void pglPipeline::FrameStats()
         GLuint64 ns = 0;
         glGetQueryObjectui64v(s_timeQuery[other], GL_QUERY_RESULT, &ns);
         stats.gpuMs += ns / 1e6;
+        if(ns / 1e6 > stats.gpuMaxMs)
+            stats.gpuMaxMs = ns / 1e6;
         stats.gpuFrames++;
         s_timeQueryUsed[other] = false;
     }
@@ -836,9 +838,9 @@ void pglPipeline::FrameStats()
     last = SDL_GetTicks();
     float f = (float)stats.frames;
     fprintf(stderr, "[gl] per frame: %.0f draws (%.0f streamed), uniforms: %.0f matrix %.0f light %.0f material, "
-            "%.1f buffer uploads (%.0f KB); render time %.3f ms CPU, %.3f ms GPU\n", stats.draws / f, stats.streamDraws / f,
+            "%.1f buffer uploads (%.0f KB); render time %.3f ms CPU, %.3f ms GPU (slowest %.1f)\n", stats.draws / f, stats.streamDraws / f,
             stats.matrixUploads / f, stats.lightUploads / f, stats.materialUploads / f, stats.bufferUploads / f,
-            stats.bufferBytes / f / 1024.0f, stats.cpuMs / f, stats.gpuFrames ? stats.gpuMs / stats.gpuFrames : 0.0);
+            stats.bufferBytes / f / 1024.0f, stats.cpuMs / f, stats.gpuFrames ? stats.gpuMs / stats.gpuFrames : 0.0, stats.gpuMaxMs);
     memset(&stats, 0, sizeof(stats));
 }
 
