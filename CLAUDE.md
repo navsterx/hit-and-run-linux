@@ -380,8 +380,8 @@ The base game is feature-complete but not yet verified end to end. In order:
    seven levels. Save -> quit -> load verified by the user (2026-10-19; saving from a `skipfe` session works since
    2026-10-17: on PC only the front end's memory card check selected the save drive). Riskiest left: the bonus game (Itchy &
    Scratchy racing) with 2-4 pads, street/wager races and time trials, later levels' missions and cutscenes, French/German/Spanish.
-2. **Memcheck coverage** (Claude, unattended; each pass has found real bugs): the bonus game (needs front-end
-   navigation), later levels' missions (only their attract demos so far). See item 8 below.
+2. **Memcheck coverage** (Claude, unattended; each pass has found real bugs): later levels' missions (only
+   their attract demos so far). See item 8 below.
 3. **Robustness found along the way**: crashes/asserts from those runs, shutdown paths (window closed in any
    context), missing-data tolerance where cheap. Shutdown sweep 2026-10-19 (release, `SHAR_QUIT_AT`): fixed a hang in
    `CancelPendingRequests` (sound loads complete only from SoundManager::Update/UpdateOncePerFrame), a hang in
@@ -487,7 +487,10 @@ The base game is feature-complete but not yet verified end to end. In order:
    clean after one fix (CollisionEntityDSG class id for unknown ids). Check runs reached gameplay with screenshots:
    logs show little, and two runs had silently tested nothing (empty ground, no coins). Known noise besides the
    X11/udev/dbus/SDL startup: libc's vsnprintf %s reading past a terminated string (Rig::ReadFromScript,
-   LoadingManager, HandleOption). Not yet covered: the bonus game, later levels' missions.
+   LoadingManager, HandleOption). 2026-10-20: the bonus game (`SHAR_BUILD=build-linux64 port/memcheck.sh 1500
+   skipfe l0`: the original's shortcut into its menus, all tracks open; Enter every 10 s from 90 s gets through track/character/car, the race starts
+   ~3 min in) clean after one fix (WorldScene's view vector, never set under SetRenderAll). In that run player 1 never
+   moved (W held from 300 s), so only AI driving is covered. Not yet covered: later levels' missions.
 9. (done 2026-10-14) Widescreen verified by the user: scales correctly at all ratios, including extreme ones.
    Borderless fullscreen and the runtime resolution list added the same day.
 10. (in progress 2026-10-15) Mods: Futurama: Hit & Run demo 0.1.3 drives in Level 1; the car shop (seller,

@@ -159,6 +159,10 @@ WorldScene::WorldScene()
 {
     GetEventManager()->AddListener(this,(EventEnum)(EVENT_LOCATOR+LocatorEvent::FAR_PLANE));
     mDrawDist = 200.0f;
+    // uninit fix (Linux port): with SetRenderAll (the bonus game's top-down view) MarkCameraVisible never runs, so
+    // SetVisCone never set the view vector RenderScene ranks objects by; zero ranks them by distance from the camera
+    mViewVector.Set( 0.0f, 0.0f, 0.0f );
+    mViewPosn.Set( 0.0f, 0.0f, 0.0f );
 
     mpZSorts.reserve(5000);
     rTuneAssert( mpZSorts.capacity() == 5000 );

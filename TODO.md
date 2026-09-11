@@ -87,7 +87,7 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [ ] **French, German and Spanish**
 
 ### Memory checking
-- [ ] The bonus game
+- [x] The bonus game (2026-10-20, 64-bit: menus, a 3-lap AI race, standings; one fix: WorldScene view vector)
 - [ ] Later levels' missions (only their attract demos so far)
 
 ### Robustness
