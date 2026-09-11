@@ -86,6 +86,15 @@ srr2 skipfe tp2                           # 2 s after loading, teleport to the l
                                           # SimpsonsHouse 228.9,3.8,-184.1, bartroom (L4/7) 224.7,6.6,-200.8; L2/5 moe
                                           # -173.6,7.1,24.5, dmv -253.3,6.9,350.7; L3/6 Android 22.4,7.0,-6.2, Observatory
                                           # 177.2,4.3,487.6. Teleport there and tap E (18) to go in (timing-free under memcheck)
+srr2 skipfe skipsunday l2 m1              # skipsunday (the original's): the mission starts at once, no walk to its giver
+srr2 ... nofail                           # test option: mission conditions never fail a stage (timer stops at 0, losing
+                                          # the target, damage...); for play-testing and test runs
+srr2 ... autopass[N]                      # test option: every mission stage counts as completed after N s of game time
+                                          # (default 30): a run goes through every stage of every mission (dialogue,
+                                          # cutscenes, objectives, mission complete, next mission). Each mission start
+                                          # loads the mission's restart zones; stages away from them may stand in an
+                                          # unloaded world (the skipped drive is what streams zones in). "autopass: ..."
+                                          # is logged per stage. Memcheck: `skipfe skipsunday incar autopass20 nofail lN m1`
 srr2 bonus                                # Bonus Game and all tracks selectable without completed card decks; from the main
                                           # menu (up ~65 s after boot): Left x2, Enter, then Enter x3 (track, character, car)
 SHAR_QUIT_AT=ms                           # close the window at that time (SDL_QUIT, as Ctrl+C); "Window closed (context N)"
@@ -490,7 +499,10 @@ The base game is feature-complete but not yet verified end to end. In order:
    LoadingManager, HandleOption). 2026-10-20: the bonus game (`SHAR_BUILD=build-linux64 port/memcheck.sh 1500
    skipfe l0`: the original's shortcut into its menus, all tracks open; Enter every 10 s from 90 s gets through track/character/car, the race starts
    ~3 min in) clean after one fix (WorldScene's view vector, never set under SetRenderAll). In that run player 1 never
-   moved (W held from 300 s), so only AI driving is covered. Not yet covered: later levels' missions.
+   moved (W held from 300 s), so only AI driving is covered. Later levels' missions (2026-10-20, 64-bit, `skipfe
+   skipsunday incar lN m1`, idle until the timer fails it and Enter retries; L2-L5 M1 full, L6 M1/L7 M3 briefly):
+   two fixes, FollowCondition::muTime and a `%S` (wide string) printf of a mission name in AddBonusMission. Next:
+   whole missions with `autopass` + `nofail`.
 9. (done 2026-10-14) Widescreen verified by the user: scales correctly at all ratios, including extreme ones.
    Borderless fullscreen and the runtime resolution list added the same day.
 10. (in progress 2026-10-15) Mods: Futurama: Hit & Run demo 0.1.3 drives in Level 1; the car shop (seller,

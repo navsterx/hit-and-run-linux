@@ -632,7 +632,13 @@ MEMTRACK_PUSH_GROUP( "MissionManager - Loading" );
                 GetGameplayManager()->MDKVDU();
             }
 
-            if ( mResetting )
+            // Linux port: with the autopass test option, also on a mission's first start: nobody walked or drove to
+            // its start, which is what streams that part of the world in otherwise
+            if ( mResetting
+#ifdef RAD_LINUX
+                 || CommandLineOptions::GetAutoPassSeconds() > 0
+#endif
+               )
             {
                 //HeapMgr()->PushHeap (GMA_LEVEL_ZONE);   // Is this the right one??  -- jdy
                 mission->InitDynaLoad();

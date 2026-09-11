@@ -41,6 +41,7 @@
 #include <mission/safezone/safezone.h>
 #include <mission/objectives/raceobjective.h>
 #include <mission/charactersheet/charactersheetmanager.h>
+#include <main/commandlineoptions.h>
 
 #include <presentation/gui/guisystem.h>
 #include <presentation/gui/ingame/guimanageringame.h>
@@ -119,6 +120,9 @@ MissionStage::MissionStage() :
     mb_UseElapsedTime(false),
     mRaceEnteryFee(0),
     mbRacePaidOut( false ),
+#ifdef RAD_LINUX
+    mAutoPassMs( 0 ),
+#endif
     mTrafficDensity( -1 ),
     mIsBonusObjectiveStart( false ),
     mStartBonusObjectives( false ),
@@ -1586,6 +1590,9 @@ void MissionStage::VehicleInfoInitialize()
 //=============================================================================
 void MissionStage::Start()
 {
+#ifdef RAD_LINUX
+    mAutoPassMs = 0;
+#endif
     radKey32 musicKey;
     radKey32 musicStateKey;
     radKey32 musicStateEventKey;
@@ -1703,7 +1710,7 @@ BEGIN_PROFILE("MissionStage Update");
                     {
                         GetEventManager()->TriggerEvent( EVENT_GAMBLERACE_FAILURE);                                       
                         
-                        if (elapsedtime > (partime+15))
+                        if (elapsedtime > (partime+15) && !CommandLineOptions::Get( CLO_NO_FAIL ))    // nofail: Linux port test option
                         {
                             TimeOutCondition* pTimeOutCondition = new TimeOutCondition();                        
                             pTimeOutCondition->SetViolated(true);
@@ -1722,6 +1729,22 @@ BEGIN_PROFILE("MissionStage Update");
             }
         }    
 
+#ifdef RAD_LINUX
+    // Linux port test option "autopass[<N>]": complete the stage's objective once the stage has run N seconds, so a
+    // test run goes through every stage of a mission (dialogue, cutscenes, new objectives, the mission-complete path)
+    short autoPassSeconds = CommandLineOptions::GetAutoPassSeconds();
+    if( autoPassSeconds > 0 && !mObjective->IsFinished() )
+    {
+        mAutoPassMs += elapsedTime;
+        if( mAutoPassMs >= (unsigned int)autoPassSeconds * 1000 )
+        {
+            fprintf( stderr, "autopass: stage objective (type %d) passed after %d s\n",
+                     (int)mObjective->GetObjectiveType(), (int)autoPassSeconds );
+            mObjective->ForceFinished();
+        }
+    }
+#endif
+
     if( mObjective->IsFinished() )
     {
         mState = STAGE_COMPLETE;
@@ -1738,6 +1761,13 @@ BEGIN_PROFILE("MissionStage Update");
             
             if( mConditions[ i ]->IsViolated() )
             {
+#ifdef RAD_LINUX
+                if( CommandLineOptions::Get( CLO_NO_FAIL ) )
+                {
+                    mConditions[ i ]->SetIsViolated( false );     // Linux port test option "nofail"
+                }
+                else
+#endif
                 mState = STAGE_FAILED;
             }
             else if ( mConditions[ i ]->LeaveInterior() )

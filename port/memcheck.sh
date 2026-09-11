@@ -48,8 +48,10 @@ if [ ! -x "$T/vg/usr/bin/valgrind" ] || [ ! -f "$LDCOPY" ]; then
 fi
 
 ninja -C "$BUILD" -j"$(nproc)" > "$ROOT/port/build.log" 2>&1 || { grep -E "error|FAILED" "$ROOT/port/build.log" | head -20; exit 1; }
-cp "$BUILD/srr2" "$T/srr2"
-LD_LIBRARY_PATH="$T/tools/usr/lib/x86_64-linux-gnu" "$T/tools/usr/bin/patchelf" --set-interpreter "$LDCOPY" "$T/srr2"
+# one copy per run, so several runs (separate SHAR_RUN dirs) can go at once
+GAME="$T/srr2.$$"
+cp "$BUILD/srr2" "$GAME"
+LD_LIBRARY_PATH="$T/tools/usr/lib/x86_64-linux-gnu" "$T/tools/usr/bin/patchelf" --set-interpreter "$LDCOPY" "$GAME"
 
 cd "$RUN"
 set +e
@@ -58,8 +60,9 @@ set +e
 # back and forth starved the drive thread, and Level 1 took over 15 minutes to load instead of ~3.
 VALGRIND_LIB="$T/vg/usr/libexec/valgrind" SDL_AUDIODRIVER=${SDL_AUDIODRIVER:-dummy} \
 timeout -s INT "$SECS" "$T/vg/usr/bin/valgrind" --tool=memcheck --error-limit=no --num-callers=24 --track-origins=yes --fair-sched=yes \
-    --leak-check=no --soname-synonyms=somalloc=nouserintercepts $VG_OPTS --log-file="$RUN/memcheck.log" "$T/srr2" "$@" \
+    --leak-check=no --soname-synonyms=somalloc=nouserintercepts $VG_OPTS --log-file="$RUN/memcheck.log" "$GAME" "$@" \
     > "$RUN/memcheck.out" 2>&1
+rm -f "$GAME"
 python3 "$ROOT/port/memcheck_summary.py" "$RUN/memcheck.log" > "$RUN/memcheck.txt"
 grep "^###" "$RUN/memcheck.txt" | cut -c1-200
 echo "summary: $RUN/memcheck.txt   raw: $RUN/memcheck.log"

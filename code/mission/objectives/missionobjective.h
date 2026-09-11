@@ -120,6 +120,9 @@ public:
     void Finalize();
 
     bool IsFinished() { return ( mbFinished ); }
+#ifdef RAD_LINUX
+    void ForceFinished() { mbFinished = true; }    // Linux port: the autopass test option
+#endif
 	void Update( unsigned int elapsedTime );
 
 	virtual void HandleEvent( EventEnum id, void* pEventData );

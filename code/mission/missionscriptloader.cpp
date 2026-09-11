@@ -1168,7 +1168,7 @@ MEMTRACK_POP_GROUP( "Mission" );
         {
             //problems adding the streetrace to the charactersheet
             //rAssert(0);
-            rReleasePrintf("Warning: Could NOT add %S into the CharacterSheet, All 3 StreetRace Slots are Full, Double Check this Mission's Name\n",spInstance->mpMission->GetName());
+            rReleasePrintf("Warning: Could NOT add %s into the CharacterSheet, All 3 StreetRace Slots are Full, Double Check this Mission's Name\n",spInstance->mpMission->GetName()); // Linux port: %s (was %S: a wide string)
         }
     }
 

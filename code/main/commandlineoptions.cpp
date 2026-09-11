@@ -48,6 +48,7 @@ short CommandLineOptions::s_defaultLevel = 0;
 short CommandLineOptions::s_defaultMission = 0;
 short CommandLineOptions::s_defaultRace = -1;
 short CommandLineOptions::s_defaultTeleport = -1;
+short CommandLineOptions::s_autoPassSeconds = 0;
 
 //******************************************************************************
 //
@@ -231,6 +232,10 @@ void CommandLineOptions::HandleOption( const char* const optionIn )
     {
         orValue <<= CLO_UNLOCK_BONUS;
     }
+    else if( strcmp( strupr(option), "NOFAIL" ) == 0 )
+    {
+        orValue <<= CLO_NO_FAIL;
+    }
     else if( strcmp( strupr(option), "INCAR" ) == 0 )
     {
         orValue <<= CLO_START_IN_CAR;
@@ -363,6 +368,11 @@ void CommandLineOptions::HandleOption( const char* const optionIn )
              option[ 2 ] >= '1' && option[ 2 ] <= '9' )
     {
         s_defaultTeleport = (short)( atoi( option + 2 ) - 1 );     // "tp<N>", more than one digit
+        optionFound = false;
+    }
+    else if( strncmp( strupr( option ), "AUTOPASS", 8 ) == 0 )
+    {
+        s_autoPassSeconds = (short)( option[ 8 ] != '\0' ? atoi( option + 8 ) : 30 );     // "autopass[<N>]"
         optionFound = false;
     }
 #endif

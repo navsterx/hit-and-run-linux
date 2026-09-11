@@ -86,6 +86,7 @@ enum CmdLineOptionEnum
     CLO_START_IN_CAR,       // Linux port: with skipfe, seat the player in the mission's car once the level is up
     CLO_RUNTIME_DEMO,       // Linux port: with skipfe, run level l<N>'s attract demo (AI drives the car), no time limit
     CLO_UNLOCK_BONUS,       // Linux port: Bonus Game and all its tracks selectable without completed card decks
+    CLO_NO_FAIL,            // Linux port test option: mission conditions never fail a stage, the mission timer stops at 0
 
     NUM_CLO             // Must not exceed 64
 };
@@ -121,6 +122,9 @@ class CommandLineOptions
         // Linux port: "tp<N>" with skipfe: teleport the player to the level's teleport destination N (the
         // AddTeleportDest list in the level's level.mfk, from 1) once the level is up
         inline static short GetDefaultTeleport() { return s_defaultTeleport; }
+        // Linux port test option: "autopass[<N>]": each mission stage counts as completed once it has run N seconds
+        // of game time (default 30), so the mission goes through all its stages; 0 = off
+        inline static short GetAutoPassSeconds() { return s_autoPassSeconds; }
 
     private:
 
@@ -136,6 +140,7 @@ class CommandLineOptions
         static short s_defaultMission;
         static short s_defaultRace;
         static short s_defaultTeleport;
+        static short s_autoPassSeconds;
 
 };
 

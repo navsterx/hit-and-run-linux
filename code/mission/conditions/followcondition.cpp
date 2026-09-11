@@ -67,7 +67,8 @@
 //==============================================================================
 FollowCondition::FollowCondition() :
     mMinDistance( 0.0f ),
-    mMaxDistance( 0.0f )
+    mMaxDistance( 0.0f ),
+    muTime( 0 )     // uninit fix (Linux port): Update adds to it before anything sets it
 {
     this->SetType( COND_FOLLOW_DISTANCE );
 }

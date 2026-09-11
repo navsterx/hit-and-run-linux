@@ -474,6 +474,9 @@ private:
     int mRaceEnteryFee;
     bool mbPutPlayerInCar;
     bool mbRacePaidOut;
+#ifdef RAD_LINUX
+    unsigned int mAutoPassMs;       // game time this stage has run, for the autopass test option
+#endif
 
 
     //Chuck: Variables for Forced car clean up
