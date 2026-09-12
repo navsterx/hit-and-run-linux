@@ -63,6 +63,9 @@ class AnimEntityDSGManager : public EventListener
         static AnimEntityDSGManager* CreateInstance();
         static AnimEntityDSGManager* GetInstance();
         static void DestroyInstance();
+#ifdef RAD_LINUX
+        static bool Exists() { return spInstance != NULL; }
+#endif
 
         void Add( AnimCollisionEntityDSG* );
 		void Add( AnimEntityDSG* );

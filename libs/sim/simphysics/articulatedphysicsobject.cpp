@@ -321,6 +321,7 @@ void ArticulatedPhysicsObject::SetClone(ArticulatedPhysicsObject* clone, SimStat
     clone->mAllCacheEmpty = true;
     clone->mImpulseReactionEnabled = mImpulseReactionEnabled; // uninit fix (Linux port): never copied
     mTimeStep = 0;
+    clone->mTimeStep = 0; // uninit fix (Linux port): the line above zeroes the source's; joints read it before the first Update
 }
 
 void ArticulatedPhysicsObject::Update(float inDt)

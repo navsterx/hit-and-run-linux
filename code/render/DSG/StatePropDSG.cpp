@@ -103,6 +103,10 @@ m_SimAnimJoint( -1 )
 StatePropDSG::~StatePropDSG()
 {
     CLASSTRACKER_DESTROY( StatePropDSG );
+#ifdef RAD_LINUX
+    // Linux port: props a mission left in Pure3D's inventory are freed at the very end of shutdown, after the manager
+    if( AnimEntityDSGManager::Exists() )
+#endif
     GetAnimEntityDSGManager()->Remove( this );
     delete mpProcAnimator;
     mpProcAnimator = 0;

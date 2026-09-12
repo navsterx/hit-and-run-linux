@@ -138,6 +138,7 @@ MissionStage::MissionStage() :
     mSecondSpeakerUID( 0 ),
     mAllowMissionAbort( true )
 {
+    mbSwapInDefaultCar = false;     // uninit fix (Linux port): only ever set to true; DoTransition reads it
 #ifdef RAD_DEBUG
     static int count = 0;
     m_Id = count;
