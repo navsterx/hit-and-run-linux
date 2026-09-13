@@ -81,7 +81,7 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 ## To do
 
 ### Verification (playing the game)
-- [ ] **Full playthrough** of all seven levels: missions and cutscenes
+- [ ] **Full playthrough** of all seven levels: missions and cutscenes (in progress: Levels 1-2 done, smooth; on Level 3)
 - [ ] **Bonus game** (Itchy & Scratchy racing) with 2-4 pads
 - [ ] **Street races, wager races and time trials** in every level
 - [ ] **French, German and Spanish**

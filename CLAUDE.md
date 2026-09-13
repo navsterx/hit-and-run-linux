@@ -388,7 +388,8 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
 The base game is feature-complete but not yet verified end to end. In order:
 
 1. **Verify the base game** (user plays; Claude does not script gameplay it can't see): a full playthrough of all
-   seven levels. Save -> quit -> load verified by the user (2026-10-19; saving from a `skipfe` session works since
+   seven levels. In progress (2026-10-20, the user on the Intel laptop): every mission of Levels 1-2 played, smooth,
+   now on Level 3. Save -> quit -> load verified by the user (2026-10-19; saving from a `skipfe` session works since
    2026-10-17: on PC only the front end's memory card check selected the save drive). Riskiest left: the bonus game (Itchy &
    Scratchy racing) with 2-4 pads, street/wager races and time trials, later levels' missions and cutscenes, French/German/Spanish.
 2. **Memcheck coverage** (Claude, unattended; each pass has found real bugs): one mission per level done with
