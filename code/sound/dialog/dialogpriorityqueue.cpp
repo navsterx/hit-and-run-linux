@@ -18,6 +18,8 @@
 // System Includes
 //========================================
 #include <radtime.hpp>
+#include <stdio.h>
+#include <stdlib.h>
 #include <radnamespace.hpp>
 
 //========================================
@@ -178,6 +180,13 @@ void DialogPriorityQueue::AddDialogToQueue( SelectableDialog& dialog, rmt::Vecto
             // Stick it in the list
             //
             queueElement->AddToQueue( &m_dialogQueue, posn );
+#ifdef RAD_LINUX
+            if( getenv( "SHAR_DIALOG_LOG" ) != NULL )
+            {
+                fprintf( stderr, "dialog: waiting (%s playing, %d queued)\n", m_nowPlaying != NULL ? "one" : "none",
+                         static_cast<int>( m_dialogQueue.size() ) );
+            }
+#endif
         }
     }
 
@@ -371,6 +380,12 @@ void DialogPriorityQueue::OnDialogComplete()
     //
 #ifdef DEBUG_QUEUE_REFCOUNT
     rTunePrintf( "OnDialogComplete %x: Count %d\n", m_nowPlaying, m_nowPlaying->GetRefCount() );
+#endif
+#ifdef RAD_LINUX
+    if( getenv( "SHAR_DIALOG_LOG" ) != NULL )
+    {
+        fprintf( stderr, "dialog: complete (%d queued)\n", static_cast<int>( m_dialogQueue.size() ) );
+    }
 #endif
     m_nowPlaying->Release();
     if( !m_dialogQueue.empty() && m_permitQueueAdvance )

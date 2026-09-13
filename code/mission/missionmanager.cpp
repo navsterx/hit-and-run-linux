@@ -640,6 +640,12 @@ MEMTRACK_PUSH_GROUP( "MissionManager - Loading" );
 #endif
                )
             {
+#ifdef RAD_LINUX
+                if( CommandLineOptions::GetAutoPassSeconds() > 0 )
+                {
+                    fprintf( stderr, "autopass: mission %s starts\n", mission->GetName() );
+                }
+#endif
                 //HeapMgr()->PushHeap (GMA_LEVEL_ZONE);   // Is this the right one??  -- jdy
                 mission->InitDynaLoad();
                 //HeapMgr()->PopHeap ();

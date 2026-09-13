@@ -459,6 +459,9 @@ The base game is feature-complete but not yet verified end to end. In order:
    tunnels, sewers, mansion, power-plant rooms, ...) arrive through the effect's setters, its fades through the
    system aux gain (which DirectSound's HAL ignored). `SHAR_REVERB=0` off, `SHAR_REVERB_LOG=1` logs presets/fades.
    Test without speakers: `SDL_AUDIODRIVER=disk SDL_DISKAUDIOFILE=out.raw` (float32 stereo, 48 kHz).
+   `SHAR_DIALOG_LOG=1` logs dialogue lines played/queued/completed (file keys: radMakeCaseInsensitiveKey32 of the
+   name inside dialog.rcf, e.g. `marge\\w_mstart_mrg_03.rsd`), `SHAR_RSD_LOG=1` each .rsd opened (encoding 5 = RADP)
+   and each RADP read's peak level.
 3. (done 2026-10-13) Movies: Bink via FFmpeg, see platform model. Clock is wall time; audio decoded ~0.5 s ahead.
 4. (done 2026-10-15) Gamepad rumble: `sdlcontroller.cpp` gives pads the "LeftMotor"/"RightMotor" output points
    `RumbleEffect` wants (DirectInput never had them: retail PC gamepads never rumbled), sent with

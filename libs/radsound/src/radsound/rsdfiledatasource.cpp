@@ -427,6 +427,14 @@ void radSoundRsdFileDataSource::_StateReadingHeader( void )
 	m_StateInfo.m_ReadingHeaderInfo.m_pRadSoundHalFileHeader->InitializeAudioFormat(
 		refFileFormat, GetThisAllocator( ) );
 
+#ifdef RAD_LINUX
+    if ( getenv( "SHAR_RSD_LOG" ) != NULL )
+    {
+        fprintf( stderr, "rsd: %s enc %d rate %d ch %d client %d\n", fileName, (int) refFileFormat->GetEncoding( ),
+            (int) refFileFormat->GetSampleRate( ), (int) refFileFormat->GetNumberOfChannels( ),
+            m_refIRadSoundHalAudioFormat == NULL ? -1 : (int) m_refIRadSoundHalAudioFormat->GetEncoding( ) );
+    }
+#endif
     if ( m_refIRadSoundHalAudioFormat == NULL )
     {
         m_refIRadSoundHalAudioFormat = refFileFormat;
@@ -584,6 +592,19 @@ void radSoundRsdFileDataSource::DecodeReadBlocks( void )
         m_CarryFrames = RADICAL_ADPCM_SAMPLES_PER_FRAME - partial;
     }
 
+#ifdef RAD_LINUX
+    if ( getenv( "SHAR_RSD_LOG" ) != NULL )
+    {
+        int peak = 0;
+        const short* s = (const short*) m_pDecodeDest;
+        for ( unsigned int i = 0; i < m_DecodeFrames * m_Channels; i++ )
+        {
+            int v = s[ i ] < 0 ? -s[ i ] : s[ i ];
+            if ( v > peak ) peak = v;
+        }
+        fprintf( stderr, "rsd: %s decoded %u frames, peak %d\n", fileName, m_DecodeFrames, peak );
+    }
+#endif
     m_DecodeFrames = 0;
 }
 

@@ -33,6 +33,32 @@
 #ifdef RAD_LINUX
 #include <shar_mods.h>
 #include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifdef RAD_LINUX
+static bool shar_DialogLog()
+{
+    static int s_log = -1;
+    if( s_log < 0 )
+    {
+        const char* env = getenv( "SHAR_DIALOG_LOG" );
+        s_log = ( env != NULL && env[0] != '0' ) ? 1 : 0;
+    }
+    return s_log != 0;
+}
+
+static void shar_LogDialogLine( const char* what, IDaSoundResource* resource )
+{
+    if( shar_DialogLog() )
+    {
+        char buffer[256];
+        resource->GetFileKeyAt( 0, buffer, 256 ); // names are keys once resources are locked down
+        fprintf( stderr, "dialog: %s %s\n", what, buffer );
+    }
+}
+#endif
+
 #endif
 
 //******************************************************************************
@@ -251,6 +277,9 @@ void DialogLine::PlayLine( unsigned int lineIndex,
                            SimpsonsSoundPlayer& player,
                            SimpsonsSoundPlayerCallback* callback )
 {
+#ifdef RAD_LINUX
+    shar_LogDialogLine( "play", m_resource );
+#endif
     player.PlayResource( m_resource, callback );
 }
 
@@ -267,6 +296,9 @@ void DialogLine::PlayLine( unsigned int lineIndex,
 //=============================================================================
 void DialogLine::QueueLine( unsigned int lineIndex, SimpsonsSoundPlayer& player )
 {
+#ifdef RAD_LINUX
+    shar_LogDialogLine( "queue", m_resource );
+#endif
     player.QueueSound( m_resource );
 }
 
