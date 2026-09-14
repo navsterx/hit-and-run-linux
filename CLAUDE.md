@@ -514,7 +514,11 @@ The base game is feature-complete but not yet verified end to end. In order:
    mTimeStep (the original zeroed the source's), and a shutdown crash (~StatePropDSG after AnimEntityDSGManager was
    destroyed: props a mission left in Pure3D's inventory; L3/L7 autopass + quit ASan clean after). Under memcheck a
    mission transition can show black for ~5 min; it recovers. Only stage 1 of each mission is in a fully loaded
-   world (see autopass).
+   world (see autopass). Remaining missions (2026-10-20, chained from M2 with `autopass15`, 75 min per run): L1 M2-7,
+   L2 M2-7, L4 M2-7 complete, L3 M2-5; L5-L7 not yet (paused). One fix (RoadManager::FindPathElementsBetween's
+   closest points, L4 race) and two crashes: autopass ran InitDynaLoad on a mission without a DYNALOAD locator
+   (L2 m8sd; autopass now skips those), and SwapInDefaultCarStart took a missing current car == missing forced car
+   (NULL == NULL) for a forced car, then dereferenced it when the default car loaded (L3 M5; guarded).
 9. (done 2026-10-14) Widescreen verified by the user: scales correctly at all ratios, including extreme ones.
    Borderless fullscreen and the runtime resolution list added the same day.
 10. (in progress 2026-10-15) Mods: Futurama: Hit & Run demo 0.1.3 drives in Level 1; the car shop (seller,

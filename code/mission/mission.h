@@ -110,6 +110,9 @@ public:
     void Reset( bool JumpStage = false );
     void ResetPlayer();
     void InitDynaLoad();
+#ifdef RAD_LINUX
+    bool HasDynaLoad() const { return mDynaloadLoc != NULL; }
+#endif
 
     bool DialogueCharactersTeleported();
 

@@ -2346,7 +2346,10 @@ void MissionStage::SwapInDefaultCarStart()
     
     //check if car is a forced car
 
-    if (pVehicle == GetGameplayManager()->mVehicleSlots[GameplayManager::eOtherCar].mp_vehicle )
+    // Linux port: not with no current car and no forced car (NULL == NULL): the load's completion
+    // (OnProcessRequestsComplete) then dereferenced the missing forced car. Seen with autopass under memcheck,
+    // the stage passed before the mission's forced car had loaded.
+    if (pVehicle != NULL && pVehicle == GetGameplayManager()->mVehicleSlots[GameplayManager::eOtherCar].mp_vehicle )
     {        
         //check if the player is in a car
         if (pCharacter->IsInCarOrGettingInOut() == true )

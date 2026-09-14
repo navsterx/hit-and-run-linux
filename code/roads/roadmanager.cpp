@@ -1027,14 +1027,15 @@ float RoadManager::FindPathElementsBetween(
             // whoa, these roads are connecting the same intersections! 
             // figure out how far we really are from last road... 
 
-            rmt::Vector closestPtOnSrc;
+            rmt::Vector closestPtOnSrc( 0.0f, 0.0f, 0.0f ); // uninit fix (Linux port): FindClosestPointOnRoad sets it only
+                                                           // when a segment is nearer than NEAR_INFINITY; read as a position below
             float distFromClosestPtOnSrcSqr = NEAR_INFINITY;
             int closestSrcSegIndex = -1;
 
             FindClosestPointOnRoad( srcRoad, sourcePos, closestPtOnSrc, 
                 distFromClosestPtOnSrcSqr, closestSrcSegIndex );
 
-            rmt::Vector closestPtOnTarg;
+            rmt::Vector closestPtOnTarg( 0.0f, 0.0f, 0.0f ); // uninit fix (Linux port): as closestPtOnSrc
             float distFromClosestPtOnTargSqr = NEAR_INFINITY;
             int closestTargSegIndex = -1;
 

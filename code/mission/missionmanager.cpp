@@ -633,10 +633,11 @@ MEMTRACK_PUSH_GROUP( "MissionManager - Loading" );
             }
 
             // Linux port: with the autopass test option, also on a mission's first start: nobody walked or drove to
-            // its start, which is what streams that part of the world in otherwise
+            // its start, which is what streams that part of the world in otherwise (if it has a DYNALOAD locator:
+            // some missions, e.g. L2's m8sd, do not, and a restart never needed one there)
             if ( mResetting
 #ifdef RAD_LINUX
-                 || CommandLineOptions::GetAutoPassSeconds() > 0
+                 || ( CommandLineOptions::GetAutoPassSeconds() > 0 && mission->HasDynaLoad() )
 #endif
                )
             {

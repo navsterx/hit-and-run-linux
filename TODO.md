@@ -89,7 +89,8 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 ### Memory checking
 - [x] The bonus game (2026-10-20, 64-bit: menus, a 3-lap AI race, standings; one fix: WorldScene view vector)
 - [x] Later levels' missions: one per level, every stage via `autopass` (2026-10-20; 5 fixes)
-- [ ] The other missions of each level
+- [ ] The other missions of each level (L1, L2, L4 M2-7 and L3 M2-5 done 2026-10-20, 1 fix + 2 crashes fixed;
+  L3 M6-7, L5-L7 and L7 M2 left)
 
 ### Robustness
 - [ ] Shutdown paths: closing the window in every context. Release and debug builds swept with `SHAR_QUIT_AT` (boot,
