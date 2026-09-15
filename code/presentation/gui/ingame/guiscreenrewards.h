@@ -107,6 +107,14 @@ protected:
                              Reward* pReward,
                              bool isSorted = false );
 
+#ifdef RAD_LINUX
+    int ApplyModShop( PreviewObject* previewObjects,
+                      int numPreviewObjects,
+                      int maxPreviewObjects,
+                      int shopKind,
+                      const char* skipName );
+#endif
+
     virtual void OnUpdate( unsigned int elapsedTime );
 
     void SetLightOpening( float amount ); // 0.0f <= amount <= 1.0f
@@ -120,7 +128,11 @@ protected:
     void UpdateVehicleStats();
 
     static const int MAX_NUM_PREVIEW_VEHICLES = 64;
+#ifdef RAD_LINUX
+    static const int MAX_NUM_PREVIEW_CLOTHING = 16; // room for mods' free skins (CustomShopSupport)
+#else
     static const int MAX_NUM_PREVIEW_CLOTHING = 4;
+#endif
 
     CGuiMenu* m_pRewardsMenu;
 

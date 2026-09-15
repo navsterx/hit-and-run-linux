@@ -495,6 +495,7 @@ void GameplayContext::OnUpdate( unsigned int elapsedTime )
                 else
                 {
                     fprintf( stderr, "tp: the level has %u teleport destinations\n", CharacterManager::GetNumTeleportDests() );
+                    s_relocateWait = 2000; // SHAR_TP_POS still applies (a point in the zones already loaded)
                 }
             }
         }

@@ -16,6 +16,9 @@
 // Includes
 //===========================================================================
 #include <presentation/gui/ingame/guiscreenphonebooth.h>
+#ifdef RAD_LINUX
+#include <shar_modshops.h>
+#endif
 #include <presentation/gui/ingame/guiscreenhud.h>
 #include <presentation/gui/utility/specialfx.h>
 #include <presentation/gui/guimenu.h>
@@ -1009,6 +1012,13 @@ CGuiScreenPhoneBooth::InitMenu()
                                                               true );
         }
     }
+
+#ifdef RAD_LINUX
+    // Mod Launcher CustomShopSupport <PhoneBooth> for this booth: included/excluded/free cars, HideLocked
+    //
+    m_numPreviewVehicles = this->ApplyModShop( m_previewVehicles, m_numPreviewVehicles, MAX_NUM_PREVIEW_VEHICLES - 1,
+                                               SHAR_SHOP_PHONE_BOOTH, NULL );
+#endif
 
     rAssertMsg( m_numPreviewVehicles > 0, "No vehicle selections!" );
 

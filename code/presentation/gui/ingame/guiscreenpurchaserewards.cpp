@@ -16,6 +16,9 @@
 // Includes
 //===========================================================================
 #include <presentation/gui/ingame/guiscreenpurchaserewards.h>
+#ifdef RAD_LINUX
+#include <shar_modshops.h>
+#endif
 #include <presentation/gui/ingame/guimanageringame.h>
 #include <presentation/gui/ingame/guiscreenhud.h>
 #include <presentation/gui/ingame/hudevents/hudcoincollected.h>
@@ -793,6 +796,13 @@ CGuiScreenPurchaseRewards::InitMenu()
                                                                       pReward );
                 }
             }
+
+#ifdef RAD_LINUX
+            // Mod Launcher CustomShopSupport <SkinShop> for this shop: included/excluded/free skins
+            //
+            m_numPreviewClothing = this->ApplyModShop( m_previewClothing, m_numPreviewClothing, MAX_NUM_PREVIEW_CLOTHING,
+                                                       SHAR_SHOP_SKIN, currentSkinName );
+#endif
 
             if( GetCheatInputSystem()->IsCheatEnabled( CHEAT_ID_UNLOCK_SKINS ) )
             {

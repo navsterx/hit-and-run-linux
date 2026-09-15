@@ -39,6 +39,8 @@
 #include <string.h>
 #ifdef RAD_LINUX
 #include <shar_mods.h>
+#include <shar_modshops.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
 #endif
@@ -169,6 +171,151 @@ PhoneBoothStars::SetNumStars( float numStars )
     }
 }
 
+
+#ifdef RAD_LINUX
+//===========================================================================
+// IGuiScreenRewards::ApplyModShop
+//===========================================================================
+// Description: Mod Launcher CustomShopSupport <PhoneBooth> / <SkinShop> (port/compat/shar_modshops.h) for the
+//              booth or shop whose menu this is: drops the game's items an IncludedItems list leaves out or
+//              ExcludedItems names, adds the FreeItems (always unlocked; skipName, the skin being worn, is left
+//              out) and, with HideLocked, drops locked items while one is unlocked. A list left empty keeps the
+//              game's own (the screens assert on an empty menu).
+//
+// Return:      the new number of preview objects
+//
+//===========================================================================
+int
+IGuiScreenRewards::ApplyModShop( PreviewObject* previewObjects,
+                                 int numPreviewObjects,
+                                 int maxPreviewObjects,
+                                 int shopKind,
+                                 const char* skipName )
+{
+    const SharShop* shop = shar_ModShop( shopKind,
+                                         GetGameplayManager()->GetCurrentLevelIndex() + 1,
+                                         shar_ModShopCurrent( shopKind ) );
+    if( shop == NULL )
+    {
+        return numPreviewObjects;
+    }
+
+    PreviewObject original[ MAX_NUM_PREVIEW_VEHICLES ];
+    rAssert( numPreviewObjects <= MAX_NUM_PREVIEW_VEHICLES );
+    memcpy( original, previewObjects, numPreviewObjects * sizeof( PreviewObject ) );
+    const int numOriginal = numPreviewObjects;
+
+    int kept = 0;
+    for( int i = 0; i < numPreviewObjects; i++ )
+    {
+        const char* name = previewObjects[ i ].name;
+        if( ( shop->hasIncluded && !shar_ModShopHas( shop->included, shop->numIncluded, name ) ) ||
+            shar_ModShopHas( shop->excluded, shop->numExcluded, name ) ||
+            shar_ModShopHas( shop->free, shop->numFree, name ) )
+        {
+            continue;
+        }
+        if( kept != i )
+        {
+            previewObjects[ kept ] = previewObjects[ i ];
+        }
+        kept++;
+    }
+    numPreviewObjects = kept;
+
+    // the free items, as unlocked copies of the game's reward of that name where there is one (its file, repair
+    // cost and quest type: bonus-mission cars get their driver's dialogue)
+    //
+    static Reward s_freeRewards[ 2 ][ SHAR_SHOP_MAX_ITEMS ];
+    for( int i = 0; i < shop->numFree && numPreviewObjects < maxPreviewObjects; i++ )
+    {
+        const SharShopItem& item = shop->free[ i ];
+        if( skipName != NULL && strcasecmp( item.name, skipName ) == 0 )
+        {
+            continue;
+        }
+
+        Reward* gameReward = NULL;
+        RewardsManager* rm = GetRewardsManager();
+        for( int level = 0; level < RenderEnums::numLevels && gameReward == NULL; level++ )
+        {
+            for( int q = Reward::eBlank + 1; q < Reward::NUM_QUESTS && gameReward == NULL; q++ )
+            {
+                Reward* r = rm->GetReward( level, static_cast< Reward::eQuestType >( q ) );
+                if( r != NULL && strcasecmp( r->GetName(), item.name ) == 0 )
+                {
+                    gameReward = r;
+                }
+            }
+            for( int s = Merchandise::SELLER_INTERIOR; s <= Merchandise::SELLER_GIL && gameReward == NULL; s++ )
+            {
+                Merchandise::eSellerType seller = static_cast< Merchandise::eSellerType >( s );
+                for( Merchandise* m = rm->FindFirstMerchandise( level, seller ); m != NULL; m = rm->FindNextMerchandise( level, seller ) )
+                {
+                    if( strcasecmp( m->GetName(), item.name ) == 0 )
+                    {
+                        gameReward = m;
+                        break;
+                    }
+                }
+            }
+        }
+
+        Reward& reward = s_freeRewards[ shopKind ][ i ];
+        char buffer[ 128 ];
+        strncpy( buffer, item.name, 15 );
+        buffer[ 15 ] = '\0';
+        reward.SetName( buffer );
+        if( item.path[ 0 ] != '\0' )
+        {
+            strncpy( buffer, item.path, 63 );
+        }
+        else if( gameReward != NULL )
+        {
+            strncpy( buffer, gameReward->GetFile(), 63 );
+        }
+        else
+        {
+            snprintf( buffer, sizeof( buffer ), shopKind == SHAR_SHOP_PHONE_BOOTH ? "art\\cars\\%s.p3d" : "art\\chars\\%s_m.p3d", item.name );
+        }
+        buffer[ 63 ] = '\0';
+        reward.SetFilename( buffer );
+        reward.SetLevel( gameReward != NULL ? gameReward->GetLevel() : GetGameplayManager()->GetCurrentLevelIndex() );
+        reward.SetRewardType( gameReward != NULL ? gameReward->GetRewardType() :
+                              shopKind == SHAR_SHOP_PHONE_BOOTH ? Reward::ALT_PLAYERCAR : Reward::ALT_SKIN_OTHER );
+        reward.SetQuestType( gameReward != NULL ? gameReward->GetQuestType() : Reward::eBlank );
+        reward.SetRepairCost( item.repairCost >= 0 ? item.repairCost : gameReward != NULL ? gameReward->GetRepairCost() : 0 );
+        reward.UnlockReward();
+
+        numPreviewObjects = this->InsertPreviewObject( previewObjects, numPreviewObjects, &reward,
+                                                       shopKind == SHAR_SHOP_PHONE_BOOTH );
+    }
+
+    if( shop->hideLocked )
+    {
+        int numUnlocked = 0;
+        for( int i = 0; i < numPreviewObjects; i++ )
+        {
+            if( previewObjects[ i ].isUnlocked )
+            {
+                previewObjects[ numUnlocked++ ] = previewObjects[ i ];
+            }
+        }
+        if( numUnlocked > 0 )
+        {
+            numPreviewObjects = numUnlocked;
+        }
+    }
+
+    if( numPreviewObjects == 0 )
+    {
+        memcpy( previewObjects, original, numOriginal * sizeof( PreviewObject ) );
+        numPreviewObjects = numOriginal;
+    }
+
+    return numPreviewObjects;
+}
+#endif
 
 //===========================================================================
 // IGuiScreenRewards::
