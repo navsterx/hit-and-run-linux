@@ -236,7 +236,11 @@ void daSoundFileInstance::UnLoad( void )
         }
         else if ( Loaded == m_State )
         {
+#ifdef RAD_LINUX
+            if ( m_pSoundClip != NULL )     // NULL when the clip failed to load (SoundNucleusServiceClipLoad)
+#else
             rAssert( m_pSoundClip != NULL );
+#endif
             m_pSoundClip->Release( );
             m_pSoundClip = NULL;
         }

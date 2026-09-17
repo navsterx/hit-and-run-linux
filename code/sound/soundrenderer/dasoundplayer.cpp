@@ -16,6 +16,8 @@
 // Included Files
 //=============================================================================
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <radobject.hpp>
 #include <raddebug.hpp>
 #include <radlinkedclass.hpp>
@@ -111,6 +113,9 @@ daSoundClipStreamPlayer::daSoundClipStreamPlayer( )
     m_CueingState( CueingState_Null ),
     m_CaptureCount( 0 ),
     m_PauseCount( 0 ),
+#ifdef RAD_LINUX
+    m_LogFrames( 0 ),
+#endif
     m_pAllocatedResource( NULL ),
     m_AllocResInstanceID( 0 ),
     m_pResource( NULL ),
@@ -282,7 +287,9 @@ void daSoundClipStreamPlayer::UpdateClip( void )
             }
             switch( state )
             {
+#ifndef RAD_LINUX
                 case IRadSoundClipPlayer::NoClip:
+#endif
                 case IRadSoundClipPlayer::Queueing:
                 case IRadSoundClipPlayer::QueuedPlay:
                     rAssert( false );
@@ -290,6 +297,9 @@ void daSoundClipStreamPlayer::UpdateClip( void )
                 case IRadSoundClipPlayer::Playing:
                     rAssert( 0 == m_PauseCount );
                     break;
+#ifdef RAD_LINUX
+                case IRadSoundClipPlayer::NoClip:   // the clip failed to load (SoundNucleusServiceClipLoad): done at once
+#endif
                 case IRadSoundClipPlayer::Stopped:
                     if( m_PauseCount == 0 )
                     {
@@ -355,6 +365,32 @@ void daSoundClipStreamPlayer::UpdateStream( void )
     {
         state = IRadSoundStreamPlayer::NoSource;    
     }
+
+#ifdef RAD_LINUX
+    // SHAR_SOUND_LOG=1: report a stream that has been cueing or playing for a long time (Linux port diagnostics)
+    {
+        static int logOn = -1;
+        if( logOn < 0 ) { const char* e = getenv( "SHAR_SOUND_LOG" ); logOn = ( e != NULL && *e != '\0' && *e != '0' ) ? 1 : 0; }
+        if( logOn == 1 && ( m_State == State_Cueing || m_State == State_CuedPlay || m_State == State_Playing ) )
+        {
+            if( ++m_LogFrames % 300 == 0 )
+            {
+                char name[ 256 ] = "?";
+                int fileState = -1;
+                daSoundFileInstance* fi = ( m_pAllocatedResource != NULL ) ? m_pAllocatedResource->GetFileInstance( m_AllocResInstanceID ) : NULL;
+                if( fi != NULL ) { fi->GetFileName( name, sizeof( name ) ); fileState = (int) fi->GetState( ); }
+                fprintf( stderr, "soundlog: stream %p: state %d cueing %d, stream player %d, file '%s' state %d, rsd source %d, pause %u, %u frames\n",
+                         (void*) this, (int) m_State, (int) m_CueingState, (int) state, name, fileState,
+                         m_StreamInfo.m_pRsdFileDataSource ? (int) m_StreamInfo.m_pRsdFileDataSource->GetState( ) : -1,
+                         m_PauseCount, m_LogFrames );
+            }
+        }
+        else
+        {
+            m_LogFrames = 0;
+        }
+    }
+#endif
     
     switch( m_State )
     {
@@ -1133,7 +1169,9 @@ void daSoundClipStreamPlayer::HookUpAndCuePlayer( void )
         case IDaSoundResource::CLIP:
         {
             IRadSoundClip * pClip = pFileInstance->GetSoundClip( );
-            rAssert( NULL != pClip );
+#ifndef RAD_LINUX
+            rAssert( NULL != pClip );   // Linux: NULL when the clip failed to load; the player then has NoClip
+#endif
             
             // Attach the clip to the player
             m_ClipInfo.m_pClipPlayer->SetClip( pClip );

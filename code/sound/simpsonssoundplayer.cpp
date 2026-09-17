@@ -52,6 +52,28 @@ SoundLoader* SimpsonsSoundPlayer::s_soundLoader = NULL;
 static const unsigned int s_maxActiveClipPlayersAllowed = 25;
 static const unsigned int s_maxActiveStreamPlayersAllowed = 8;
 
+#ifdef RAD_LINUX
+#include <stdio.h>
+#include <stdlib.h>
+// SHAR_SOUND_LOG=1: log plays the game refuses (Linux port diagnostics)
+static bool SoundLogOn()
+{
+    static int on = -1;
+    if( on < 0 ) { const char* e = getenv( "SHAR_SOUND_LOG" ); on = ( e != NULL && *e != '\0' && *e != '0' ) ? 1 : 0; }
+    return( on == 1 );
+}
+#define SOUND_LOG( ... ) do { if( SoundLogOn() ) { fprintf( stderr, "soundlog: " __VA_ARGS__ ); } } while( 0 )
+
+void SimpsonsSoundPlayer::LogStats( bool managerMuted )
+{
+    SOUND_LOG( "players created %u, clip players in use %u/%u, stream players in use %u/%u\n", s_playersCreated,
+               s_clipPlayersInUse, s_maxActiveClipPlayersAllowed, s_streamPlayersInUse, s_maxActiveStreamPlayersAllowed );
+    if( managerMuted ) SOUND_LOG( "sound manager muted\n" );
+}
+#else
+#define SOUND_LOG( ... ) do { } while( 0 )
+#endif
+
 //******************************************************************************
 //
 // Public Member Functions
@@ -192,6 +214,7 @@ bool SimpsonsSoundPlayer::PlaySound( Sound::daResourceKey resourceKey,
     else
     {
         rDebugString( "Tried to play missing sound resource\n" );
+        SOUND_LOG( "PlaySound: no resource with key %u\n", (unsigned int) resourceKey );
         retVal = false;
     }
 
@@ -223,6 +246,7 @@ bool SimpsonsSoundPlayer::QueueSound( radKey32 resourceID,
     else
     {
         rDebugPrintf( "Couldn't play sound resource ID %d\n", resourceID );
+        SOUND_LOG( "QueueSound: no resource with key %u\n", (unsigned int) resourceID );
         return( false );
     }
 }
@@ -246,6 +270,7 @@ bool SimpsonsSoundPlayer::QueueSound( IDaSoundResource* resource,
     if( m_playa != NULL )
     {
         rDebugString( "Dropped sound, player busy\n" );
+        SOUND_LOG( "QueueSound: dropped, player %p busy\n", (void*) this );
         return( false );
     }
 
@@ -262,6 +287,7 @@ bool SimpsonsSoundPlayer::QueueSound( IDaSoundResource* resource,
         else
         {
             rAssertMsg( false, "Reached maximum allowable number of clip players\n" );
+            SOUND_LOG( "QueueSound: dropped, clip players all in use (%u)\n", s_clipPlayersInUse );
             return( false );
         }
     }
@@ -276,6 +302,7 @@ bool SimpsonsSoundPlayer::QueueSound( IDaSoundResource* resource,
         else
         {
             rAssertMsg( false, "Reached maximum allowable number of stream players\n" );
+            SOUND_LOG( "QueueSound: dropped, stream players all in use (%u)\n", s_streamPlayersInUse );
             return( false );
         }
     }
@@ -528,6 +555,11 @@ void SimpsonsSoundPlayer::dumpSoundPlayer()
     else
     {
         rAssert( m_playa->GetPlayerType() != IDaSoundResource::UNKNOWN );
+        if( m_playa->GetPlayerType() != IDaSoundResource::STREAM || s_streamPlayersInUse == 0 )
+        {
+            SOUND_LOG( "dumpSoundPlayer: player type %d, stream count %u, clip count %u\n",
+                       (int) m_playa->GetPlayerType(), s_streamPlayersInUse, s_clipPlayersInUse );
+        }
         --s_streamPlayersInUse;
     }
     

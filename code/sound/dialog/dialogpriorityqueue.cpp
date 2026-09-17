@@ -35,6 +35,19 @@
 
 #include <memory/srrmemory.h>
 
+#ifdef RAD_LINUX
+#include <stdio.h>
+#include <stdlib.h>
+// SHAR_SOUND_LOG=1: dialogue requests and the queue's state (Linux port diagnostics)
+static bool DialogLogOn()
+{
+    static int on = -1;
+    if( on < 0 ) { const char* e = getenv( "SHAR_SOUND_LOG" ); on = ( e != NULL && *e != '\0' && *e != '0' ) ? 1 : 0; }
+    return( on == 1 );
+}
+static unsigned int s_nowPlayingSince = 0;     // when m_nowPlaying was last set
+#endif
+
 
 //******************************************************************************
 //
@@ -109,6 +122,13 @@ void DialogPriorityQueue::AddDialogToQueue( SelectableDialog& dialog, rmt::Vecto
     // spot in the queue.
     //
     priority = DialogQueueElement::CalculateDialogPriority( dialog );
+#ifdef RAD_LINUX
+    if( DialogLogOn() )
+        fprintf( stderr, "soundlog: dialog: request event %d level %u mission %u lines %u priority %d; now playing %p (%u ms), queued %u%s\n",
+                 (int) dialog.GetEvent(), dialog.GetLevel(), dialog.GetMission(), dialog.GetNumDialogLines(), (int) priority,
+                 (void*) m_nowPlaying, m_nowPlaying ? radTimeGetMilliseconds() - s_nowPlayingSince : 0,
+                 (unsigned int) m_dialogQueue.size(), m_permitQueueAdvance ? "" : ", advance blocked" );
+#endif
 
     if( priority == OccasionalPlayLine )
     {
@@ -172,6 +192,10 @@ void DialogPriorityQueue::AddDialogToQueue( SelectableDialog& dialog, rmt::Vecto
             }
 
             m_nowPlaying = queueElement;
+#ifdef RAD_LINUX
+            s_nowPlayingSince = radTimeGetMilliseconds();
+            if( DialogLogOn() ) fprintf( stderr, "soundlog: dialog: playing %p at once\n", (void*) m_nowPlaying );
+#endif
             playDialog( posn );
         }
         else
@@ -386,6 +410,9 @@ void DialogPriorityQueue::OnDialogComplete()
     {
         fprintf( stderr, "dialog: complete (%d queued)\n", static_cast<int>( m_dialogQueue.size() ) );
     }
+    if( DialogLogOn() )
+        fprintf( stderr, "soundlog: dialog: %p complete after %u ms\n", (void*) m_nowPlaying, radTimeGetMilliseconds() - s_nowPlayingSince );
+    s_nowPlayingSince = radTimeGetMilliseconds();
 #endif
     m_nowPlaying->Release();
     if( !m_dialogQueue.empty() && m_permitQueueAdvance )
@@ -429,6 +456,22 @@ void DialogPriorityQueue::ServiceOncePerFrame()
 
     advanceQueue();
 
+#ifdef RAD_LINUX
+    if( DialogLogOn() )
+    {
+        static unsigned int lastLog = 0;
+        unsigned int now = radTimeGetMilliseconds();
+        if( now - lastLog >= 5000 )
+        {
+            lastLog = now;
+            fprintf( stderr, "soundlog: dialog: now playing %p (%u ms), queued %u, advance %s, players busy %d %d %d %d\n",
+                     (void*) m_nowPlaying, m_nowPlaying ? now - s_nowPlayingSince : 0, (unsigned int) m_dialogQueue.size(),
+                     m_permitQueueAdvance ? "ok" : "blocked", m_player1.IsInUse() ? 1 : 0, m_player2.IsInUse() ? 1 : 0,
+                     m_positionalPlayer1.IsInUse() ? 1 : 0, m_positionalPlayer2.IsInUse() ? 1 : 0 );
+        }
+    }
+#endif
+
     serviceDebugPage();
 }
 
@@ -453,6 +496,10 @@ void DialogPriorityQueue::advanceQueue()
     if( ( m_nowPlaying == NULL ) && ( !m_dialogQueue.empty() ) && m_permitQueueAdvance )
     {
         m_nowPlaying = m_dialogQueue.front();
+#ifdef RAD_LINUX
+        s_nowPlayingSince = radTimeGetMilliseconds();
+        if( DialogLogOn() ) fprintf( stderr, "soundlog: dialog: playing %p from the queue\n", (void*) m_nowPlaying );
+#endif
         m_nowPlaying->RemoveSelfFromList();
         playDialog( m_nowPlaying->GetPosition() );
     }

@@ -58,6 +58,11 @@ class SimpsonsSoundPlayer
         SimpsonsSoundPlayer();
         virtual ~SimpsonsSoundPlayer();
 
+#ifdef RAD_LINUX
+        // SHAR_SOUND_LOG=1: clip/stream players in use (Linux port diagnostics)
+        static void LogStats( bool managerMuted );
+#endif
+
         bool PlaySound( const char* resourceName, SimpsonsSoundPlayerCallback* callback = NULL );
                                                  
         bool PlaySound( Sound::daResourceKey resourceKey, SimpsonsSoundPlayerCallback* callback = NULL );                   

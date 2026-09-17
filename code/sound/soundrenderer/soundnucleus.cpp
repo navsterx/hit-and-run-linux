@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <string.h>
 #include <sound/soundrenderer/soundnucleus.hpp>
 #include <main/commandlineoptions.h>
 #include <memory/srrmemory.h>
@@ -308,6 +310,11 @@ void SoundNucleusInitialize( radMemoryAllocator alloc )
     unsigned int totalClipMemoryNeeded =
         ( TOTAL_PS2_FREE_UNCOMPRESSED_CLIP_BYTES * gClipFileAudioFormat.m_pEncoding->m_CompressionNumerator ) /
             gClipFileAudioFormat.m_pEncoding->m_CompressionDenominator;
+#ifdef RAD_LINUX
+    // Linux port: twice the clip memory (the PS2 budget above). Level 4's clips need slightly more than it on the
+    // retail PC data (a clip ~21 KB short), and a clip that does not fit is silent (SoundNucleusServiceClipLoad).
+    totalClipMemoryNeeded *= 2;
+#endif
     
     rTunePrintf(
         "AUDIO: Sound Memory totals: Stream: [0x%x] Clip: [0x%x], Total: [0x%x]\n",
@@ -329,7 +336,11 @@ void SoundNucleusInitialize( radMemoryAllocator alloc )
 
     IRadSoundHalSystem::SystemDescription desc;
     
+#ifdef RAD_LINUX
+    desc.m_MaxRootAllocations  = 340;   // with the doubled clip memory (Level 4 had 136 of 170 in use)
+#else
     desc.m_MaxRootAllocations  = 170;
+#endif
     desc.m_NumAuxSends         = NUM_AUX_SENDS;
 #ifdef RAD_WIN32    
     desc.m_SamplingRate        = 24000;
@@ -438,9 +449,17 @@ void SoundNucleusUnCaptureStreamerResources( StreamerResources * pSi )
     gStreamers[ pSi->index ].m_IsCaptured = false;
 }
 
+#ifdef RAD_LINUX
+static char s_ClipLoadName[ 256 ];      // the clip being loaded, for the out-of-memory message
+#endif
+
 void SoundNucleusLoadClip( const char * pFileName, bool looping )
 {
     rAssert( ClipLoadState_Idle == gClipLoadInfo.state );
+#ifdef RAD_LINUX
+    strncpy( s_ClipLoadName, pFileName, sizeof( s_ClipLoadName ) - 1 );
+    s_ClipLoadName[ sizeof( s_ClipLoadName ) - 1 ] = '\0';
+#endif
         
     gClipLoadInfo.pFds = radSoundRsdFileDataSourceCreate( GMA_AUDIO_PERSISTENT );
     gClipLoadInfo.pFds->AddRef( );     
@@ -579,6 +598,19 @@ void SoundNucleusServiceClipLoad( void )
                 {
                     gClipLoadInfo.state = ClipLoadState_Done;
                 }
+#ifdef RAD_LINUX
+                // Linux port: a clip that did not fit in sound memory ends up NoFile, which the original waited on
+                // forever; sound loads are serialised (daSoundDynaLoadRegion), so every later clip and dialogue
+                // stream stayed unloaded. Finish without a clip: the sound plays as silence.
+                else if ( IRadSoundClip::NoFile == gClipLoadInfo.pClip->GetState( ) )
+                {
+                    fprintf( stderr, "radsound: clip '%s' failed to load (out of sound memory?), it will be silent\n",
+                             s_ClipLoadName );
+                    gClipLoadInfo.pClip->Release( );
+                    gClipLoadInfo.pClip = NULL;
+                    gClipLoadInfo.state = ClipLoadState_Done;
+                }
+#endif
                 
                 break;
             }

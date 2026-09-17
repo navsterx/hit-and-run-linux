@@ -34,6 +34,20 @@
 
 #include <memory/srrmemory.h>
 
+#ifdef RAD_LINUX
+#include <stdio.h>
+#include <stdlib.h>
+// SHAR_SOUND_LOG=1: duck situations and volumes (Linux port diagnostics)
+static bool TunerLogOn()
+{
+    static int on = -1;
+    if( on < 0 ) { const char* e = getenv( "SHAR_SOUND_LOG" ); on = ( e != NULL && *e != '\0' && *e != '0' ) ? 1 : 0; }
+    return( on == 1 );
+}
+static const char* const s_duckSituationNames[] =
+    { "full", "pause", "mission", "letterbox", "dialog", "store", "onfoot", "minigame", "justmusic", "credits" };
+#endif
+
 //=============================================================================
 // Static Variables (outside namespace)
 //=============================================================================
@@ -401,6 +415,38 @@ void daSoundTuner::ServiceOncePerFrame( unsigned int elapsedTime )
     }
 
     serviceDebugInfo();
+
+#ifdef RAD_LINUX
+    if( TunerLogOn() )
+    {
+        static unsigned int sinceLog = 0;
+        sinceLog += elapsedTime;
+        if( sinceLog >= 5000 )
+        {
+            sinceLog = 0;
+            fprintf( stderr, "soundlog: volumes master %.2f dialog %.2f sfx %.2f car %.2f music %.2f ambience %.2f; "
+                     "final duck sfx %.2f car %.2f music %.2f dialog %.2f amb %.2f\n",
+                     GetMasterVolume(), GetDialogueVolume(), GetSfxVolume(), GetCarVolume(), GetMusicVolume(),
+                     GetAmbienceVolume(), m_finalDuckLevels.duckVolume[DUCK_SFX], m_finalDuckLevels.duckVolume[DUCK_CAR],
+                     m_finalDuckLevels.duckVolume[DUCK_MUSIC], m_finalDuckLevels.duckVolume[DUCK_DIALOG],
+                     m_finalDuckLevels.duckVolume[DUCK_AMBIENCE] );
+            for( unsigned int i = 0; i < NUM_DUCK_SITUATIONS; i++ )
+            {
+                Fader* f = ( i == DUCK_FULL_FADE ) ? m_pDuckFade : m_situationFaders[i];
+                if( f == NULL ) continue;
+                bool ducked = false;
+                for( unsigned int v = 0; v < NUM_DUCK_VOLUMES; v++ )
+                    if( f->GetCurrentVolume( static_cast<DuckVolumes>( v ) ) < 0.999f ) ducked = true;
+                if( ducked )
+                    fprintf( stderr, "soundlog:   duck %s (%u) state %d: sfx %.2f car %.2f music %.2f dialog %.2f amb %.2f\n",
+                             s_duckSituationNames[i], i, (int) f->GetState(),
+                             f->GetCurrentVolume( DUCK_SFX ), f->GetCurrentVolume( DUCK_CAR ),
+                             f->GetCurrentVolume( DUCK_MUSIC ), f->GetCurrentVolume( DUCK_DIALOG ),
+                             f->GetCurrentVolume( DUCK_AMBIENCE ) );
+            }
+        }
+    }
+#endif
 }
 
 //=============================================================================
@@ -497,6 +543,9 @@ void daSoundTuner::ActivateDuck
     bool fadeIn
 )
 {
+#ifdef RAD_LINUX
+    if( TunerLogOn() ) fprintf( stderr, "soundlog: ActivateDuck full fade %s\n", fadeIn ? "in" : "out" );
+#endif
     activateDuckInternal( pObject, pUserData, fadeIn, m_pDuckFade );
 }
 
@@ -516,6 +565,12 @@ void daSoundTuner::ActivateSituationalDuck( IDaSoundFadeState* pObject,
                                            void* pUserData,
                                            bool fadeIn )
 {
+#ifdef RAD_LINUX
+    if( TunerLogOn() )
+        fprintf( stderr, "soundlog: ActivateSituationalDuck %s %s\n",
+                 ( (unsigned int) situation < NUM_DUCK_SITUATIONS ) ? s_duckSituationNames[situation] : "?",
+                 fadeIn ? "in (back to full)" : "out (duck)" );
+#endif
     activateDuckInternal( pObject, pUserData, fadeIn, m_situationFaders[situation] );
 }
 
@@ -543,6 +598,9 @@ void daSoundTuner::ResetDuck()
             m_duckLevels[j].duckVolume[i] = 1.0f;
         }
     }
+#ifdef RAD_LINUX
+    if( TunerLogOn() ) fprintf( stderr, "soundlog: ResetDuck\n" );
+#endif
 
     activateDuckInternal( NULL, NULL, true, m_pDuckFade );
 }

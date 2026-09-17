@@ -9,6 +9,28 @@
 #include <radmemorymonitor.hpp>
 #include "memoryregion.hpp"
 
+#ifdef RAD_LINUX
+#include <stdio.h>
+#include <stdlib.h>
+// SHAR_SOUND_LOG=1: every allocation in the sound memory regions (Linux port diagnostics); out-of-memory always
+static bool radSoundRegionLogOn( void )
+{
+    static int s_on = -1;
+    if ( s_on < 0 ) { const char* e = getenv( "SHAR_SOUND_LOG" ); s_on = ( e && *e && *e != '0' ) ? 1 : 0; }
+    return s_on == 1;
+}
+static void radSoundRegionLog( radSoundHalMemoryRegion* pRegion, bool isRoot, const char* what, const char* name,
+                               unsigned int size, bool ok )
+{
+    if ( ok && !radSoundRegionLogOn( ) ) return;
+    unsigned int freeBytes = 0, objects = 0, largest = 0;
+    pRegion->GetStats( & freeBytes, & objects, & largest, false );
+    fprintf( stderr, "%s: %s %s region %p: %s '%s' %u bytes; now %u free (largest %u), %u objects\n",
+             ok ? "soundlog" : "radsound", ok ? "alloc" : "OUT OF MEMORY", isRoot ? "root" : "child", (void*) pRegion,
+             what, name ? name : "", size, freeBytes, largest, objects );
+}
+#endif
+
 /* static */ radMemorySpace radSoundHalMemoryRegion::s_MemorySpace = radMemorySpace_Local;
 /* static */ radSoundHalMemoryRegion * radSoundHalMemoryRegion::s_pRadSoundMemoryRegion_Root = NULL;
 /* static */ unsigned int radSoundHalMemoryRegion::s_Alignment = 1;
@@ -127,6 +149,9 @@ IRadSoundHalMemoryRegion * radSoundHalMemoryRegion::CreateChildRegion
     if ( size > 0 )
     {
 	    m_xIRadMemoryHeap->GetMemoryObjectAligned( & xIRadMemoryObject, size, s_Alignment );
+#ifdef RAD_LINUX
+        radSoundRegionLog( this, m_xRadSoundMemoryRegion_Parent == NULL, "child region", pIdentifier, size, xIRadMemoryObject != NULL );
+#endif
 
 	    if ( xIRadMemoryObject != NULL )
 	    {
@@ -230,6 +255,9 @@ void radSoundHalMemoryRegion::CreateRoot
     radMemorySetAllocationName( pIdentifier );
 
 	m_xIRadMemoryHeap->GetMemoryObjectAligned( ppIRadMemoryObject, size, s_Alignment );
+#ifdef RAD_LINUX
+    radSoundRegionLog( this, m_xRadSoundMemoryRegion_Parent == NULL, "object", pIdentifier, size, *ppIRadMemoryObject != NULL );
+#endif
 
 	if ( *ppIRadMemoryObject != NULL )
 	{

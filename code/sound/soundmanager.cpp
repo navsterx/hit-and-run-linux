@@ -19,6 +19,7 @@
 // Project Includes
 //========================================
 #include <sound/soundmanager.h>
+#include <sound/simpsonssoundplayer.h>
 
 #include <sound/soundrenderer/soundrenderingmanager.h>
 #include <sound/soundrenderer/idasoundtuner.h>
@@ -223,6 +224,16 @@ void SoundManager::UpdateOncePerFrame( unsigned int elapsedTime, ContextEnum con
     }
     
     gLastServiceOncePerFrameTime = now;
+#ifdef RAD_LINUX
+    {
+        static unsigned int lastLog = 0;
+        if( now - lastLog >= 5000 )
+        {
+            lastLog = now;
+            SimpsonsSoundPlayer::LogStats( m_isMuted );
+        }
+    }
+#endif
     
     if( m_isMuted )
     {

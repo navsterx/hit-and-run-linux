@@ -265,6 +265,15 @@ SHAR_MAX_FRAME_MS=33 ...                  # cap game time per frame (slow motion
   clears and stencil off did not help. Error dumps: `pkexec cat /sys/class/drm/card1/error` (root; the kernel keeps
   the first hang). Under `SHAR_GL_STATS=1` a reset blocks the main thread in the timer query. Found on the way: NaN
   billboard quads (`billboardobject.cpp`, acos of a dot product just over 1), fixed; not the cause.
+- **Sound memory / serialised sound loads (2026-10-20)**: after Level 3's finale, Level 4 had no dialogue and some SFX
+  missing. Level 4's clips overflowed the sound region (the PS2 clip budget `TOTAL_PS2_FREE_UNCOMPRESSED_CLIP_BYTES`,
+  ~5.5 MB, plus 9 dialogue + 4 music stream buffers; one clip ~21 KB short); `radSoundClip` then goes NoFile, which
+  `SoundNucleusServiceClipLoad` waited on forever, and since `daSoundDynaLoadRegion` loads one file at a time every later
+  clip and dialogue stream stayed UnLoaded (the dialogue queue's first line "played" silently for ever). Now a failed
+  clip finishes as silence (NULL clip, player done at once) and the clip budget / root allocations (170 -> 340) are
+  doubled on Linux. `SHAR_SOUND_LOG=1`: every 5 s player counts, duck levels, dialogue queue, mixer voices and free
+  sound memory; refused plays, duck changes, dialogue requests, stuck streams (file instance state) and every sound
+  region allocation; out-of-memory and failed clips are always printed (`radsound: ...`).
 - radcore's `radoptions.hpp` enables debug comm / watcher / memory monitor in debug builds: off on Linux.
 - **OpenGL 3.3 core renderer** (2026-10-17, branch dev): the GL pddi was fixed-function GL 1.x. Now
   `pddi/gl/glpipeline.cpp` keeps that state on the CPU (matrices, 8 lights, fog, material, the "current"

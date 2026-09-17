@@ -139,6 +139,14 @@ IRadSoundHalBuffer* radSoundHalBufferCreate( radMemoryAllocator allocator )
 }
 
 //=============================================================================
+// SHAR_SOUND_LOG=1: voice/buffer counts every 5 s and voices the mixer refuses (diagnostics)
+static bool SoundLogOn( void )
+{
+    static int s_on = -1;
+    if ( s_on < 0 ) { const char* e = getenv( "SHAR_SOUND_LOG" ); s_on = ( e && *e && *e != '0' ) ? 1 : 0; }
+    return s_on == 1;
+}
+
 // Mixer state (audio device + list of playing voices, both guarded by the device lock)
 //=============================================================================
 
@@ -508,7 +516,11 @@ public:
         if ( m_refBuffer == NULL || m_Playing ) return;
         {
             radSoundMixLock lock;
-            if ( s_NumActiveVoices >= MAX_ACTIVE_VOICES ) return;
+            if ( s_NumActiveVoices >= MAX_ACTIVE_VOICES )
+            {
+                if ( SoundLogOn( ) ) fprintf( stderr, "soundlog: mixer: voice not played, %u voices already playing\n", s_NumActiveVoices );
+                return;
+            }
             m_ActiveIndex = s_NumActiveVoices;
             s_ActiveVoices[ s_NumActiveVoices++ ] = this;
             m_LastGainL = m_LastGainR = -1.0f;          // first mixed block starts at the target gain
@@ -957,7 +969,7 @@ public:
     static radSoundHalSystemLinux* s_pSystem;
 
     radSoundHalSystemLinux( void )
-        : m_NumAuxSends( 0 ), m_pSoundMemory( NULL ), m_LastServiceTime( ::radTimeGetMilliseconds( ) )
+        : m_NumAuxSends( 0 ), m_pSoundMemory( NULL ), m_LastServiceTime( ::radTimeGetMilliseconds( ) ), m_LastLogTime( 0 )
     {
         s_pSystem = this;
         ::radSoundPrintBanner( );
@@ -1004,6 +1016,17 @@ public:
         unsigned int now = ::radTimeGetMilliseconds( );
         radSoundUpdatableObject::UpdateAll( now - m_LastServiceTime );     // advances playing voices
         m_LastServiceTime = now;
+        if ( SoundLogOn( ) && now - m_LastLogTime >= 5000 )
+        {
+            m_LastLogTime = now;
+            Stats st;
+            GetStats( &st );
+            unsigned int active;
+            { radSoundMixLock lock; active = s_NumActiveVoices; }
+            fprintf( stderr, "soundlog: mixer: voices %u (%u playing), positional %u (%u playing), in mix %u; buffers %u (%u KB), free sound memory %u KB\n",
+                     st.m_NumVoices, st.m_NumVoicesPlaying, st.m_NumPosVoices, st.m_NumPosVoicesPlaying, active,
+                     st.m_NumBuffers, st.m_BufferMemoryUsed / 1024, st.m_TotalFreeSoundMemory / 1024 );
+        }
     }
 
     virtual void ServiceOncePerFrame( void )
@@ -1041,6 +1064,7 @@ private:
     unsigned int m_NumAuxSends;
     void* m_pSoundMemory;
     unsigned int m_LastServiceTime;
+    unsigned int m_LastLogTime;         // SHAR_SOUND_LOG stats
     ref< IRadSoundHalEffect > m_refEffect[ RSD_LINUX_MAX_AUX_SENDS ];
 };
 

@@ -241,6 +241,9 @@ private:
     // Hold a pause counter
     //
     unsigned int                        m_PauseCount;
+#ifdef RAD_LINUX
+    unsigned int                        m_LogFrames;    // SHAR_SOUND_LOG: frames spent cueing/playing a stream
+#endif
 
     //
     // Store the allocated and normal resource
