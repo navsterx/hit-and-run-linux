@@ -5,7 +5,7 @@
  * Supported: CustomFiles (a mod's CustomFiles/ tree overrides game files, also those inside RCF archives, also
  * by the sound system's key strings; CustomFiles.ini redirections, occluded paths and Lua path handlers;
  * CustomFiles.lua), OggVorbisSupport (x.ogg serves x.rsd), CustomLimits (only the limits wired up through
- * shar_ModLimit); read by the game through shar_ModConfig: CustomShopSupport (car shop sellers only),
+ * shar_ModLimit); read by the game through shar_ModConfig: CustomShopSupport (shar_modshops.h),
  * CustomDialogueCharacterCodes ([CharacterCodes] only), CustomText (guitextbible.cpp; English or the first
  * language), 3DPhoneBoothPreviewSupport (guiscreenphonebooth.cpp; not DarkenLockedCars/FullScreen).
  * Other hacks a mod's Meta.ini requires are reported at startup and ignored. Mod settings are

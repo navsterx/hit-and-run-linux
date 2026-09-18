@@ -143,6 +143,12 @@ static CarPurchaseDialogueStuff s_carPurchaseConvNames[] =
 };
 
 #ifdef RAD_LINUX
+// Linux port: Mod Launcher CustomShopSupport <PhoneBooth>/<SkinShop> selectors name a booth's or shop's locator
+static int ModShopLocatorMatch( const char* selectorLocator, void* context )
+{
+    return static_cast< ActionEventLocator* >( context )->IsNamed( selectorLocator ) ? 1 : 0;
+}
+
 // Linux port: Mod Launcher CustomShopSupport.xml, <CarShop Level="1" Character="reward_x" Conversation="y"/>:
 // replaces a level's car seller (Conversation="" for none). Read once, on the first car purchase.
 static void ApplyModCarShops()
@@ -2647,7 +2653,7 @@ SummonVehiclePhone::SummonVehiclePhone( ActionEventLocator* pActionEventLocator 
 #ifdef RAD_LINUX
     // Mod Launcher CustomShopSupport: a <PhoneBooth Drawable="..."> for this booth replaces its icon
     const SharShop* modShop = shar_ModShop( SHAR_SHOP_PHONE_BOOTH, GetGameplayManager()->GetCurrentLevelIndex() + 1,
-                                            pActionEventLocator->GetName() );
+                                            ModShopLocatorMatch, pActionEventLocator );
     mPhoneIcon.Init( modShop != NULL && modShop->drawable[ 0 ] != '\0' ? modShop->drawable : "phone_icon", pos );
 #else
     mPhoneIcon.Init( "phone_icon", pos );
@@ -2818,7 +2824,7 @@ bool SummonVehiclePhone::OnButtonPressed( Character* pCharacter, Sequencer* pSeq
     if ( sbEnabled && GetGameplayManager()->QueryPhoneBoothsEnabled() )
     {
 #ifdef RAD_LINUX
-        shar_ModShopSetCurrent( SHAR_SHOP_PHONE_BOOTH, mpActionEventLocator->GetName() );
+        shar_ModShopSetCurrent( SHAR_SHOP_PHONE_BOOTH, mpActionEventLocator );
 #endif
         // clear out any unneeded characters here (mainly to remove characters 
         // from completed bonus missions in case we need their car)
@@ -4863,7 +4869,7 @@ PurchaseSkin::PurchaseSkin( ActionEventLocator* pActionEventLocator ) :
 #ifdef RAD_LINUX
     // Mod Launcher CustomShopSupport: a <SkinShop Drawable="..."> for this shop replaces its icon
     const SharShop* modShop = shar_ModShop( SHAR_SHOP_SKIN, GetGameplayManager()->GetCurrentLevelIndex() + 1,
-                                            pActionEventLocator->GetName() );
+                                            ModShopLocatorMatch, pActionEventLocator );
     mIcon.Init( modShop != NULL && modShop->drawable[ 0 ] != '\0' ? modShop->drawable : "shirtdollar", pos );
 #else
     mIcon.Init( "shirtdollar", pos );  //TODO: get the real icon in.
@@ -4932,7 +4938,7 @@ bool PurchaseSkin::OnButtonPressed( Character* pCharacter )
     }
 
 #ifdef RAD_LINUX
-    shar_ModShopSetCurrent( SHAR_SHOP_SKIN, mpActionEventLocator->GetName() );
+    shar_ModShopSetCurrent( SHAR_SHOP_SKIN, mpActionEventLocator );
 #endif
     // switch to pause context
     //

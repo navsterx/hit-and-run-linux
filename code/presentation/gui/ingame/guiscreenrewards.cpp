@@ -40,6 +40,7 @@
 #ifdef RAD_LINUX
 #include <shar_mods.h>
 #include <shar_modshops.h>
+#include <meta/actioneventlocator.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -175,6 +176,11 @@ PhoneBoothStars::SetNumStars( float numStars )
 #ifdef RAD_LINUX
 //===========================================================================
 // IGuiScreenRewards::ApplyModShop
+static int ModShopLocatorMatch( const char* selectorLocator, void* context )
+{
+    return context != NULL && static_cast< ActionEventLocator* >( context )->IsNamed( selectorLocator ) ? 1 : 0;
+}
+
 //===========================================================================
 // Description: Mod Launcher CustomShopSupport <PhoneBooth> / <SkinShop> (port/compat/shar_modshops.h) for the
 //              booth or shop whose menu this is: drops the game's items an IncludedItems list leaves out or
@@ -194,7 +200,7 @@ IGuiScreenRewards::ApplyModShop( PreviewObject* previewObjects,
 {
     const SharShop* shop = shar_ModShop( shopKind,
                                          GetGameplayManager()->GetCurrentLevelIndex() + 1,
-                                         shar_ModShopCurrent( shopKind ) );
+                                         ModShopLocatorMatch, shar_ModShopCurrent( shopKind ) );
     if( shop == NULL )
     {
         return numPreviewObjects;

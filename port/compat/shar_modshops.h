@@ -40,15 +40,20 @@ typedef struct SharShop
     SharShopItem free[ SHAR_SHOP_MAX_ITEMS ];
 } SharShop;
 
-/* The entry for a phone booth or skin shop in level (1-7) at the locator named; NULL when no mod sets one. */
-const SharShop* shar_ModShop( int kind, int level, const char* locator );
+/* Whether the booth/shop is at the locator a selector names. */
+typedef int ( *SharShopLocatorMatch )( const char* selectorLocator, void* context );
+
+/* The entry for a phone booth or skin shop in level (1-7) whose locator match() accepts; NULL when no mod sets
+ * one. */
+const SharShop* shar_ModShop( int kind, int level, SharShopLocatorMatch match, void* context );
 
 /* Whether name is among items[0, count) (case-insensitive). */
 int shar_ModShopHas( const SharShopItem* items, int count, const char* name );
 
-/* The locator of the booth/shop whose menu was opened last (set when its button is pressed). */
-void shar_ModShopSetCurrent( int kind, const char* locator );
-const char* shar_ModShopCurrent( int kind );
+/* The locator (game object, opaque here) of the booth/shop whose menu was opened last, set when its button is
+ * pressed; NULL before. */
+void shar_ModShopSetCurrent( int kind, void* locator );
+void* shar_ModShopCurrent( int kind );
 
 #ifdef __cplusplus
 }

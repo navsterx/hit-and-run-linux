@@ -480,6 +480,11 @@ MEMTRACK_PUSH_GROUP( "Locator Loading" );
             // I need to set the position of the locator before I add it to the game.
             //
             actLoc->SetLocation( pos );
+#ifdef RAD_LINUX
+            // Linux port: named before AddToGame creates its action handler, which can look itself up by name
+            // (mods' CustomShopSupport selectors); the name was only set after this (below)
+            actLoc->SetName( name );
+#endif
 
             // If AddToGame() fails, actLoc will be released.
             // Hold on to it here.

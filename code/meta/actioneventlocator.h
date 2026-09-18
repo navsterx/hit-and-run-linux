@@ -19,6 +19,9 @@
 #include <meta/locatorevents.h>
 #include <meta/triggerlocator.h>
 #include <worldsim/character/charactercontroller.h>
+#ifdef RAD_LINUX
+#include <strings.h>
+#endif
 
 //========================================
 // Forward References
@@ -42,6 +45,14 @@ public:
     void SetObjNameSize( unsigned char size );
     void SetObjName( const char* name );
     const char* GetObjName() const;
+#ifdef RAD_LINUX
+    // Linux port: whether a mod's config names this locator (release builds keep only the name's UID; booths'
+    // object names repeat their locator name)
+    bool IsNamed( const char* name ) const
+    {
+        return tEntity::MakeUID( name ) == GetUID() || ( mObjName != NULL && strcasecmp( mObjName, name ) == 0 );
+    }
+#endif
 
     void SetJointNameSize( unsigned char size );
     void SetJointName( const char* name );

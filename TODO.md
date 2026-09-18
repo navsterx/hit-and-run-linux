@@ -73,7 +73,7 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [x] CustomLimits (billboards, regions, script argument length)
 - [x] IncreasedVideoResolutionSupport (movies up to 1920x1080)
 - [x] CustomText (English)
-- [x] CustomShopSupport: car shop seller and conversation
+- [x] CustomShopSupport: car shop seller and conversation; phone booth and skin shop item lists and icons
 - [x] CustomDialogueCharacterCodes: new speaker codes
 - [x] 3DPhoneBoothPreviewSupport
 - [x] Futurama: Hit & Run demo plays Level 1 with its shops and phone booth
@@ -100,7 +100,6 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [ ] Missing-data tolerance where it is cheap (`art\wrench.p3d` missing still crashes later)
 
 ### Mods
-- [ ] CustomShopSupport: phone booth and skin shop item lists (Free/Included/ExcludedItems)
 - [ ] 3DPhoneBoothPreviewSupport: DarkenLockedCars, FullScreen
 - [ ] CustomDialogueCharacterCodes: outfit voices
 - [ ] CustomText: Language setting

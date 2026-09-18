@@ -31,7 +31,7 @@ struct ShopEntry
 ShopEntry s_entries[ MAX_SHOPS ];
 int s_numEntries = 0;
 bool s_loaded = false;
-char s_current[ 2 ][ 64 ];
+void* s_current[ 2 ];
 
 bool IsTrue( const char* value )
 {
@@ -162,7 +162,7 @@ void Load()
 
 }
 
-const SharShop* shar_ModShop( int kind, int level, const char* locator )
+const SharShop* shar_ModShop( int kind, int level, SharShopLocatorMatch match, void* context )
 {
     if( !s_loaded )
     {
@@ -189,7 +189,7 @@ const SharShop* shar_ModShop( int kind, int level, const char* locator )
                     levelMatch = &s_entries[ i ].shop;
                 }
             }
-            else if( locator != NULL && strcasecmp( s->locator, locator ) == 0 )
+            else if( match != NULL && match( s->locator, context ) )
             {
                 return &s_entries[ i ].shop;
             }
@@ -210,15 +210,15 @@ int shar_ModShopHas( const SharShopItem* items, int count, const char* name )
     return 0;
 }
 
-void shar_ModShopSetCurrent( int kind, const char* locator )
+void shar_ModShopSetCurrent( int kind, void* locator )
 {
     if( kind == SHAR_SHOP_PHONE_BOOTH || kind == SHAR_SHOP_SKIN )
     {
-        snprintf( s_current[ kind ], sizeof( s_current[ kind ] ), "%s", locator != NULL ? locator : "" );
+        s_current[ kind ] = locator;
     }
 }
 
-const char* shar_ModShopCurrent( int kind )
+void* shar_ModShopCurrent( int kind )
 {
-    return ( kind == SHAR_SHOP_PHONE_BOOTH || kind == SHAR_SHOP_SKIN ) ? s_current[ kind ] : "";
+    return ( kind == SHAR_SHOP_PHONE_BOOTH || kind == SHAR_SHOP_SKIN ) ? s_current[ kind ] : NULL;
 }

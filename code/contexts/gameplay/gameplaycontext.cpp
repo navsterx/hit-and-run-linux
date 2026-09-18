@@ -526,6 +526,33 @@ void GameplayContext::OnUpdate( unsigned int elapsedTime )
         }
     }
 
+    // Linux port: SHAR_TP_INTERIOR_POS="x,y,z" (test option): once inside an interior (e.g. after tapping the action
+    // button at its door), move there when nothing has loaded for two seconds, e.g. to an interior's clothes shop
+    {
+        static const char* s_interiorAt = getenv( "SHAR_TP_INTERIOR_POS" );
+        static int s_interiorWait = 2000;
+        if( s_interiorAt != NULL && s_interiorWait > 0 && m_state != S_SUSPENDED && !m_PausedAllButPresentation &&
+            GetInteriorManager()->IsInside() && !GetInteriorManager()->IsEntering() )
+        {
+            if( GetLoadingManager()->IsLoading() )
+            {
+                s_interiorWait = 2000;
+            }
+            else
+            {
+                s_interiorWait -= static_cast< int >( elapsedTime );
+                rmt::Vector pos;
+                Character* character = GetCharacterManager()->GetCharacter( 0 );
+                if( s_interiorWait <= 0 && character != NULL &&
+                    sscanf( s_interiorAt, "%f,%f,%f", &pos.x, &pos.y, &pos.z ) == 3 )
+                {
+                    fprintf( stderr, "tp: moving inside to %.1f,%.1f,%.1f\n", pos.x, pos.y, pos.z );
+                    character->RelocateAndReset( pos, 0 );
+                }
+            }
+        }
+    }
+
     // Linux port: "incar" test option: two seconds after loading, put the player in the mission's current car
     // (it teleports them to wherever the car is parked; skipped inside an interior)
     if( CommandLineOptions::Get( CLO_START_IN_CAR ) )

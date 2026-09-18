@@ -85,7 +85,9 @@ srr2 skipfe tp2                           # 2 s after loading, teleport to the l
                                           # L1/4/7 KwikEMart 213.9,5.2,-302.7, SpringfieldElementary -35.2,4.6,-589.5,
                                           # SimpsonsHouse 228.9,3.8,-184.1, bartroom (L4/7) 224.7,6.6,-200.8; L2/5 moe
                                           # -173.6,7.1,24.5, dmv -253.3,6.9,350.7; L3/6 Android 22.4,7.0,-6.2, Observatory
-                                          # 177.2,4.3,487.6. Teleport there and tap E (18) to go in (timing-free under memcheck)
+                                          # 177.2,4.3,487.6. Teleport there and tap E (18) to go in (timing-free under memcheck).
+                                          # SHAR_TP_INTERIOR_POS="x,y,z": once inside, moved there (L1 Kwik-E-Mart clothes
+                                          # shop 493.6,-20.0,-290.4). SHAR_TP_POS also works without destinations (mods)
 srr2 skipfe skipsunday l2 m1              # skipsunday (the original's dev option): the mission starts at once, no walk to
                                           # its giver. Crashes L3 M1, L6 M1, L7 M3 while loading (their scripts swap the
                                           # player's car before the avatar and the car's physics exist): use autopass instead
@@ -378,8 +380,14 @@ FFmpeg, detected by the "OggS" header in `rsdfiledatasource.cpp`), CustomLimits 
 EntityLimit, [Scripting] ArgumentLengthLimit (console arguments were unbounded copies). Movies up to 1920x1080
 (64 tiles) and fitted to the window either way (IncreasedVideoResolutionSupport).
 Config files reach the game through `shar_ModConfig` / `shar_ModConfigFolder`; XML ones through `shar_modxml.h`.
-CustomShopSupport (only <CarShop>: the level's seller and conversation, `actionbuttonhandler.cpp`; PhoneBooth /
-SkinShop item lists not yet), CustomDialogueCharacterCodes (only [CharacterCodes]: speaker codes appended to
+CustomShopSupport (<CarShop>: the level's seller and conversation, `actionbuttonhandler.cpp`; <PhoneBooth> /
+<SkinShop>: `port/compat/shar_modshops.cpp` parses, `IGuiScreenRewards::ApplyModShop` filters the menu (Included /
+ExcludedItems, FreeItems as unlocked copies of the game's reward of that name, HideLocked), Drawable = the in-world icon;
+a selector naming the locator wins over a level-only one. Release builds keep only a locator's name UID
+(`GetName()` = "NO_NAME_TEXT"), so `ActionEventLocator::IsNamed` compares UIDs (and the object name); action locators
+are now named before `AddToGame` creates their handler. Clothes-shop menus hold up to 16 items on Linux (4 before).
+Tested with a small test mod: L1 booth Z1p1 and the Kwik-E-Mart clothes shop. Futurama's PhoneBooth/SkinShop entries
+are the docs' example: its own booths are FB001-FB006, so only its level-wide one applies), CustomDialogueCharacterCodes (only [CharacterCodes]: speaker codes appended to
 `dialogline.cpp`'s characterTable; the outfit voice sections not yet), CustomText (`guitextbible.cpp`, through a
 hook in Scrooby's FeLanguage::GetString; global/level/mission sections, $(Variables), \\ = \; English file only, no
 Language setting yet), 3DPhoneBoothPreviewSupport (`guiscreenphonebooth.cpp`: the car shop's 3D preview path;
