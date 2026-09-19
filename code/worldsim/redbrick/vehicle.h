@@ -147,6 +147,10 @@ public:
     //This is which type of vehicle it is.
     VehicleEnum::VehicleID mVehicleID;
     void AssignEnumBasedOnName();
+#ifdef RAD_LINUX
+    // Linux port: Mod Launcher CustomCarSupport settings for this car (port/compat/shar_modcars.h); NULL = none
+    const struct SharModCar* mModCar;
+#endif
 
 
     // vehicle event stuff

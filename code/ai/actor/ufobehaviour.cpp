@@ -38,6 +38,9 @@
 #include <ai/sequencer/action.h>
 #include <ai/sequencer/actioncontroller.h>
 #include <ai/sequencer/sequencer.h>
+#ifdef RAD_LINUX
+#include <shar_modcars.h>
+#endif
 
 //===========================================================================
 // Local Constants, Typedefs, and Macros
@@ -170,8 +173,14 @@ UFOBehaviour::SuckIntoUFO( const rmt::Vector& actorPosition, DynaPhysDSG* pDSG, 
             rAssert( dynamic_cast< Vehicle* >( pDSG ) != NULL );
             Vehicle* vehicle = static_cast< Vehicle* >( pDSG );
             // Don't let the chase cars get sucked up (JeffP)
-            if ( vehicle->mVehicleID != VehicleEnum::CBLBART && vehicle->IsVehicleDestroyed() == false
-                && vehicle->mVehicleID != VehicleEnum::HUSKA )
+            bool abductable = vehicle->mVehicleID != VehicleEnum::CBLBART && vehicle->mVehicleID != VehicleEnum::HUSKA;
+#ifdef RAD_LINUX
+            if( vehicle->mModCar != NULL && vehicle->mModCar->abductable >= 0 )
+            {
+                abductable = vehicle->mModCar->abductable == 1; // CustomCarSupport Abductable
+            }
+#endif
+            if ( abductable && vehicle->IsVehicleDestroyed() == false )
             {
                 pDSG->GetSimState()->ResetVelocities();
                 vehicle->SetTransform( newTransform );

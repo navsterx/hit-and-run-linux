@@ -74,6 +74,9 @@
 #include <worldsim/character/character.h>
 
 #include <gameflow/gameflow.h>
+#ifdef RAD_LINUX
+#include <shar_modcars.h>
+#endif
 
 using namespace sim;
 
@@ -95,6 +98,9 @@ Vehicle::Vehicle() :
     mGeometryVehicle( NULL ),
     mName( NULL ),
     mVehicleID( VehicleEnum::INVALID ),
+#ifdef RAD_LINUX
+    mModCar( NULL ),
+#endif
     mTerrainType( TT_Road),
     mInterior( false ),
     mpEventLocator( NULL ),
@@ -1259,6 +1265,12 @@ void Vehicle::AssignEnumBasedOnName()
     {
         mVehicleID = VehicleEnum::REDBRICK;
     }
+
+#ifdef RAD_LINUX
+    // Mod Launcher CustomCarSupport: cars the game does not know stay VehicleEnum::INVALID; the mod's settings
+    // (camera data index, husk, skid marks, ...) are looked up by name
+    mModCar = shar_ModCar( mName );
+#endif
     
     
 }

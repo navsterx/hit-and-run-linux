@@ -47,6 +47,9 @@
 #include <debug/debuginfo.h>
 #include <worldsim/redbrick/trafficbodydrawable.h>
 #include <worldsim/coins/sparkle.h>
+#ifdef RAD_LINUX
+#include <shar_modcars.h>
+#endif
 
 //#define SHADOW_EDITTING
 
@@ -1115,6 +1118,14 @@ void GeometryVehicle::SetSkidValues(int wheel, float intensity, rmt::Vector& gro
 {
     // if this got called, intensity is > 0.0
 
+#ifdef RAD_LINUX
+    // CustomCarSupport NoSkidMarks / NoFrontSkidMarks (wheels 2 and 3 are the front ones)
+    const SharModCar* modCar = mVehicleOwner->mModCar;
+    if( modCar != NULL && ( modCar->noSkidMarks == 1 || ( modCar->noFrontSkidMarks == 1 && wheel >= 2 ) ) )
+    {
+        return;
+    }
+#endif
     if(mSkidMarkGenerator)// && mDrawSkids)  // test here though this should only be getting called for vehicles that have it... ie. VT_USER
     {
         /*
@@ -3078,6 +3089,12 @@ void GeometryVehicle::SetFadeAlpha( int fade )
 bool GeometryVehicle::IsTrafficModel()
 {
     rAssert( mVehicleOwner );
+#ifdef RAD_LINUX
+    if( mVehicleOwner->mModCar != NULL && mVehicleOwner->mModCar->recolourable >= 0 )
+    {
+        return mVehicleOwner->mModCar->recolourable == 1; // CustomCarSupport Recolourable
+    }
+#endif
 
     VehicleEnum::VehicleID ID = mVehicleOwner->mVehicleID;
 

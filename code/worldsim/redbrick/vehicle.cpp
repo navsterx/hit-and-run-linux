@@ -103,6 +103,9 @@
 #include <camera/supercamcentral.h>
 
 #include <presentation/gui/guisystem.h>
+#ifdef RAD_LINUX
+#include <shar_modcars.h>
+#endif
 
 using namespace sim;
 
@@ -284,6 +287,12 @@ void Vehicle::DisplayShadow()
     {
         return;
     }
+#ifdef RAD_LINUX
+    if( mModCar != NULL && mModCar->shadowVisible == 0 )
+    {
+        return; // CustomCarSupport ShadowVisible=0
+    }
+#endif
 
     BEGIN_PROFILE("Vehicle::DisplayShadow")
     if( !IsSimpleShadow() )
@@ -304,6 +313,12 @@ void Vehicle::DisplaySimpleShadow( void )
     {
         return;
     }
+#ifdef RAD_LINUX
+    if( mModCar != NULL && mModCar->shadowVisible == 0 )
+    {
+        return; // CustomCarSupport ShadowVisible=0
+    }
+#endif
 
     BEGIN_PROFILE("Vehicle::DisplaySimpleShadow")
     p3d::pddi->SetZWrite(false);
@@ -3944,6 +3959,13 @@ void Vehicle::GetVelocity( rmt::Vector* velocity )
 //=============================================================================
 unsigned int Vehicle::GetID()
 {
+#ifdef RAD_LINUX
+    // the camera data chunks' id (follow cams); a mod's CustomCarSupport Index for its cars
+    if( mModCar != NULL && mModCar->index >= 0 )
+    {
+        return static_cast< unsigned int >( mModCar->index );
+    }
+#endif
     return mVehicleID;
 }
 
@@ -6064,6 +6086,12 @@ float Vehicle::TriggerDamage(float amount, bool clamp)
         
         return 0.0f;
     }
+#ifdef RAD_LINUX
+    if( mModCar != NULL && mModCar->invincible == 1 )
+    {
+        return GetVehicleLifePercentage( mHitPoints ); // CustomCarSupport Invincible=1
+    }
+#endif
 
     // try the clamp to 99% for last hit on all car types
     if(clamp)//mDamageType == VDT_USER || mDamageType == VDT_AI)

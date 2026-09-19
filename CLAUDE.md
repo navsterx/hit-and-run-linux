@@ -398,6 +398,14 @@ past the allocation; null merchandise in `CharacterSheetManager::UpdateRewardsMa
 Tested 2026-10-15: "SHAR Remastered" 1.0; Futurama: Hit & Run demo 0.1.3 boots (its movies, menu scene) and reaches
 Level 1 by New Game (5/5 runs) and `skipfe`. Its other 20 hacks are not implemented (custom cars/characters/shops/
 interiors/text, ASF commands, ...), nor its required HoverCarRefraction mod: driving and missions untested.
+CustomCarSupport (2026-10-21, `port/compat/shar_modcars.cpp`): cars the game does not know already loaded and drove
+(their `mVehicleID` stays `VehicleEnum::INVALID`, 96; car sound parameters are found by name, Futurama's engine
+clips sit in carsound.spt, always loaded). `Vehicle::mModCar` (looked up in `AssignEnumBasedOnName`) adds: Index
+(`Vehicle::GetID`, the follow cams' data chunk id; Futurama's fry_v finds its cameras at 97, before none), NoHusk
+(`HuskPool::WillMakeConvincingHusk`), NoSkidMarks/NoFrontSkidMarks (`GeometryVehicle::SetSkidValues`, wheels 2-3 =
+front), ShadowVisible, Abductable (`UFOBehaviour`), Recolourable (`GeometryVehicle::IsTrafficModel`), Invincible
+(`TriggerDamage`), NoBumperCam. Not yet: PreviewScale, Husk, IsHusk, RearWheelSparks, steering visual and skid width
+multipliers, [FakeWheel]. Futurama in its car: ASan clean.
 Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
 
 ## Priorities (2026-10-17)

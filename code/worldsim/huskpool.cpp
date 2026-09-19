@@ -19,6 +19,9 @@
 #include <memory/srrmemory.h>
 
 #include <mission/gameplaymanager.h>
+#ifdef RAD_LINUX
+#include <shar_modcars.h>
+#endif
 
 
 //=============================================================================
@@ -282,6 +285,12 @@ bool HuskPool::WillMakeConvincingHusk( Vehicle* origV )
 {
     // these cars don't look anything remotely like 
     // HuskA, so we blow them up and leave nothing behind
+#ifdef RAD_LINUX
+    if( origV->mModCar != NULL && origV->mModCar->noHusk >= 0 )
+    {
+        return origV->mModCar->noHusk == 0; // CustomCarSupport NoHusk
+    }
+#endif
 
     if( origV->mVehicleID == VehicleEnum::HONOR_V || 
         origV->mVehicleID == VehicleEnum::SCHOOLBU || 

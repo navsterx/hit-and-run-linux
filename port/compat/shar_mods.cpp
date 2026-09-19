@@ -71,7 +71,8 @@ pthread_once_t s_Once = PTHREAD_ONCE_INIT;
 
 // Hacks implemented here; reported by IsHackLoaded and not listed as ignored
 const char* const SUPPORTED_HACKS[] = { "CustomFiles", "CustomLimits", "OggVorbisSupport", "LuaSupport", "CustomShopSupport",
-                                        "CustomDialogueCharacterCodes", "CustomText", "3DPhoneBoothPreviewSupport" };
+                                        "CustomDialogueCharacterCodes", "CustomText", "3DPhoneBoothPreviewSupport",
+                                        "CustomCarSupport", "IncreasedVideoResolutionSupport" };
 
 void Init( void );
 

@@ -103,7 +103,8 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [ ] 3DPhoneBoothPreviewSupport: DarkenLockedCars, FullScreen
 - [ ] CustomDialogueCharacterCodes: outfit voices
 - [ ] CustomText: Language setting
-- [ ] CustomCarSupport (the Futurama demo's cars)
+- [ ] CustomCarSupport: PreviewScale, Husk, IsHusk, RearWheelSparks, steering/skid multipliers, [FakeWheel] (camera Index,
+  NoHusk, skid marks, shadow, Abductable, Recolourable, Invincible, NoBumperCam done 2026-10-21)
 - [ ] Custom characters, interiors, audio, traffic, ASF commands and the other hacks
 - [ ] HoverCarRefraction (required by the Futurama demo)
 - [ ] Shaders from more than the first mod's `Shaders/` folder

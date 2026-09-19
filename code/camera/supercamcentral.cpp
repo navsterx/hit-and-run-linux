@@ -65,6 +65,9 @@
 #include <main/game.h>
 
 #include <cheats/cheatinputsystem.h>
+#ifdef RAD_LINUX
+#include <shar_modcars.h>
+#endif
 
 //*****************************************************************************
 //
@@ -1269,7 +1272,14 @@ void SuperCamCentral::SelectSuperCam( unsigned int which, int flags, unsigned in
             Vehicle* target = dynamic_cast<Vehicle*>( mTarget );
             rAssert( target );
 
-            if ( target->mVehicleID == VehicleEnum::DUNE_V )
+            bool noBumperCam = target->mVehicleID == VehicleEnum::DUNE_V;
+#ifdef RAD_LINUX
+            if( target->mModCar != NULL && target->mModCar->noBumperCam >= 0 )
+            {
+                noBumperCam = target->mModCar->noBumperCam == 1; // CustomCarSupport NoBumperCam
+            }
+#endif
+            if ( noBumperCam )
             {
                 SelectSuperCam( SuperCam::NEAR_FOLLOW_CAM, flags, timems );
                 return;
