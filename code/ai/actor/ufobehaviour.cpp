@@ -173,7 +173,7 @@ UFOBehaviour::SuckIntoUFO( const rmt::Vector& actorPosition, DynaPhysDSG* pDSG, 
             rAssert( dynamic_cast< Vehicle* >( pDSG ) != NULL );
             Vehicle* vehicle = static_cast< Vehicle* >( pDSG );
             // Don't let the chase cars get sucked up (JeffP)
-            bool abductable = vehicle->mVehicleID != VehicleEnum::CBLBART && vehicle->mVehicleID != VehicleEnum::HUSKA;
+            bool abductable = vehicle->mVehicleID != VehicleEnum::CBLBART && !vehicle->IsHuskModel();
 #ifdef RAD_LINUX
             if( vehicle->mModCar != NULL && vehicle->mModCar->abductable >= 0 )
             {

@@ -288,7 +288,7 @@ void TrafficManager::HandleEvent( EventEnum id, void* pEventData )
                 if( avatar->IsInCar() )
                 {
                     rAssert( avatar->GetVehicle() );
-                    rAssert( GetVehicleCentral()->mHuskPool.IsHuskType( avatar->GetVehicle()->mVehicleID ) );
+                    rAssert( GetVehicleCentral()->mHuskPool.IsHuskType( avatar->GetVehicle() ) );
 
                     avatar->SetVehicle( currVehicle );
 
@@ -1110,7 +1110,7 @@ void TrafficManager::RemoveTraffic( Vehicle* vehicle )
         rAssert( tv != NULL );
 
         Vehicle* v = NULL;
-        if( GetVehicleCentral()->mHuskPool.IsHuskType( vehicle->mVehicleID ) )
+        if( GetVehicleCentral()->mHuskPool.IsHuskType( vehicle ) )
         {
             v = tv->GetHusk();
         }

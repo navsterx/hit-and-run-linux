@@ -620,7 +620,7 @@ bool MovingSoundManager::hasOverlayClip( Vehicle* vehiclePtr, carSoundParameters
     //
     // Ignore the husk
     //
-    if( vehiclePtr->mVehicleID == VehicleEnum::HUSKA )
+    if( vehiclePtr->IsHuskModel() )
     {
         return( false );
     }

@@ -17,6 +17,10 @@
 
 #include <worldsim/redbrick/suspensionjointdriver.h>
 #include <worldsim/redbrick/wheel.h>
+#ifdef RAD_LINUX
+#include <worldsim/redbrick/vehicle.h>
+#include <shar_modcars.h>
+#endif
 
 
 
@@ -91,6 +95,24 @@ void SuspensionJointDriver::Update(poser::Pose* pose)
     // !! TODO - safe to just apply this?
     //matrix.m[3][1] += mWheel->mPhysicsVehicleOwner->mGravitySettleYCorrection;  // this is insignificant
 
+#ifdef RAD_LINUX
+    // CustomCarSupport steering visual multipliers: any wheel turns by its share of the steering angle (the front
+    // wheels' own angle: what the game draws them with)
+    const SharModCar* modCar = mWheel->mVehicle->mModCar;
+    if( modCar != NULL )
+    {
+        float turn = mWheel->mVehicle->mWheels[ 2 ]->mWheelTurnAngle * shar_ModCarSteering( modCar, mWheel->mWheelNum );
+        if( turn != 0.0f )
+        {
+            matrix.FillRotateXYZ( mWheel->mCumulativeRot, turn, 0.0f );
+        }
+        else
+        {
+            matrix.FillRotateX( mWheel->mCumulativeRot );
+        }
+    }
+    else
+#endif
     if(mWheel->mSteerWheel)
     {
         // this is one of the two front wheels, so turn it
@@ -128,3 +150,50 @@ void SuspensionJointDriver::Update(poser::Pose* pose)
     }
     */
 }
+
+#ifdef RAD_LINUX
+//------------------------------------------------------------------------
+FakeWheelJointDriver::FakeWheelJointDriver( Vehicle* vehicle, const SharModFakeWheel* config, int jointIndex,
+                                            const rmt::Vector& restPoint ) :
+    mVehicle( vehicle ),
+    mConfig( config ),
+    mJointIndex( jointIndex ),
+    mRestPoint( restPoint )
+{
+}
+
+//------------------------------------------------------------------------
+void FakeWheelJointDriver::Update( poser::Pose* pose )
+{
+    float rotation = 0.0f;
+    float travel = 0.0f;
+    bool rides = false;
+    for( int i = 0; i < 4; i++ )
+    {
+        if( mConfig->copyRotation & ( 1 << i ) )
+        {
+            rotation += mVehicle->mWheels[ i ]->mCumulativeRot;
+        }
+        if( mConfig->copySuspension & ( 1 << i ) )
+        {
+            // the wheel joint's travel from its place in the file this frame; the highest wheel counts
+            poser::Joint* wheelJoint = pose->GetJoint( mVehicle->mWheelToJointIndexMapping[ i ] );
+            float y = wheelJoint->GetObjectTranslation().y - mVehicle->mSuspensionRestPointsFromFile[ i ].y;
+            if( !rides || y > travel )
+            {
+                travel = y;
+            }
+            rides = true;
+        }
+    }
+    float turn = mVehicle->mWheels[ 2 ]->mWheelTurnAngle * mConfig->steeringMultiplier;
+
+    poser::Joint* joint = pose->GetJoint( mJointIndex );
+    rmt::Matrix matrix = joint->GetObjectMatrix();
+    matrix.FillRotateXYZ( rotation, turn, 0.0f );
+    rmt::Vector trans = mRestPoint;
+    trans.y += travel;
+    matrix.FillTranslate( trans );
+    joint->SetObjectMatrix( matrix );
+}
+#endif

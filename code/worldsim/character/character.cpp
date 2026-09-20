@@ -2586,7 +2586,7 @@ sim::Solving_Answer Character::PreReactToCollision( sim::SimState* pCollidedObj,
         if(pCollidedObj->mAIRefIndex == PhysicsAIRef::redBrickVehicle)
         {
             Vehicle* v = (Vehicle*)pCollidedObj->mAIRefPointer;
-            if(v->mVehicleID == VehicleEnum::HUSKA)
+            if(v->IsHuskModel())
             {
                 Vehicle* ov = GetVehicleCentral()->mHuskPool.FindOriginalVehicleGivenHusk(v);
                 if(ov && (ov == this->mpTargetVehicle))

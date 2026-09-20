@@ -2503,7 +2503,18 @@ void Vehicle::PostSubstepUpdate(float dt)
 
     // skid setting
 
-    if( mVehicleID == VehicleEnum::HUSKA )
+    bool rearWheelSparks = IsHuskModel();
+#ifdef RAD_LINUX
+    if( mModCar != NULL && mModCar->rearWheelSparks >= 0 )
+    {
+        rearWheelSparks = mModCar->rearWheelSparks == 1; // CustomCarSupport RearWheelSparks
+    }
+    else if( mModCar != NULL && mModCar->isHusk == 1 )
+    {
+        rearWheelSparks = true; // the default for IsHusk=1
+    }
+#endif
+    if( rearWheelSparks )
     {
         rmt::Vector vel = mVelocityCM;
         if( ( rmt::Abs( vel.x ) + rmt::Abs( vel.z ) > 0.5f ) && ( mPhysicsLocomotion ) )
@@ -2667,7 +2678,7 @@ void Vehicle::PostSubstepUpdate(float dt)
     //
     // that should probably move to where the event is fired - so that we don't swap out the car and replace with husk before this?    
              
-    if(mVehicleID != VehicleEnum::HUSKA)
+    if(!IsHuskModel())
     {
         if( mVehicleDestroyed && !mAlreadyPlayedExplosion )
         {
@@ -2734,7 +2745,7 @@ void Vehicle::PostSubstepUpdate(float dt)
             
     }
     
-    if(mDamageType == VDT_TRAFFIC && mVehicleDestroyed && !mAlreadyPlayedExplosion && this->mVehicleID != VehicleEnum::HUSKA)
+    if(mDamageType == VDT_TRAFFIC && mVehicleDestroyed && !mAlreadyPlayedExplosion && !this->IsHuskModel())
     {
         PlayExplosionEffect();
         mAlreadyPlayedExplosion = true;
@@ -3957,6 +3968,21 @@ void Vehicle::GetVelocity( rmt::Vector* velocity )
 // Return:      unsigned 
 //
 //=============================================================================
+bool Vehicle::IsHuskModel() const
+{
+    if( mVehicleID == VehicleEnum::HUSKA )
+    {
+        return true;
+    }
+#ifdef RAD_LINUX
+    if( mModHusk || ( mModCar != NULL && mModCar->isHusk == 1 ) )
+    {
+        return true;
+    }
+#endif
+    return false;
+}
+
 unsigned int Vehicle::GetID()
 {
 #ifdef RAD_LINUX
@@ -4639,7 +4665,7 @@ sim::Solving_Answer Vehicle::PostReactToCollision(rmt::Vector& impulse, sim::Col
     }
 
 
-	if(mVehicleID == VehicleEnum::HUSKA)
+	if(IsHuskModel())
     {
         normalizedMagnitude = 0.2f;
     }
@@ -4812,7 +4838,7 @@ sim::Solving_Answer Vehicle::PostReactToCollision(rmt::Vector& impulse, sim::Col
     GetEventManager()->TriggerEvent( EVENT_COLLISION, &soundData );
 
 
-    if(mVehicleID == VehicleEnum::HUSKA)
+    if(IsHuskModel())
     {
         return sim::Solving_Continue;
     }
@@ -6087,9 +6113,9 @@ float Vehicle::TriggerDamage(float amount, bool clamp)
         return 0.0f;
     }
 #ifdef RAD_LINUX
-    if( mModCar != NULL && mModCar->invincible == 1 )
+    if( mModCar != NULL && ( mModCar->invincible == 1 || ( mModCar->invincible < 0 && mModCar->isHusk == 1 ) ) )
     {
-        return GetVehicleLifePercentage( mHitPoints ); // CustomCarSupport Invincible=1
+        return GetVehicleLifePercentage( mHitPoints ); // CustomCarSupport Invincible=1 (the default for IsHusk=1)
     }
 #endif
 

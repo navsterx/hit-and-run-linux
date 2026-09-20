@@ -463,6 +463,9 @@ void GeometryVehicle::InitSkidMarks()
         float length = mVehicleOwner->mWheels[i]->mRadius * 0.6f;
         //float width = mVehicleOwner->mWheels[i]->mRadius * 0.5f;    //??
         float width = mVehicleOwner->mWheels[i]->mRadius * 0.8f;    //??
+#ifdef RAD_LINUX
+        width *= shar_ModCarSkidWidth( mVehicleOwner->mModCar, i ); // CustomCarSupport skid mark width multipliers
+#endif
 
         mSkidMarkGenerator->SetWheelDimensions(i, width, length);
 
@@ -3093,6 +3096,10 @@ bool GeometryVehicle::IsTrafficModel()
     if( mVehicleOwner->mModCar != NULL && mVehicleOwner->mModCar->recolourable >= 0 )
     {
         return mVehicleOwner->mModCar->recolourable == 1; // CustomCarSupport Recolourable
+    }
+    if( mVehicleOwner->mModCar != NULL && mVehicleOwner->mModCar->isHusk == 1 )
+    {
+        return true; // the default for IsHusk=1
     }
 #endif
 

@@ -18,6 +18,7 @@
 #include <presentation/gui/ingame/guiscreenpurchaserewards.h>
 #ifdef RAD_LINUX
 #include <shar_modshops.h>
+#include <shar_modcars.h>
 #endif
 #include <presentation/gui/ingame/guimanageringame.h>
 #include <presentation/gui/ingame/guiscreenhud.h>
@@ -646,7 +647,14 @@ CGuiScreenPurchaseRewards::On3DModelLoaded( const PreviewObject* previewObject )
             //
             rmt::Sphere sphere;
             drawable->GetBoundingSphere( &sphere );
+#ifdef RAD_LINUX
+            // CustomCarSupport PreviewScale
+            const SharModCar* modCar = shar_ModCar( previewObject->name );
+            float previewScale = modCar != NULL && modCar->previewScale != SHAR_MODCAR_UNSET ? modCar->previewScale : 1.0f;
+            m_previewWindow->SetDrawableScale( previewScale * PREVIEW_VEHICLE_RADIUS / sphere.radius );
+#else
             m_previewWindow->SetDrawableScale( PREVIEW_VEHICLE_RADIUS / sphere.radius );
+#endif
         }
         else
         {

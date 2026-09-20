@@ -1318,7 +1318,7 @@ void GameplayManager::RepairVehicle( CarDataStruct* carData )
             if( avatar->IsInCar() )
             {
                 rAssert( avatar->GetVehicle() );
-                rAssert( GetVehicleCentral()->mHuskPool.IsHuskType( avatar->GetVehicle()->mVehicleID ) );
+                rAssert( GetVehicleCentral()->mHuskPool.IsHuskType( avatar->GetVehicle() ) );
 
                 avatar->SetVehicle( carData->mp_vehicle );
 
@@ -1367,7 +1367,7 @@ void GameplayManager::HandleEvent( EventEnum id, void* pEventData )
             Vehicle* avatarVehicle = avatar->GetVehicle();
             rAssert( avatarVehicle );
 
-            if( GetVehicleCentral()->mHuskPool.IsHuskType( avatarVehicle->mVehicleID ) )
+            if( GetVehicleCentral()->mHuskPool.IsHuskType( avatarVehicle ) )
             {
                 // we're driving a husk.. so if this is a husk allocated
                 // by the husk pool, then we've got to set the current 
@@ -1775,7 +1775,7 @@ void GameplayManager::SetCurrentVehicle(Vehicle* vehicle)
         // HandleEvent() for EVENT_VEHICLE_DESTROYED and EVENT_REPAIR_CAR 
         // cases that assume mCurrentVehicle points to the original vehicle.
         // 
-        rAssert( !GetVehicleCentral()->mHuskPool.IsHuskType( vehicle->mVehicleID ) );
+        rAssert( !GetVehicleCentral()->mHuskPool.IsHuskType( vehicle ) );
     }
 
     //release old add ref
@@ -3189,7 +3189,7 @@ int  GameplayManager::UpdateVDU()
                 {
                     GetVehicleCentral()->RemoveVehicleFromActiveList(mVDU.mpVehicle[i]);
 
-                    if( mVDU.mpVehicle[i]->mVehicleID == VehicleEnum::HUSKA )
+                    if( mVDU.mpVehicle[i]->IsHuskModel() )
                     {
                         GetVehicleCentral()->mHuskPool.FreeHusk(mVDU.mpVehicle[i]);
                     }
@@ -3210,7 +3210,7 @@ int GameplayManager::MDKVDU()
         if (mVDU.mpVehicle[i] != NULL)
         {
             GetVehicleCentral()->RemoveVehicleFromActiveList(mVDU.mpVehicle[i]);
-            if( mVDU.mpVehicle[i]->mVehicleID == VehicleEnum::HUSKA )
+            if( mVDU.mpVehicle[i]->IsHuskModel() )
             {
                 GetVehicleCentral()->mHuskPool.FreeHusk(mVDU.mpVehicle[i]);
             }

@@ -404,8 +404,15 @@ clips sit in carsound.spt, always loaded). `Vehicle::mModCar` (looked up in `Ass
 (`Vehicle::GetID`, the follow cams' data chunk id; Futurama's fry_v finds its cameras at 97, before none), NoHusk
 (`HuskPool::WillMakeConvincingHusk`), NoSkidMarks/NoFrontSkidMarks (`GeometryVehicle::SetSkidValues`, wheels 2-3 =
 front), ShadowVisible, Abductable (`UFOBehaviour`), Recolourable (`GeometryVehicle::IsTrafficModel`), Invincible
-(`TriggerDamage`), NoBumperCam. Not yet: PreviewScale, Husk, IsHusk, RearWheelSparks, steering visual and skid width
-multipliers, [FakeWheel]. Futurama in its car: ASan clean.
+(`TriggerDamage`), NoBumperCam; also (same day) RearWheelSparks (huskA's sparks, `PostSubstepUpdate`), PreviewScale
+(car shop + 3D phone booth preview), steering visual multipliers (`SuspensionJointDriver::Update`: any wheel turns by
+its multiplier x front wheel 2's angle), skid mark width multipliers (`InitSkidMarks`), [FakeWheel] (one
+`FakeWheelJointDriver` per entry after the wheels' drivers: summed spin, highest suspension travel, steering share; its
+CopySkidMarks is not drawn: the skid generator has four wheels), IsHusk and Husk=<car> (`Vehicle::IsHuskModel()`
+replaces the game's `== HUSKA` checks; `HuskPool::Init` makes 2 husks per Husk= car whose drawable is loaded at level
+start, `RequestHusk` hands out the configured type, none if missing). Tested with a test mod (famil_v rear-wheel
+steering -3, hood as a fake wheel, SUVA Husk=compactA): logged values as configured, ASan clean with it and Futurama.
+Not checked in play: a destroyed car leaving a custom husk, PreviewScale, IsHusk.
 Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
 
 ## Priorities (2026-10-17)

@@ -501,7 +501,7 @@ void Mission::Finalize()
 
         Vehicle* forcedCar = GetGameplayManager()->GetVehicleInSlot(GameplayManager::eOtherCar);
 		Vehicle* currCar = GetAvatarManager()->GetAvatarForPlayer(0)->GetVehicle();
-		if(currCar && currCar->mVehicleID == VehicleEnum::HUSKA)
+		if(currCar && currCar->IsHuskModel())
 		{
 			currCar = GetVehicleCentral()->mHuskPool.FindOriginalVehicleGivenHusk(currCar);
 		}

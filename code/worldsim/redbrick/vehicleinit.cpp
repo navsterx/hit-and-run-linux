@@ -100,6 +100,8 @@ Vehicle::Vehicle() :
     mVehicleID( VehicleEnum::INVALID ),
 #ifdef RAD_LINUX
     mModCar( NULL ),
+    mModHusk( false ),
+    mNumFakeWheelDrivers( 0 ),
 #endif
     mTerrainType( TT_Road),
     mInterior( false ),
@@ -1404,6 +1406,16 @@ Vehicle::~Vehicle()
     {
         delete mWheels[i];
         mSuspensionJointDrivers[i]->Release();
+#ifdef RAD_LINUX
+        if( i == 0 )
+        {
+            for( int f = 0; f < mNumFakeWheelDrivers; f++ )
+            {
+                mFakeWheelDrivers[ f ]->Release();
+            }
+            mNumFakeWheelDrivers = 0;
+        }
+#endif
 
         // TODO - need to wrap these somehow in case they don't exist?
         if(mInertialJointDrivers[i])
@@ -1569,6 +1581,29 @@ MEMTRACK_PUSH_GROUP( "Vehicle" );
         mSuspensionJointDrivers[i]->AddRef();
         mPoseEngine->AddPoseDriver(1, mSuspensionJointDrivers[i]);
     }
+
+#ifdef RAD_LINUX
+    // CustomCarSupport [FakeWheel]: after the wheels, whose joints they follow
+    if( mModCar != NULL )
+    {
+        tPose* p3dPose = mGeometryVehicle->GetP3DPose();
+        for( i = 0; i < mModCar->numFakeWheels && mNumFakeWheelDrivers < 8; i++ )
+        {
+            const SharModFakeWheel* fake = mModCar->fakeWheels[ i ];
+            int jointIndex = p3dPose->FindJointIndex( fake->joint );
+            if( jointIndex < 0 )
+            {
+                rReleasePrintf( "mods: CustomCarSupport: %s has no joint %s for fake wheel %s\n", mName, fake->joint, fake->name );
+                continue;
+            }
+            rmt::Vector rest = p3dPose->GetJoint( jointIndex )->objectMatrix.Row( 3 );
+            FakeWheelJointDriver* driver = new(gma) FakeWheelJointDriver( this, fake, jointIndex, rest );
+            driver->AddRef();
+            mPoseEngine->AddPoseDriver( 1, driver );
+            mFakeWheelDrivers[ mNumFakeWheelDrivers++ ] = driver;
+        }
+    }
+#endif
 MEMTRACK_POP_GROUP("Vehicle");
 }
 

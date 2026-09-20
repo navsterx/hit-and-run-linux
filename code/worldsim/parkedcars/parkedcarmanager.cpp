@@ -476,7 +476,7 @@ void ParkedCarManager::HandleEvent( EventEnum id, void* pEventData )
                 if( avatar->IsInCar() )
                 {
                     rAssert( avatar->GetVehicle() );
-                    rAssert( GetVehicleCentral()->mHuskPool.IsHuskType( avatar->GetVehicle()->mVehicleID ) );
+                    rAssert( GetVehicleCentral()->mHuskPool.IsHuskType( avatar->GetVehicle() ) );
 
                     avatar->SetVehicle( v );
 

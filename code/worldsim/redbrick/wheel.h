@@ -26,6 +26,9 @@ class Wheel
 private:
 
     friend class SuspensionJointDriver;
+#ifdef RAD_LINUX
+    friend class FakeWheelJointDriver;
+#endif
     friend class Vehicle;   
     friend class PhysicsLocomotion;
     friend class GeometryVehicle;       // everyone's friends with the Wheel :)

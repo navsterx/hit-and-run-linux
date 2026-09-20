@@ -66,6 +66,28 @@ private:
 
 };
 
+#ifdef RAD_LINUX
+class Vehicle;
+struct SharModFakeWheel;
+
+// Linux port: Mod Launcher CustomCarSupport [FakeWheel]: a joint that spins with, rides the suspension of and steers
+// like the car's real wheels (port/compat/shar_modcars.h)
+class FakeWheelJointDriver : public poser::PoseDriver
+{
+public:
+    FakeWheelJointDriver( Vehicle* vehicle, const SharModFakeWheel* config, int jointIndex, const rmt::Vector& restPoint );
+
+    virtual void Advance( float dt ) {}
+    virtual void Update( poser::Pose* pose );
+
+private:
+    Vehicle* mVehicle;
+    const SharModFakeWheel* mConfig;
+    int mJointIndex;
+    rmt::Vector mRestPoint;     // the joint's translation in the car's file
+};
+#endif
+
 #endif // #ifndef _SUSPENSIONJOINTDRIVER_H
 
 

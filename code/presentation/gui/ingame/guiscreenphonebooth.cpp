@@ -18,6 +18,7 @@
 #include <presentation/gui/ingame/guiscreenphonebooth.h>
 #ifdef RAD_LINUX
 #include <shar_modshops.h>
+#include <shar_modcars.h>
 #endif
 #include <presentation/gui/ingame/guiscreenhud.h>
 #include <presentation/gui/utility/specialfx.h>
@@ -877,7 +878,9 @@ CGuiScreenPhoneBooth::On3DModelLoaded( const PreviewObject* previewObject )
             drawable->GetBoundingSphere( &sphere );
             if( sphere.radius > 0.0f )
             {
-                m_previewWindow->SetDrawableScale( GetPhoneBooth3DConfig().radius / sphere.radius );
+                const SharModCar* modCar = shar_ModCar( previewObject->name );
+                float previewScale = modCar != NULL && modCar->previewScale != SHAR_MODCAR_UNSET ? modCar->previewScale : 1.0f;
+                m_previewWindow->SetDrawableScale( previewScale * GetPhoneBooth3DConfig().radius / sphere.radius );
             }
         }
         else

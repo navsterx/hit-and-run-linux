@@ -21,6 +21,8 @@
 #include <mission/gameplaymanager.h>
 #ifdef RAD_LINUX
 #include <shar_modcars.h>
+#include <p3d/anim/compositedrawable.hpp>
+#include <strings.h>
 #endif
 
 
@@ -79,14 +81,53 @@ MEMTRACK_PUSH_GROUP( "HuskPool Init" );
 
     mTotalNum = num;
 
-    mHuskArray = new HuskData[num];
+#ifdef RAD_LINUX
+    // Mod Launcher CustomCarSupport Husk=<car>: a few husks of each such car whose data is loaded by now (the docs:
+    // "the husk must already be loaded in memory, or no husk is used"), after the huskA ones
+    const int CUSTOM_HUSKS_PER_TYPE = 2;
+    const int MAX_CUSTOM_HUSK_TYPES = 8;
+    const char* customHusks[ MAX_CUSTOM_HUSK_TYPES ];
+    int numCustomHusks = 0;
+    for( int c = 0; c < shar_ModCarCount(); c++ )
+    {
+        const char* husk = shar_ModCarAt( c )->husk;
+        if( husk[ 0 ] == '\0' || strcasecmp( husk, "huskA" ) == 0 || numCustomHusks >= MAX_CUSTOM_HUSK_TYPES )
+        {
+            continue;
+        }
+        bool known = false;
+        for( int k = 0; k < numCustomHusks; k++ )
+        {
+            known = known || strcasecmp( customHusks[ k ], husk ) == 0;
+        }
+        if( known )
+        {
+            continue;
+        }
+        if( p3d::find<tCompositeDrawable>( husk ) == NULL )
+        {
+            rReleasePrintf( "mods: CustomCarSupport: husk car %s is not loaded, cars using it leave no husk\n", husk );
+            continue;
+        }
+        customHusks[ numCustomHusks++ ] = husk;
+    }
+    mTotalNum = num + numCustomHusks * CUSTOM_HUSKS_PER_TYPE;
+#endif
+
+    mHuskArray = new HuskData[mTotalNum];
     
-    for( int i=0; i<num; i++)
+    for( int i=0; i<mTotalNum; i++)
     {
         // initially make all husks VT_TRAFFIC
         // set the husk type to whatever the vehicle that just got destroyed is...
     
+#ifdef RAD_LINUX
+        const char* huskName = i < num ? "huskA" : customHusks[ ( i - num ) / CUSTOM_HUSKS_PER_TYPE ];
+        Vehicle* huskVehicle = GetVehicleCentral()->InitVehicle(huskName, false, 0, VT_TRAFFIC);
+        huskVehicle->mModHusk = i >= num;
+#else
         Vehicle* huskVehicle = GetVehicleCentral()->InitVehicle("huskA", false, 0, VT_TRAFFIC);
+#endif
         rAssert( huskVehicle );
 
         huskVehicle->AddRef();
@@ -170,8 +211,22 @@ Vehicle* HuskPool::RequestHusk( VehicleType vt, Vehicle* originalVehicle )
         return NULL;
     }
 
+#ifdef RAD_LINUX
+    // the husk car this one leaves (CustomCarSupport Husk=; huskA otherwise)
+    const char* wanted = "huskA";
+    if( originalVehicle->mModCar != NULL && originalVehicle->mModCar->husk[ 0 ] != '\0' )
+    {
+        wanted = originalVehicle->mModCar->husk;
+    }
+#endif
     for( int i = 0; i < mTotalNum; i++ )
     {
+#ifdef RAD_LINUX
+        if( strcasecmp( mHuskArray[i].huskVehicle->GetName(), wanted ) != 0 )
+        {
+            continue;
+        }
+#endif
         if(mHuskArray[i].inUse == false)
         {
             // give 'em this one
@@ -224,6 +279,11 @@ void HuskPool::FreeHusk(Vehicle* husk)
             return;
         }
     }
+}
+
+bool HuskPool::IsHuskType( Vehicle* vehicle )
+{
+    return vehicle != NULL && vehicle->IsHuskModel();
 }
 
 bool HuskPool::IsHuskType( VehicleEnum::VehicleID id )

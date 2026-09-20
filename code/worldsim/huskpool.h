@@ -34,6 +34,7 @@ public:
     Vehicle* FindHuskGivenOriginalVehicle( Vehicle* v );
 
     bool IsHuskType( VehicleEnum::VehicleID id );
+    bool IsHuskType( Vehicle* vehicle ); // also mods' husks (CustomCarSupport)
 
 private:
     bool WillMakeConvincingHusk( Vehicle* origV );

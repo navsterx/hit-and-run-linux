@@ -150,7 +150,10 @@ public:
 #ifdef RAD_LINUX
     // Linux port: Mod Launcher CustomCarSupport settings for this car (port/compat/shar_modcars.h); NULL = none
     const struct SharModCar* mModCar;
+    bool mModHusk;  // made by the husk pool as a mod's Husk= car
 #endif
+    // a husk: huskA (the only one the game had), or a mod's (CustomCarSupport Husk=/IsHusk=)
+    bool IsHuskModel() const;
 
 
     // vehicle event stuff
@@ -648,6 +651,11 @@ public:
     bool mDamperShouldNotPullDown[4];
 
     SuspensionJointDriver* mSuspensionJointDrivers[4];
+#ifdef RAD_LINUX
+    // CustomCarSupport [FakeWheel] joints
+    class FakeWheelJointDriver* mFakeWheelDrivers[ 8 ];
+    int mNumFakeWheelDrivers;
+#endif
    
     int mWheelToJointIndexMapping[4];
     int* mJointIndexToWheelMapping;
