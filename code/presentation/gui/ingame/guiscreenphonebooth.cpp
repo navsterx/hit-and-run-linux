@@ -409,6 +409,17 @@ void CGuiScreenPhoneBooth::OnProcessRequestsComplete( void* pUserData )
     if( drawable != NULL )
     {
         m_previewBgd->SetDrawable( drawable );
+        if( GetPhoneBooth3DConfig().fullScreen )
+        {
+            // FullScreen (the default): the scene over the whole 640x480 page, which fills the window; FullScreen=0
+            // keeps the page's own boxes
+            Scrooby::Pure3dObject* objects[] = { m_previewBgd, m_previewPedestal, m_previewWindow };
+            for( unsigned int i = 0; i < sizeof( objects ) / sizeof( objects[ 0 ] ); i++ )
+            {
+                objects[ i ]->SetPosition( 0, 0 );
+                objects[ i ]->SetBoundingBoxSize( 640, 480 );
+            }
+        }
         tCamera* camera = p3d::find<tCamera>( "Pedestal_Camera" );
         m_previewBgd->SetCamera( camera );
         m_previewPedestal->SetCamera( camera );
@@ -871,6 +882,10 @@ CGuiScreenPhoneBooth::On3DModelLoaded( const PreviewObject* previewObject )
         if( drawable != NULL )
         {
             m_previewWindow->SetDrawable( drawable );
+            // DarkenLockedCars: locked cars drawn with the scene's lights dimmed (set for every model, so a dark one
+            // does not stay dark)
+            m_previewWindow->SetLightScale( GetPhoneBooth3DConfig().darkenLockedCars && !previewObject->isUnlocked ?
+                                            0.25f : 1.0f );
             rmt::Box3D box3D;
             drawable->GetBoundingBox( &box3D );
             m_previewWindow->SetDrawableTranslation( 0.0f, -box3D.low.y, 0.0f );

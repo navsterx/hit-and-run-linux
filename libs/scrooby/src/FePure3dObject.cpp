@@ -75,6 +75,9 @@ FePure3dObject::FePure3dObject
     m_clearDepthBufferEnabled( false ),
     m_zbufferEnabled( true ),
     m_isWideScreenCorrectionEnabled( false )
+#ifdef RAD_LINUX
+    , m_lightScale( 1.0f )
+#endif
 {
     NormalizeCoord( x, y, mPosX, mPosY );
 /*
@@ -522,7 +525,36 @@ void FePure3dObject::Render()
     // draw the damn thing!
     //
     rAssert( m_RuntimeDrawable != NULL );
+#ifdef RAD_LINUX
+    // SetLightScale: the view's lights dimmed (or brightened) for this drawable only; set back after it
+    const unsigned int MAX_SCALED_LIGHTS = 8;
+    tColour savedColours[ MAX_SCALED_LIGHTS ];
+    unsigned int numScaled = 0;
+    if( m_lightScale != 1.0f && m_View != NULL )
+    {
+        for( ; numScaled < MAX_SCALED_LIGHTS; numScaled++ )
+        {
+            tLight* light = m_View->GetLight( numScaled );
+            if( light == NULL )
+            {
+                break;
+            }
+            savedColours[ numScaled ] = light->GetColour();
+            tColour c = savedColours[ numScaled ];
+            light->SetColour( tColour( rmt::Clamp( static_cast< int >( c.Red() * m_lightScale ), 0, 255 ),
+                                       rmt::Clamp( static_cast< int >( c.Green() * m_lightScale ), 0, 255 ),
+                                       rmt::Clamp( static_cast< int >( c.Blue() * m_lightScale ), 0, 255 ),
+                                       c.Alpha() ) );
+        }
+    }
+#endif
     m_RuntimeDrawable->Display();
+#ifdef RAD_LINUX
+    for( unsigned int i = 0; i < numScaled; i++ )
+    {
+        m_View->GetLight( i )->SetColour( savedColours[ i ] );
+    }
+#endif
 
     // restore everything we changed
     //

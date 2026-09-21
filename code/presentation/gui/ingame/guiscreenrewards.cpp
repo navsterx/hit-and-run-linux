@@ -75,6 +75,7 @@ const PhoneBooth3DConfig& GetPhoneBooth3DConfig()
         strcpy( s_config.backgroundPath, "art\\frontend\\scrooby\\resource\\pure3d\\rewardbg.p3d" );
         s_config.radius = 3.6f;
         s_config.darkenLockedCars = false;
+        s_config.fullScreen = true;
 
         char* text = shar_ModConfig( "3DPhoneBoothPreviewSupport.ini" );
         if( text != NULL )
@@ -115,6 +116,10 @@ const PhoneBooth3DConfig& GetPhoneBooth3DConfig()
                 else if( strcasecmp( key, "DarkenLockedCars" ) == 0 )
                 {
                     s_config.darkenLockedCars = atoi( value ) != 0;
+                }
+                else if( strcasecmp( key, "FullScreen" ) == 0 )
+                {
+                    s_config.fullScreen = atoi( value ) != 0;
                 }
             }
             free( text );

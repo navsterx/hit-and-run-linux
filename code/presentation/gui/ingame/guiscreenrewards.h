@@ -72,6 +72,7 @@ struct PhoneBooth3DConfig
     char backgroundPath[ 128 ];
     float radius;
     bool darkenLockedCars;
+    bool fullScreen;        // the 3D scene over the whole page (default) instead of the page's preview boxes
 };
 const PhoneBooth3DConfig& GetPhoneBooth3DConfig();
 #endif

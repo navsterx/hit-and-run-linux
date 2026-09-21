@@ -7,7 +7,7 @@
  * CustomFiles.lua), OggVorbisSupport (x.ogg serves x.rsd), CustomLimits (only the limits wired up through
  * shar_ModLimit); read by the game through shar_ModConfig: CustomShopSupport (shar_modshops.h), CustomCarSupport (shar_modcars.h),
  * CustomDialogueCharacterCodes ([CharacterCodes] only), CustomText (guitextbible.cpp; English or the first
- * language), 3DPhoneBoothPreviewSupport (guiscreenphonebooth.cpp; not DarkenLockedCars/FullScreen).
+ * language), 3DPhoneBoothPreviewSupport (guiscreenphonebooth.cpp).
  * Other hacks a mod's Meta.ini requires are reported at startup and ignored. Mod settings are
  * their Meta.ini defaults unless ModSettings.ini in the game dir sets them ([InternalName] Name=value).
  * SHAR_MOD_LOG=1 prints every file a mod provides as it is opened.

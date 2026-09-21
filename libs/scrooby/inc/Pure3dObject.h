@@ -89,6 +89,11 @@ class Pure3dObject
         virtual void SetZBufferEnabled( bool enable ) = 0;
 
         virtual void SetWideScreenCorrectionEnabled( bool isEnabled ) = 0;
+#ifdef RAD_LINUX
+        // Linux port: the view's lights are scaled by this while the drawable draws (1 = as they are); the 3D phone
+        // booth's DarkenLockedCars (mods)
+        virtual void SetLightScale( float scale ) {}
+#endif
 
     protected:
     private:

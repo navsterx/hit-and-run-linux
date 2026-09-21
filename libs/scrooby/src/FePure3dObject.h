@@ -94,6 +94,9 @@ class FePure3dObject :
         void SetZBufferEnabled( bool enable ) { m_zbufferEnabled = enable; }
 
         virtual void SetWideScreenCorrectionEnabled( bool isEnabled ) { m_isWideScreenCorrectionEnabled = isEnabled; }
+#ifdef RAD_LINUX
+        virtual void SetLightScale( float scale ) { m_lightScale = scale; }
+#endif
 
     protected:
          virtual ~FePure3dObject();
@@ -145,6 +148,9 @@ class FePure3dObject :
         bool m_zbufferEnabled : 1;
 
         bool m_isWideScreenCorrectionEnabled : 1;
+#ifdef RAD_LINUX
+        float m_lightScale;
+#endif
 
 };
 
