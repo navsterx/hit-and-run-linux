@@ -387,8 +387,10 @@ a selector naming the locator wins over a level-only one. Release builds keep on
 (`GetName()` = "NO_NAME_TEXT"), so `ActionEventLocator::IsNamed` compares UIDs (and the object name); action locators
 are now named before `AddToGame` creates their handler. Clothes-shop menus hold up to 16 items on Linux (4 before).
 Tested with a small test mod: L1 booth Z1p1 and the Kwik-E-Mart clothes shop. Futurama's PhoneBooth/SkinShop entries
-are the docs' example: its own booths are FB001-FB006, so only its level-wide one applies), CustomDialogueCharacterCodes (only [CharacterCodes]: speaker codes appended to
-`dialogline.cpp`'s characterTable; the outfit voice sections not yet), CustomText (`guitextbible.cpp`, through a
+are the docs' example: its own booths are FB001-FB006, so only its level-wide one applies), CustomDialogueCharacterCodes ([CharacterCodes]: speaker codes appended to
+`dialogline.cpp`'s characterTable; [NongenericOutfits] outfit=character or =index, with the old [NongenericCharacters]
+index=name (0-22 = the game's skin groups): `dialoglist.cpp` maps the outfit after skinNameTable, in characterMatches
+and GetStinkySkinPointer), CustomText (`guitextbible.cpp`, through a
 hook in Scrooby's FeLanguage::GetString; global/level/mission sections, $(Variables), \\ = \; English file only, no
 Language setting yet), 3DPhoneBoothPreviewSupport (`guiscreenphonebooth.cpp`: the car shop's 3D preview path;
 DarkenLockedCars: locked cars drawn with the scene's lights at 25%, only while the car draws
@@ -449,8 +451,8 @@ The base game is feature-complete but not yet verified end to end. In order:
    "directly deleted" (`~VehicleCentral` deletes leftover vehicles with delete, not Release: one delete, harmless);
    with a file request in flight radFileSystem "not all files/requests were destroyed", `m_pNumRefFiles == 0`,
    `s_ThreadTable[ i ] == NULL`. Release ignores them; not worth reworking the original teardown order.
-4. **Mods, small to large** (done 2026-10-21: CustomShopSupport item lists, 3D phone booth settings, CustomCarSupport):
-   CustomDialogueCharacterCodes outfit voices, CustomText Language setting; then custom characters, interiors, audio,
+4. **Mods, small to large** (done 2026-10-21: CustomShopSupport item lists, 3D phone booth settings, CustomCarSupport, outfit voices):
+   CustomText Language setting; then custom characters, interiors, audio,
    traffic and the rest of the hacks Futurama lists at startup. Test with the user in the loop (shops, phone booth, dialogue).
 5. **Packaging**: install script or AppImage-style bundle (32-bit runtime libraries, FFmpeg, SDL2).
 6. **Steering-wheel force feedback**: only with a wheel to test on.

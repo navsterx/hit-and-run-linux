@@ -33,6 +33,13 @@
 #include <render/Enums/RenderEnums.h>
 #include <gameflow/gameflow.h>
 #include <worldsim/character/charactermanager.h>
+#ifdef RAD_LINUX
+#include <shar_mods.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#endif
 
 
 //******************************************************************************
@@ -276,6 +283,136 @@ static skinDialogGroupInfo skinDialogGroupTable[] =
     { 0, "smithers" }
 };
 
+#ifdef RAD_LINUX
+//
+// Linux port: Mod Launcher CustomDialogueCharacterCodes.ini [NongenericOutfits] outfit=character: the outfit speaks
+// as that character (like skinNameTable). The value may be an index instead (before Mod Launcher 1.17): 0-22 are the
+// game's skin groups (skinDialogGroupTable), higher ones name characters in [NongenericCharacters] index=name.
+//
+struct ModOutfit
+{
+    tUID outfitUID;
+    tUID charUID;
+};
+static const unsigned int MAX_MOD_OUTFITS = 128;
+static ModOutfit s_modOutfits[ MAX_MOD_OUTFITS ];
+static unsigned int s_numModOutfits = 0;
+
+static void loadModOutfits()
+{
+    static bool s_loaded = false;
+    if( s_loaded )
+    {
+        return;
+    }
+    s_loaded = true;
+    char* text = shar_ModConfig( "CustomDialogueCharacterCodes.ini" );
+    if( text == NULL )
+    {
+        return;
+    }
+
+    // two passes: [NongenericCharacters] may follow [NongenericOutfits]
+    const unsigned int MAX_INDICES = 128;
+    char indexNames[ MAX_INDICES ][ 32 ];
+    memset( indexNames, 0, sizeof( indexNames ) );
+    for( int pass = 0; pass < 2; pass++ )
+    {
+        const char* section = pass == 0 ? "nongenericcharacters" : "nongenericoutfits";
+        bool inSection = false;
+        for( const char* p = text; *p != '\0'; )
+        {
+            const char* end = strchr( p, '\n' );
+            int length = end != NULL ? static_cast< int >( end - p ) : static_cast< int >( strlen( p ) );
+            char line[ 160 ];
+            int n = length < static_cast< int >( sizeof( line ) ) - 1 ? length : static_cast< int >( sizeof( line ) ) - 1;
+            memcpy( line, p, n );
+            line[ n ] = '\0';
+            p = end != NULL ? end + 1 : p + length;
+
+            char* s = line;
+            while( *s == ' ' || *s == '\t' || ( unsigned char ) *s == 0xEF || ( unsigned char ) *s == 0xBB ||
+                   ( unsigned char ) *s == 0xBF )
+            {
+                s++;
+            }
+            for( char* e = s + strlen( s ); e > s && ( e[ -1 ] == '\r' || e[ -1 ] == ' ' || e[ -1 ] == '\t' ); )
+            {
+                *--e = '\0';
+            }
+            if( *s == '[' )
+            {
+                char* close = strchr( s, ']' );
+                if( close != NULL )
+                {
+                    *close = '\0';
+                }
+                inSection = strcasecmp( s + 1, section ) == 0;
+                continue;
+            }
+            char* eq = strchr( s, '=' );
+            if( !inSection || eq == NULL )
+            {
+                continue;
+            }
+            *eq = '\0';
+            char* key = s;
+            char* value = eq + 1;
+            for( char* e = key + strlen( key ); e > key && ( e[ -1 ] == ' ' || e[ -1 ] == '\t' ); )
+            {
+                *--e = '\0';
+            }
+            while( *value == ' ' || *value == '\t' )
+            {
+                value++;
+            }
+            if( pass == 0 )
+            {
+                unsigned int index = static_cast< unsigned int >( atoi( key ) );
+                if( index < MAX_INDICES )
+                {
+                    snprintf( indexNames[ index ], sizeof( indexNames[ index ] ), "%s", value );
+                }
+                continue;
+            }
+            const char* character = value;
+            if( value[ 0 ] >= '0' && value[ 0 ] <= '9' )
+            {
+                unsigned int index = static_cast< unsigned int >( atoi( value ) );
+                character = index < SKIN_NUM_TYPES ? skinDialogGroupTable[ index ].charName :
+                            index < MAX_INDICES ? indexNames[ index ] : "";
+            }
+            if( character[ 0 ] == '\0' || s_numModOutfits >= MAX_MOD_OUTFITS )
+            {
+                continue;
+            }
+            s_modOutfits[ s_numModOutfits ].outfitUID = tEntity::MakeUID( key );
+            s_modOutfits[ s_numModOutfits ].charUID = tEntity::MakeUID( character );
+            s_numModOutfits++;
+            if( getenv( "SHAR_MOD_LOG" ) != NULL )
+            {
+                fprintf( stderr, "mods: CustomDialogueCharacterCodes: outfit %s speaks as %s\n", key, character );
+            }
+        }
+    }
+    free( text );
+}
+
+// the character a mod's outfit speaks as; 0 if none
+static tUID modOutfitCharacter( tUID outfitUID )
+{
+    loadModOutfits();
+    for( unsigned int i = 0; i < s_numModOutfits; i++ )
+    {
+        if( s_modOutfits[ i ].outfitUID == outfitUID )
+        {
+            return s_modOutfits[ i ].charUID;
+        }
+    }
+    return 0;
+}
+#endif
+
 //
 // Debug flag
 //
@@ -340,6 +477,9 @@ DialogList::DialogList()
         // Debug spew
         //
         radDbgWatchAddBoolean( &s_showDialogSpew, "Show Dialog Spew", "Sound Info" );
+#ifdef RAD_LINUX
+        loadModOutfits();
+#endif
         radDbgWatchAddFunction( "Print Dialog Coverage", &dumpDialogCoverage, this, "Sound Info" );
     }
 }
@@ -702,6 +842,21 @@ Character* DialogList::GetStinkySkinPointer( tUID charUID )
 
     if( skinType == SKIN_NUM_TYPES )
     {
+#ifdef RAD_LINUX
+        // a mod's character: its outfits from CustomDialogueCharacterCodes
+        loadModOutfits();
+        for( i = 0; i < s_numModOutfits; i++ )
+        {
+            if( s_modOutfits[ i ].charUID == charUID )
+            {
+                charPtr = GetCharacterManager()->GetCharacterByName( s_modOutfits[ i ].outfitUID );
+                if( charPtr != NULL )
+                {
+                    return( charPtr );
+                }
+            }
+        }
+#endif
         //
         // No skin exists for given character
         //
@@ -723,6 +878,21 @@ Character* DialogList::GetStinkySkinPointer( tUID charUID )
         }
     }
 
+#ifdef RAD_LINUX
+    // outfits a mod added to one of the game's characters
+    loadModOutfits();
+    for( i = 0; i < s_numModOutfits; i++ )
+    {
+        if( s_modOutfits[ i ].charUID == charUID )
+        {
+            charPtr = GetCharacterManager()->GetCharacterByName( s_modOutfits[ i ].outfitUID );
+            if( charPtr != NULL )
+            {
+                return( charPtr );
+            }
+        }
+    }
+#endif
     //
     // No skins found
     //
@@ -1144,10 +1314,24 @@ bool DialogList::characterMatches( tUID characterUID, SelectableDialog* dialog,
                     // Is skin, map new UID
                     //
                     effectiveUID = skinDialogGroupTable[skinNameTable[i].dialogGroup].charUID;
+#ifdef RAD_LINUX
+                    switchMade = true;
+#endif
                     break;
                 }
             }
         }
+#ifdef RAD_LINUX
+        if( !switchMade )
+        {
+            // a mod's outfit (CustomDialogueCharacterCodes [NongenericOutfits])
+            tUID modCharacter = modOutfitCharacter( effectiveUID );
+            if( modCharacter != static_cast< tUID >( 0 ) )
+            {
+                effectiveUID = modCharacter;
+            }
+        }
+#endif
     }
 
     return( dialog->UsesCharacter( effectiveUID ) );
