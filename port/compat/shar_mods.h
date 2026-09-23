@@ -6,8 +6,7 @@
  * by the sound system's key strings; CustomFiles.ini redirections, occluded paths and Lua path handlers;
  * CustomFiles.lua), OggVorbisSupport (x.ogg serves x.rsd), CustomLimits (only the limits wired up through
  * shar_ModLimit); read by the game through shar_ModConfig: CustomShopSupport (shar_modshops.h), CustomCarSupport (shar_modcars.h),
- * CustomDialogueCharacterCodes (dialogline.cpp, dialoglist.cpp), CustomText (guitextbible.cpp; English or the first
- * language), 3DPhoneBoothPreviewSupport (guiscreenphonebooth.cpp).
+ * CustomDialogueCharacterCodes (dialogline.cpp, dialoglist.cpp), CustomText (guitextbible.cpp; Language setting), 3DPhoneBoothPreviewSupport (guiscreenphonebooth.cpp).
  * Other hacks a mod's Meta.ini requires are reported at startup and ignored. Mod settings are
  * their Meta.ini defaults unless ModSettings.ini in the game dir sets them ([InternalName] Name=value).
  * SHAR_MOD_LOG=1 prints every file a mod provides as it is opened.
@@ -65,6 +64,10 @@ char* shar_ModConfig(const char* name);
  * (malloc'd, NUL-terminated after sizes[i] bytes, which may include zeros, e.g. UTF-16) and file names (malloc'd),
  * all for the caller to free. Returns the count. */
 int shar_ModConfigFolder(const char* folder, char** texts, size_t* sizes, char** names, int max);
+
+/* The Language setting (ModSettings.ini [InternalName] Language=..., the Mod Launcher's choice among a mod's
+ * CustomText files by their Title) of the mod shar_ModConfigFolder(folder) reads from; NULL when not set. */
+const char* shar_ModConfigFolderLanguage(const char* folder);
 
 #ifdef __cplusplus
 }

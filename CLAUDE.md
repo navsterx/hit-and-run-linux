@@ -391,8 +391,9 @@ are the docs' example: its own booths are FB001-FB006, so only its level-wide on
 `dialogline.cpp`'s characterTable; [NongenericOutfits] outfit=character or =index, with the old [NongenericCharacters]
 index=name (0-22 = the game's skin groups): `dialoglist.cpp` maps the outfit after skinNameTable, in characterMatches
 and GetStinkySkinPointer), CustomText (`guitextbible.cpp`, through a
-hook in Scrooby's FeLanguage::GetString; global/level/mission sections, $(Variables), \\ = \; English file only, no
-Language setting yet), 3DPhoneBoothPreviewSupport (`guiscreenphonebooth.cpp`: the car shop's 3D preview path;
+hook in Scrooby's FeLanguage::GetString; global/level/mission sections, $(Variables), \\ = \; several language files:
+the Language setting (ModSettings.ini [InternalName] Language=<Title or file name>; `shar_ModConfigFolderLanguage`),
+else the file titled as the game's language, else English, else the first; checked with Futurama's Brazilian Portuguese), 3DPhoneBoothPreviewSupport (`guiscreenphonebooth.cpp`: the car shop's 3D preview path;
 DarkenLockedCars: locked cars drawn with the scene's lights at 25%, only while the car draws
 (`Scrooby::Pure3dObject::SetLightScale`, Linux; the car and the background share one tView and its lights); FullScreen
 (default 1): the background, pedestal and car objects resized to the whole page, 0 keeps the page's boxes (Futurama
@@ -451,8 +452,8 @@ The base game is feature-complete but not yet verified end to end. In order:
    "directly deleted" (`~VehicleCentral` deletes leftover vehicles with delete, not Release: one delete, harmless);
    with a file request in flight radFileSystem "not all files/requests were destroyed", `m_pNumRefFiles == 0`,
    `s_ThreadTable[ i ] == NULL`. Release ignores them; not worth reworking the original teardown order.
-4. **Mods, small to large** (done 2026-10-21: CustomShopSupport item lists, 3D phone booth settings, CustomCarSupport, outfit voices):
-   CustomText Language setting; then custom characters, interiors, audio,
+4. **Mods, small to large** (done 2026-10-21: CustomShopSupport item lists, 3D phone booth settings, CustomCarSupport, outfit voices, CustomText Language):
+   custom characters, interiors, audio,
    traffic and the rest of the hacks Futurama lists at startup. Test with the user in the loop (shops, phone booth, dialogue).
 5. **Packaging**: install script or AppImage-style bundle (32-bit runtime libraries, FFmpeg, SDL2).
 6. **Steering-wheel force feedback**: only with a wheel to test on.

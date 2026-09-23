@@ -45,6 +45,7 @@ struct Mod
     int numHandlers;
     ModSetting* settings;
     int numSettings;
+    char* language;         /* ModSettings.ini Language= (the Mod Launcher's own setting for CustomText); NULL */
     bool hasLua;            /* CustomFiles.lua or path handlers */
     void* lua;              /* lua_State, shar_modlua.cpp */
 };

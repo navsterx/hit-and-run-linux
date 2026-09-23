@@ -72,7 +72,7 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [x] CustomFiles, LuaSupport, OggVorbisSupport
 - [x] CustomLimits (billboards, regions, script argument length)
 - [x] IncreasedVideoResolutionSupport (movies up to 1920x1080)
-- [x] CustomText (English)
+- [x] CustomText (with the Language setting)
 - [x] CustomShopSupport: car shop seller and conversation; phone booth and skin shop item lists and icons
 - [x] CustomDialogueCharacterCodes: new speaker codes, outfit voices ([NongenericOutfits]/[NongenericCharacters])
 - [x] 3DPhoneBoothPreviewSupport (all settings)
@@ -100,7 +100,6 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [ ] Missing-data tolerance where it is cheap (`art\wrench.p3d` missing still crashes later)
 
 ### Mods
-- [ ] CustomText: Language setting
 - [x] CustomCarSupport: every setting (2026-10-21; [FakeWheel] CopySkidMarks not drawn); in play still to check: custom
   husks, PreviewScale, IsHusk
 - [ ] Custom characters, interiors, audio, traffic, ASF commands and the other hacks

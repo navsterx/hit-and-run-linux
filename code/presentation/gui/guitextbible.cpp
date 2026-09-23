@@ -34,7 +34,8 @@
 // Linux port: Mod Launcher CustomText (CustomText.ini or CustomText/<language>.ini, UTF-8 or UTF-16): strings by
 // name in [CustomText] (everywhere), [CustomTextL1] (level 1), [CustomTextL1M2] / L1SR1 / L1GR1 / L1BM1 (that
 // mission, by its script name), $(Variables). They replace or add text bible strings through Scrooby's lookup
-// hook. With several language files the English one is used (the Mod Launcher's Language setting: not yet).
+// hook. With several language files: the mod's Language setting (ModSettings.ini [InternalName] Language=<Title>),
+// else the file titled as the game's language, else English, else the first.
 //===========================================================================
 namespace
 {
@@ -259,12 +260,30 @@ namespace
         free( v );
     }
 
+    // [Miscellaneous] Title=, the name the Language setting lists the file under
     void OnTitle( const char* section, const char* key, const char* value, void* user )
     {
-        if( strcasecmp( section, "Miscellaneous" ) == 0 && strcasecmp( key, "Title" ) == 0 &&
-            strcasecmp( value, "English" ) == 0 )
+        if( strcasecmp( section, "Miscellaneous" ) == 0 && strcasecmp( key, "Title" ) == 0 )
         {
-            *static_cast<bool*>( user ) = true;
+            snprintf( static_cast<char*>( user ), 64, "%s", value );
+        }
+    }
+
+    // a file's title, or its name without .ini when it has none
+    void FileTitle( const char* utf8, const char* fileName, char* title )
+    {
+        title[ 0 ] = '\0';
+        char* copy = strdup( utf8 );
+        ForEachIniLine( copy, OnTitle, title );
+        free( copy );
+        if( title[ 0 ] == '\0' )
+        {
+            snprintf( title, 64, "%s", fileName );
+            char* dot = strrchr( title, '.' );
+            if( dot != NULL && strcasecmp( dot, ".ini" ) == 0 )
+            {
+                *dot = '\0';
+            }
         }
     }
 
@@ -347,20 +366,39 @@ namespace
             count = shar_ModConfigFolder( "CustomText", texts, sizes, names, 16 );
         }
 
-        int chosen = -1;
+        // the language: the mod's Language setting (ModSettings.ini, by title or file name), else the game's
+        // language, else English, else the first file
+        const char* setting = single == NULL ? shar_ModConfigFolderLanguage( "CustomText" ) : NULL;
+        static const char* const GAME_LANGUAGES[] = { "English", "French", "German", "Spanish" };
+        int gameLanguage = static_cast<int>( CGuiTextBible::GetCurrentLanguage() );
+        const char* game = gameLanguage >= 0 && gameLanguage < 4 ? GAME_LANGUAGES[ gameLanguage ] : "English";
+        int bySetting = -1, byGame = -1, byEnglish = -1;
         char* utf8[ 16 ];
         for( int i = 0; i < count; i++ )
         {
             utf8[ i ] = ToUtf8( texts[ i ], sizes[ i ] != 0 ? sizes[ i ] : strlen( texts[ i ] ) );
-            char* copy = strdup( utf8[ i ] );
-            bool english = false;
-            ForEachIniLine( copy, OnTitle, &english );
-            free( copy );
-            if( chosen < 0 || english )
+            char title[ 64 ];
+            FileTitle( utf8[ i ], names[ i ], title );
+            char fileName[ 64 ];
+            FileTitle( "", names[ i ], fileName );
+            if( bySetting < 0 && setting != NULL && ( strcasecmp( title, setting ) == 0 || strcasecmp( fileName, setting ) == 0 ) )
             {
-                chosen = english ? i : ( chosen < 0 ? i : chosen );
+                bySetting = i;
+            }
+            if( byGame < 0 && strcasecmp( title, game ) == 0 )
+            {
+                byGame = i;
+            }
+            if( byEnglish < 0 && strcasecmp( title, "English" ) == 0 )
+            {
+                byEnglish = i;
             }
         }
+        if( setting != NULL && bySetting < 0 )
+        {
+            fprintf( stderr, "mods: CustomText: no language \"%s\" (ModSettings.ini Language)\n", setting );
+        }
+        int chosen = bySetting >= 0 ? bySetting : byGame >= 0 ? byGame : byEnglish >= 0 ? byEnglish : ( count > 0 ? 0 : -1 );
         if( chosen >= 0 )
         {
             LoadModTexts( utf8[ chosen ] );

@@ -662,6 +662,13 @@ void OnUserSettings( const char* section, const char* key, const char* value, vo
             return;
         }
     }
+    if ( strcasecmp( key, "Language" ) == 0 )
+    {
+        // not a Meta.ini setting: the Mod Launcher adds it for a mod with several CustomText files
+        free( mod->language );
+        mod->language = ModDup( value );
+        return;
+    }
     fprintf( stderr, "mods: ModSettings.ini: %s has no setting %s\n", mod->name, key );
 }
 
@@ -1670,6 +1677,8 @@ extern "C" char* shar_ModConfig( const char* name )
     return NULL;
 }
 
+static const Mod* s_FolderMod = NULL;   // the mod the last shar_ModConfigFolder call read from
+
 extern "C" int shar_ModConfigFolder( const char* folder, char** texts, size_t* sizes, char** names, int max )
 {
     pthread_once( &s_Once, Init );
@@ -1730,8 +1739,25 @@ extern "C" int shar_ModConfigFolder( const char* folder, char** texts, size_t* s
         }
         if ( count > 0 )
         {
+            s_FolderMod = mod;
             return count;
         }
     }
     return 0;
+}
+
+extern "C" const char* shar_ModConfigFolderLanguage( const char* folder )
+{
+    // the mod shar_ModConfigFolder takes the folder from
+    char* texts[ 64 ];
+    size_t sizes[ 64 ];
+    char* names[ 64 ];
+    s_FolderMod = NULL;
+    int count = shar_ModConfigFolder( folder, texts, sizes, names, 64 );
+    for ( int i = 0; i < count; i++ )
+    {
+        free( texts[ i ] );
+        free( names[ i ] );
+    }
+    return s_FolderMod != NULL ? s_FolderMod->language : NULL;
 }
