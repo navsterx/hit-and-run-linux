@@ -66,6 +66,15 @@ public:
     float GetDecayRate() {return mDecayRatePerSecond;}
     void SetDecayRateInside( float rate ) { mDecayRateInsidePerSecond = rate; }
     float GetDecayRateInside() {return mDecayRateInsidePerSecond;}
+#ifdef RAD_LINUX
+    // Linux port: for mods' script commands (AdditionalScriptFunctionality)
+    int GetNumChaseCars() const { return mNumChaseCars; }
+    void SetDecayRateWhileSpawning( float rate ) { mDecayRateWhileSpawning = rate; }
+    float GetDecayRateWhileSpawning() const { return mDecayRateWhileSpawning; }
+    void SetBustedCoins( int coins ) { mBustedCoins = coins; }
+    int GetBustedCoins() const { return mBustedCoins; }
+    void SetChangeVehicleDelta( float delta ) { mChangeVehicleDelta = delta; }
+#endif
 
     bool IsWaitingForReset() { return !mVehicleReset; }
 

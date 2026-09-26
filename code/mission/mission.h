@@ -282,6 +282,12 @@ private:
 
     int mNumValidFailureHints;
 
+#ifdef RAD_LINUX
+    // Linux port: mods' checkpoints (AdditionalScriptFunctionality, code/mission/modscript.cpp): the number of the
+    // last checkpoint reached (counted from 0 in stage order), -1 for none; kept across retries
+    friend class ModScriptCommands;
+    int mModCheckpoint;
+#endif
 };
 
 //=============================================================================

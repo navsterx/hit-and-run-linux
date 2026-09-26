@@ -384,6 +384,11 @@ mIsInSubstep(true),
 mLean(0.0f, 1.0f, 0.0f),
 mIsLisa(false),
 mIsMarge(false),
+#ifdef RAD_LINUX
+mHasModSeat(false),
+mModSeatPosition(0.0f, 0.0f, 0.0f),
+mModSeatFacing(0.0f),
+#endif
 mManaged(false)
 {
 
@@ -1178,6 +1183,12 @@ void Character::AddToPhysics( void )
     sim::CollisionObject* groundPlaneColObj = mGroundPlaneSimState->GetCollisionObject();
 
     AssignCollisionAreaIndex();
+#ifdef RAD_LINUX
+    if( mCollisionAreaIndex == WorldPhysicsManager::INVALID_COLLISION_AREA )
+    {
+        return;     // Linux port: all character areas in use: no collisions (the original indexed area -1)
+    }
+#endif
 
     GetWorldPhysicsManager()->mCollisionManager->AddCollisionObject(
         myColObj, mCollisionAreaIndex );
@@ -1237,6 +1248,12 @@ void NPCharacter::AddToPhysics( void )
     sim::CollisionObject* myColObj = mpSimStateObj->GetCollisionObject();
 
     AssignCollisionAreaIndex();
+#ifdef RAD_LINUX
+    if( mCollisionAreaIndex == WorldPhysicsManager::INVALID_COLLISION_AREA )
+    {
+        return;     // Linux port: all character areas in use: no collisions (the original indexed area -1)
+    }
+#endif
 
     GetWorldPhysicsManager()->mCollisionManager->AddCollisionObject(
         myColObj, mCollisionAreaIndex );

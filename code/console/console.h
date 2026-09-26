@@ -147,7 +147,11 @@ class Console : public LoadingManager::ProcessRequestsCallback
         enum
         {
             MAX_STRING_LENGTH = 256,
+#ifdef RAD_LINUX
+            MAX_FUNCTIONS = 512,    // Linux port: room for mods' script commands (AdditionalScriptFunctionality)
+#else
             MAX_FUNCTIONS = 256,
+#endif
             MAX_FUNCTION_NAME = 32,
             MAX_HELP_LENGTH = 256,
             MAX_ALIAS_NAME = 32,

@@ -38,6 +38,11 @@
 #include <mission/mission.h>
 #include <mission/missionmanager.h>
 #include <mission/missionscriptloader.h>
+#ifdef RAD_LINUX
+#include <mission/modscript.h>
+#include <mission/objectives/modobjectives.h>
+#include <mission/conditions/modconditions.h>
+#endif
 #include <mission/missionstage.h>
 #include <mission/nodamagebonusobjective.h>
 #include <mission/nocopbonusobjective.h>
@@ -618,6 +623,9 @@ void MissionScriptLoader::Register()
     console->AddFunction( "SetCoinDrawable", SetCoinDrawable, "", 1, 1 ); //Name the drawable for the coins
     console->AddFunction( "SetParticleTexture", SetParticleTexture, "", 2, 2 ); //Name of texture used for particle
 
+#ifdef RAD_LINUX
+    ModScript::Register( console );     // Linux port: mods' commands (Mod Launcher AdditionalScriptFunctionality)
+#endif
 }
 //=============================================================================
 // MissionScriptLoader::LoadScript
@@ -1549,6 +1557,10 @@ MEMTRACK_PUSH_GROUP( "Mission - Objectives" );
 
     spInstance->mObjType = MissionObjective::OBJ_INVALID;
 
+#ifdef RAD_LINUX
+    // Linux port: mods' objective types (Mod Launcher AdditionalScriptFunctionality); they run as type "dummy"
+    MissionObjective* modObjective = ModCreateObjective( argc, argv );
+#endif
     bool found = false;
     for( unsigned int i = 0; i < MissionObjective::NUM_OBJECTIVES; i++ )
     {
@@ -1559,6 +1571,13 @@ MEMTRACK_PUSH_GROUP( "Mission - Objectives" );
             break;
         }
     }
+#ifdef RAD_LINUX
+    if( !found && modObjective == NULL )
+    {
+        rReleasePrintf( "Mission script: unknown objective type %s (it never completes)\n", argv[ 1 ] );
+    }
+    found = found || modObjective != NULL;
+#endif
 
     rTuneAssertMsg( found, "This is not a valid Objective type" );
 
@@ -1723,6 +1742,13 @@ MEMTRACK_PUSH_GROUP( "Mission - Objectives" );
         }
     default:
         {
+#ifdef RAD_LINUX
+            if( modObjective != NULL )
+            {
+                spInstance->mpObjective = modObjective;
+                break;
+            }
+#endif
             MissionObjective* objective = new MissionObjective();
             spInstance->mpObjective = objective;
             break;
@@ -2841,6 +2867,16 @@ MEMTRACK_PUSH_GROUP( "Mission - Conditions" );
         }
     }
 
+#ifdef RAD_LINUX
+    // Linux port: mods' condition types (Mod Launcher AdditionalScriptFunctionality), and the original's
+    // "hitandruncought", which never had a class
+    spInstance->mpCondition = ModCreateCondition( argc, argv );
+    if( spInstance->mpCondition != NULL )
+    {
+        spInstance->mCondType = spInstance->mpCondition->GetType();
+    }
+    else
+#endif
     rTuneAssertMsg( spInstance->mCondType != MissionCondition::COND_INVALID, "This is not a valid Condition type\n" );
 
     switch( spInstance->mCondType )
@@ -2932,11 +2968,27 @@ MEMTRACK_PUSH_GROUP( "Mission - Conditions" );
         }
     default:
         {
+#ifdef RAD_LINUX
+            if( spInstance->mpCondition != NULL )
+            {
+                break;      // a mod's type
+            }
+#endif
             rTuneAssertMsg( false, "Unknown Condition type\n" );
             break;
         }
     }
 
+#ifdef RAD_LINUX
+    if( spInstance->mpCondition == NULL )
+    {
+        // the stage would call it every frame (the original crashed on unknown types)
+        rReleasePrintf( "Mission script: unknown condition type %s, ignored\n", argv[ 1 ] );
+        MEMTRACK_POP_GROUP( "Mission - Conditions" );
+        HeapMgr()->PopHeap( spInstance->mMissionHeap );
+        return;
+    }
+#endif
 
     rAssert( spInstance->mpCondition != NULL );
     

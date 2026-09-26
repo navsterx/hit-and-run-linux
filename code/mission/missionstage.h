@@ -40,6 +40,9 @@ class Locator;
 class ZoneEventLocator;
 class CarStartLocator;
 class SafeZone;
+#ifdef RAD_LINUX
+struct ModStage;
+#endif
 
 
 
@@ -514,6 +517,16 @@ private:
 
     bool mAllowMissionAbort : 1;
     int mResetCounter;
+
+#ifdef RAD_LINUX
+public:
+    // Linux port: a mod's stage settings (AdditionalScriptFunctionality, code/mission/modscript.cpp); NULL when the
+    // script set none. Owned by the stage.
+    ModStage* GetModStage() const { return mModStage; }
+    void SetModStage( ModStage* mod ) { mModStage = mod; }
+private:
+    ModStage* mModStage;
+#endif
 
 };
 

@@ -72,7 +72,8 @@ pthread_once_t s_Once = PTHREAD_ONCE_INIT;
 // Hacks implemented here; reported by IsHackLoaded and not listed as ignored
 const char* const SUPPORTED_HACKS[] = { "CustomFiles", "CustomLimits", "OggVorbisSupport", "LuaSupport", "CustomShopSupport",
                                         "CustomDialogueCharacterCodes", "CustomText", "3DPhoneBoothPreviewSupport",
-                                        "CustomCarSupport", "IncreasedVideoResolutionSupport" };
+                                        "CustomCarSupport", "IncreasedVideoResolutionSupport",
+                                        "AdditionalScriptFunctionality" };
 
 void Init( void );
 
@@ -486,6 +487,9 @@ struct MetaInfo
     char requiredMods[ 1024 ];
 };
 
+// every mod's RequiredHack= values, ", "-separated (shar_ModHackRequired)
+char s_RequiredHacks[ 4096 ];
+
 void Append( char* list, size_t size, const char* item )
 {
     size_t len = strlen( list );
@@ -559,9 +563,13 @@ void OnMeta( const char* section, const char* key, const char* value, void* user
     {
         meta->main = atoi( value ) != 0;
     }
-    else if ( strcasecmp( key, "RequiredHack" ) == 0 && !IsSupportedHack( value ) )
+    else if ( strcasecmp( key, "RequiredHack" ) == 0 )
     {
-        Append( meta->unsupported, sizeof( meta->unsupported ), value );
+        if ( !IsSupportedHack( value ) )
+        {
+            Append( meta->unsupported, sizeof( meta->unsupported ), value );
+        }
+        Append( s_RequiredHacks, sizeof( s_RequiredHacks ), value );
     }
     else if ( strcasecmp( key, "RequiredMod" ) == 0 )
     {
@@ -1760,4 +1768,24 @@ extern "C" const char* shar_ModConfigFolderLanguage( const char* folder )
         free( names[ i ] );
     }
     return s_FolderMod != NULL ? s_FolderMod->language : NULL;
+}
+
+int shar_ModHackRequired( const char* hack )
+{
+    size_t len = strlen( hack );
+    for ( const char* p = s_RequiredHacks; *p != '\0'; )
+    {
+        const char* end = strchr( p, ',' );
+        size_t n = end ? (size_t)( end - p ) : strlen( p );
+        if ( n == len && strncasecmp( p, hack, len ) == 0 )
+        {
+            return 1;
+        }
+        if ( end == NULL )
+        {
+            break;
+        }
+        p = end + 2;
+    }
+    return 0;
 }

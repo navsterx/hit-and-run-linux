@@ -638,6 +638,10 @@ void PrintOutOfMemoryMessage( void* userData, radMemoryAllocator heap, const uns
         textDisplay->Release();
     }
 
+#ifdef RAD_LINUX
+    fprintf( stderr, "OUT OF MEMORY: heap %s, %s, %s, %s\n", HeapNames[ heapEnum ], freeMemoryString, largestBlockString,
+             lastAllocationStr );  // Linux port: the screen above may never show
+#endif
     rReleaseBreak();
 
 #ifndef RAD_GAMECUBE

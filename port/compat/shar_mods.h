@@ -69,6 +69,10 @@ int shar_ModConfigFolder(const char* folder, char** texts, size_t* sizes, char**
  * CustomText files by their Title) of the mod shar_ModConfigFolder(folder) reads from; NULL when not set. */
 const char* shar_ModConfigFolderLanguage(const char* folder);
 
+/* Whether a loaded mod's Meta.ini has RequiredHack=hack (case-insensitive): for behaviour the Mod Launcher enables
+ * only for mods that ask for it. */
+int shar_ModHackRequired(const char* hack);
+
 #ifdef __cplusplus
 }
 #endif

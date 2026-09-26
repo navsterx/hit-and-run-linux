@@ -231,6 +231,16 @@ void InCar::Enter( void )
     rmt::Vector seat = mIsDriver ? 
         mpCharacter->GetTargetVehicle()->GetDriverLocation() : 
         mpCharacter->GetTargetVehicle()->GetPassengerLocation(); 
+#ifdef RAD_LINUX
+    if( mpCharacter->HasModSeat() )
+    {
+        // Linux port: a mod's passenger (AdditionalScriptFunctionality) sits on a joint of the car
+        mIsDriver = false;
+        seat = mpCharacter->GetModSeatPosition();
+        mpCharacter->SetDesiredDir( mpCharacter->GetModSeatFacing() );
+        mpCharacter->SetFacingDir( mpCharacter->GetModSeatFacing() );
+    }
+#endif
 
     bool busy = mpCharacter->GetActionController()->IsBusy();
 
@@ -317,6 +327,12 @@ void InCar::SequenceAction( void )
     {
         seatPos = pVehicle->GetPassengerLocation();
     }
+#ifdef RAD_LINUX
+    if( mpCharacter->HasModSeat() )
+    {
+        seatPos = mpCharacter->GetModSeatPosition();
+    }
+#endif
     seatPos.y = localPos.y;
     mpCharacter->GetPuppet()->SetPosition(seatPos);
 

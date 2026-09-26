@@ -76,6 +76,7 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [x] CustomShopSupport: car shop seller and conversation; phone booth and skin shop item lists and icons
 - [x] CustomDialogueCharacterCodes: new speaker codes, outfit voices ([NongenericOutfits]/[NongenericCharacters])
 - [x] 3DPhoneBoothPreviewSupport (all settings)
+- [x] AdditionalScriptFunctionality: what the Futurama demo uses (see To do for the rest)
 - [x] Futurama: Hit & Run demo plays Level 1 with its shops and phone booth
 
 ## To do
@@ -102,7 +103,13 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 ### Mods
 - [x] CustomCarSupport: every setting (2026-10-21; [FakeWheel] CopySkidMarks not drawn); in play still to check: custom
   husks, PreviewScale, IsHusk
-- [ ] Custom characters, interiors, audio, traffic, ASF commands and the other hacks
+- [ ] AdditionalScriptFunctionality (2026-10-21, `code/mission/modscript.cpp`): every command registered; done:
+  the objective/condition types except insidetrigger/outsidetrigger, the If* conditionals, stage payout / Hit & Run /
+  ped group / music / cancel settings, DisableTrigger, checkpoints, passengers (AddStageVehicleCharacter); left (logged
+  once when used): vehicle character animation/scale/visibility/jump-out, stage vehicle settings, SetStageCharacterModel,
+  forces/gravity, stage dyna load data, traffic groups (need CustomTrafficSupport), parked cars/peds switches,
+  SetObj/CondSound, explosions, SetObjUseCameraPosition, CON commands (SetConditionalParameter, SetWheelieOffsetX)
+- [ ] Custom characters, interiors, audio, traffic and the other hacks
 - [ ] HoverCarRefraction (required by the Futurama demo)
 - [ ] Shaders from more than the first mod's `Shaders/` folder
 

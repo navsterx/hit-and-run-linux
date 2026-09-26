@@ -5,7 +5,7 @@ Port of the original 2003 source to 32-bit Linux with SDL2 + OpenGL. The untouch
 (sources, included headers, the VS project files `gen_cmake.py` reads, and the Win32 originals it swaps for Linux ones).
 Status (2026-10-17): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
 dialogue, movies, reverb and rumble, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
-Mod Launcher mods partly supported (8 hacks; the Futurama demo plays Level 1 with its shops and phone booth).
+Mod Launcher mods partly supported (11 hacks; the Futurama demo plays Level 1 with its shops and phone booth).
 Missing: steering-wheel force feedback. `README.md` is the user-facing overview, `TODO.md` the done/to-do checklist; `RUST.md` holds notes for a
 possible future Rust/Bevy reimplementation (not started).
 
@@ -419,6 +419,28 @@ replaces the game's `== HUSKA` checks; `HuskPool::Init` makes 2 husks per Husk= 
 start, `RequestHusk` hands out the configured type, none if missing). Tested with a test mod (famil_v rear-wheel
 steering -3, hood as a fake wheel, SUVA Husk=compactA): logged values as configured, ASan clean with it and Futurama.
 Not checked in play: a destroyed car leaving a custom husk, PreviewScale, IsHusk.
+AdditionalScriptFunctionality (2026-10-21, `code/mission/modscript.cpp`, `objectives/modobjectives.cpp`,
+`conditions/modconditions.cpp`; Linux-only sources in gen_cmake's LINUX_EXTRA): every command of the hack (1.27 docs) is
+registered (console table 256 -> 512 functions), unimplemented ones log `mods: AdditionalScriptFunctionality: X not
+supported yet` once, conditionals are bool console functions (the original parser's `If(...){ }`). Objective types:
+counters over events or polled state (`ModCounter`: collectcoins/wrench, completedwasps = the level's saved count,
+destroycars, event, hitandrun/caught/lost/rage, hitpeds, jump, reachspeed, spring) and camera (AnimatedCam, done on
+EVENT_ANIMATED_CAM_SHUTDOWN); they run as type "dummy". Conditions: the same counters fail after SetCondDelay (defaults
+from the docs), maintainspeed (proximity meter). Unknown condition names used to put NULL in the stage (crash): now
+skipped with a message; the original's "hitandruncought" had no class (now the ASF one). `event` numbers are retail's:
+from 177 one higher than this source (retail split EVENT_FE_CANCEL into _1/_2; `ModTranslateEvent`). Stage settings
+live in `MissionStage::GetModStage()` (made on first use, mission heap) and apply at the end of `MissionStage::Reset`,
+Hit & Run settings restored in Finalize. Checkpoints: `Mission::mModCheckpoint` survives retries
+(`MissionManager::RestartCurrentMission` -> `ModScript::OnRetry`); missions re-run their script on every load, so
+`Mission::Initialize` (after the script, before InitDynaLoad) moves mResetToStage, restart locators, dyna load and ped
+group to the checkpoint's. Passengers: an NPC per AddStageVehicleCharacter in the car's InCar state with a
+`Character::SetModSeat` (joint position, facing; `ai/state.cpp`), seated while the car is in the active list, removed
+at Mission Finalize/Reset (a retry replays the stages before its start). The original's SetHitAndRunDecayInterior
+(wired to KillAllChaseAI) is corrected only when a mod requires the hack (`shar_ModHackRequired`). `SHAR_MOD_LOG=1`
+logs passengers and checkpoints. Found on the way: more than 18 characters in physics at once (Futurama's m4sd after a
+long session) made `Character/NPCharacter::AddToPhysics` index collision area -1 (crash in sim::VoidPList::Add); now
+such a character goes without collision. Raising the 18 areas to 32 ran the Temp heap out of memory loading a zone.
+`PrintOutOfMemoryMessage` now also prints the heap and sizes to stderr (it only drew them, then trapped: SIGILL).
 Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
 
 ## Priorities (2026-10-17)

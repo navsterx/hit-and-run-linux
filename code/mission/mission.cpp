@@ -75,6 +75,9 @@
 #include <atc/atcmanager.h>
 
 #include <ai/actionbuttonhandler.h>
+#ifdef RAD_LINUX
+#include <mission/modscript.h>
+#endif
 
 //******************************************************************************
 //
@@ -144,6 +147,9 @@ Mission::Mission() :
     mInitPedGroupId( 0 ),
     mShowHUD( true ),
     mNumValidFailureHints( -1 )
+#ifdef RAD_LINUX
+    , mModCheckpoint( -1 )
+#endif
 {
     strcpy( mcName, "" );
     mbCarryOverOutOfCarCondition = false;
@@ -305,6 +311,10 @@ Vehicle* Mission::GetVehicleByName( char* name )
 void Mission::Initialize( GameMemoryAllocator heap)
 {
     mHeap = heap;
+#ifdef RAD_LINUX
+    // Linux port: a retry resumes at a mod's checkpoint (the mission's script has just run; zones load next)
+    ModScript::OnMissionInitialize( this );
+#endif
 
     unsigned int i;
     for ( i = 0; i < mNumBonusObjectives; ++i )
@@ -411,6 +421,9 @@ void Mission::Initialize( GameMemoryAllocator heap)
 void Mission::Finalize()
 {
     SetToStage( -1 );
+#ifdef RAD_LINUX
+    ModScript::RemoveVehicleCharacters();   // Linux port: mods' passengers leave with the mission
+#endif
 
     //chuck adding draw synch I hope to fix the level 5 m1 crash when user aborts missions.
     p3d::pddi->DrawSync();
@@ -709,6 +722,9 @@ void Mission::SetToStage( int index, bool resetting )
             {            
                 GetStage(i)->VehicleInfoInitialize();
                 GetStage(i)->VehicleFinalize();
+#ifdef RAD_LINUX
+                ModScript::OnStageSkipped( GetStage( i ) );     // mods' passengers added before here
+#endif
             }
         }
         stage->Initialize();
@@ -1421,6 +1437,9 @@ void Mission::Reset( bool jumpStage )
     }
 
     SetToStage( -1 );
+#ifdef RAD_LINUX
+    ModScript::RemoveVehicleCharacters();   // the stages (re)add them
+#endif
 
     if ( jumpStage )
     {   

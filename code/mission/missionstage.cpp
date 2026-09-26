@@ -74,6 +74,9 @@
 #include <roads/road.h>
 #include <roads/roadsegment.h>
 #include <roads/intersection.h>
+#ifdef RAD_LINUX
+#include <mission/modscript.h>
+#endif
 
 //******************************************************************************
 //
@@ -199,6 +202,9 @@ MissionStage::MissionStage() :
     mbLevelOver =false;
     mbGameOver = false;
     mResetCounter = 0;
+#ifdef RAD_LINUX
+    mModStage = NULL;
+#endif
 
 }
 
@@ -222,6 +228,10 @@ MissionStage::~MissionStage()
 
     mNumCountdownSequenceUnits = 0;
 
+#ifdef RAD_LINUX
+    delete mModStage;
+    mModStage = NULL;
+#endif
     delete mObjective;
     mObjective = NULL;
 
@@ -837,6 +847,9 @@ void MissionStage::Initialize()
 //=============================================================================
 void MissionStage::Finalize()
 {
+#ifdef RAD_LINUX
+    ModScript::OnStageFinalize( this );
+#endif
     GetEventManager()->RemoveAll(this);
     VehicleFinalize();
  
@@ -1407,6 +1420,9 @@ void MissionStage::Reset()
             GetGameplayManager()->SetGameComplete();
         }
     }
+#ifdef RAD_LINUX
+    ModScript::OnStageStart( this );    // Linux port: a mod's stage settings (AdditionalScriptFunctionality)
+#endif
 }
 
 
@@ -1664,6 +1680,9 @@ void MissionStage::Start()
 void MissionStage::Update( unsigned int elapsedTime )
 {
 BEGIN_PROFILE("MissionStage Update");
+#ifdef RAD_LINUX
+    ModScript::Update( elapsedTime );   // mods' passengers follow their cars into and out of the world
+#endif
     mObjective->Update( elapsedTime );
 
         //Chuck: Reward player if this was a gamble race
@@ -2473,6 +2492,9 @@ void MissionStage::SetmsPlayerCarRespawnLocatorName(char* locatorName)
 void MissionStage::OnStageCompleteSuccessful()
 {
     HasPresentationInfo::OnStageCompleteSuccessful();
+#ifdef RAD_LINUX
+    ModScript::OnStageComplete( this );     // Linux port: a mod's stage payout
+#endif
 }
 
 void MissionStage::SetCharacterToHide(char* charactername)

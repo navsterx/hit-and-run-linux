@@ -71,6 +71,9 @@
 #include <worldsim/traffic/trafficmanager.h>
 #include <worldsim/worldphysicsmanager.h>
 #include <memory/srrmemory.h>
+#ifdef RAD_LINUX
+#include <mission/modscript.h>
+#endif
 
 #include <mission/animatedicon.h>
 
@@ -812,6 +815,9 @@ MEMTRACK_POP_GROUP( "MissionManager - Loading" );
 void MissionManager::RestartCurrentMission()
 {
     mResetting = true;
+#ifdef RAD_LINUX
+    ModScript::OnRetry();   // Linux port: resume at a mod's checkpoint
+#endif
 
     GetVehicleCentral()->DetachAllCollectibles();
 

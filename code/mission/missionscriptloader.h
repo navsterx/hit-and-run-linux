@@ -47,6 +47,9 @@ class VehicleAI;
 
 class MissionScriptLoader : public Console::ExecuteScriptCallback
 {
+#ifdef RAD_LINUX
+    friend class ModScriptCommands;     // Linux port: mods' script commands (code/mission/modscript.cpp)
+#endif
 public:
     // Static Methods for accessing this singleton.
     static MissionScriptLoader* CreateInstance();

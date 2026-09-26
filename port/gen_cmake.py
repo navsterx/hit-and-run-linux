@@ -48,7 +48,10 @@ LINUX_INCLUDES = {
 LINUX_EXTRA = {
     "radcore": ["libs/radcore/src/raddebugcommunication/linux/dbgcomstub.cpp",
                 "libs/radcore/src/radcontroller/linux/sdlcontroller.cpp"],
-    "srr2": ["code/main/linuxplatform_sdl.cpp"],
+    "srr2": ["code/main/linuxplatform_sdl.cpp",
+             "code/mission/modscript.cpp",                          # mods' script commands (AdditionalScriptFunctionality)
+             "code/mission/objectives/modobjectives.cpp",
+             "code/mission/conditions/modconditions.cpp"],
     "radmovie": ["libs/radmovie/src/linux/binkffmpeg.cpp"],     # the Bink SDK subset radmovie uses, on FFmpeg
     "radsound": ["libs/radsound/src/hal/linux/linuxhal.cpp",
                  "libs/radsound/src/hal/win32/bufferloader.cpp",          # platform-neutral, reused as is

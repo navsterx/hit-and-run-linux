@@ -364,6 +364,15 @@ public: // MEMBERS
     void SetIsLisa(bool b) { mIsLisa = b; }
     void SetIsMarge(bool b) { mIsMarge = b; }
 
+#ifdef RAD_LINUX
+    // Linux port: a mod's vehicle passenger (AdditionalScriptFunctionality): sits in its car's InCar state at this
+    // car-space position (a joint of the car), facing this way, instead of the driver's or passenger's seat
+    void SetModSeat( const rmt::Vector& position, float facing ) { mHasModSeat = true; mModSeatPosition = position; mModSeatFacing = facing; }
+    bool HasModSeat() const { return mHasModSeat; }
+    const rmt::Vector& GetModSeatPosition() const { return mModSeatPosition; }
+    float GetModSeatFacing() const { return mModSeatFacing; }
+#endif
+
     void SnapToGround(void);
 
     unsigned GetActiveFrame(void) { return mIntersectFrame; }
@@ -607,6 +616,11 @@ private: // MEMBERS
 
     bool mIsLisa;
     bool mIsMarge;
+#ifdef RAD_LINUX
+    bool mHasModSeat;
+    rmt::Vector mModSeatPosition;
+    float mModSeatFacing;
+#endif
 
     rmt::Vector mLastGoodPosOverStatic;
     
