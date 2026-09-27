@@ -77,7 +77,8 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [x] CustomDialogueCharacterCodes: new speaker codes, outfit voices ([NongenericOutfits]/[NongenericCharacters])
 - [x] 3DPhoneBoothPreviewSupport (all settings)
 - [x] AdditionalScriptFunctionality: what the Futurama demo uses (see To do for the rest)
-- [x] Futurama: Hit & Run demo plays Level 1 with its shops and phone booth
+- [x] Futurama: Hit & Run demo plays Level 1 with its shops and phone booth; missions m0-m4 run through (autopass)
+- [ ] Futurama Level 1 missions played by hand (m1-m4, bm1: kicking the pawn, wasps, speed stages)
 
 ## To do
 

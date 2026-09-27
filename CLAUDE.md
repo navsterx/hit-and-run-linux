@@ -5,7 +5,7 @@ Port of the original 2003 source to 32-bit Linux with SDL2 + OpenGL. The untouch
 (sources, included headers, the VS project files `gen_cmake.py` reads, and the Win32 originals it swaps for Linux ones).
 Status (2026-10-17): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
 dialogue, movies, reverb and rumble, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
-Mod Launcher mods partly supported (11 hacks; the Futurama demo plays Level 1 with its shops and phone booth).
+Mod Launcher mods partly supported (11 hacks; the Futurama demo plays Level 1 with its shops, phone booth and missions).
 Missing: steering-wheel force feedback. `README.md` is the user-facing overview, `TODO.md` the done/to-do checklist; `RUST.md` holds notes for a
 possible future Rust/Bevy reimplementation (not started).
 
@@ -402,8 +402,12 @@ Fixed on the way (would also hit vanilla data in other cases): GL prim buffers d
 of the count set (uninitialised indices: intermittent crashes inside the GL driver with mod meshes), stream writes
 past the allocation; null merchandise in `CharacterSheetManager::UpdateRewardsManager`; region list overflow.
 Tested 2026-10-15: "SHAR Remastered" 1.0; Futurama: Hit & Run demo 0.1.3 boots (its movies, menu scene) and reaches
-Level 1 by New Game (5/5 runs) and `skipfe`. Its other 20 hacks are not implemented (custom cars/characters/shops/
-interiors/text, ASF commands, ...), nor its required HoverCarRefraction mod: driving and missions untested.
+Level 1 by New Game (5/5 runs) and `skipfe`. 2026-10-21: its Level 1 missions m0-m4 run through with `autopass`
+(scripts, objectives, passengers, cameras; not yet played by hand). Not implemented yet: CustomAnimationSetSupport,
+CustomAudioSupport, CustomBonusMissionSupport, CustomInteriorSupport, CustomLicenseScreenTime, CustomSkinPreviewAnimations,
+CustomStatsTotals, CustomTrafficSupport, NoMainMenuCameraAnimations, OverrideShaderParameters,
+DynamicTreeNodeEntityLimits, CustomRoadBehaviour, CustomTriggerActions, HUDMapIgnorePlayerHeight, and its required
+HoverCarRefraction mod.
 CustomCarSupport (2026-10-21, `port/compat/shar_modcars.cpp`): cars the game does not know already loaded and drove
 (their `mVehicleID` stays `VehicleEnum::INVALID`, 96; car sound parameters are found by name, Futurama's engine
 clips sit in carsound.spt, always loaded). `Vehicle::mModCar` (looked up in `AssignEnumBasedOnName`) adds: Index
@@ -474,7 +478,8 @@ The base game is feature-complete but not yet verified end to end. In order:
    "directly deleted" (`~VehicleCentral` deletes leftover vehicles with delete, not Release: one delete, harmless);
    with a file request in flight radFileSystem "not all files/requests were destroyed", `m_pNumRefFiles == 0`,
    `s_ThreadTable[ i ] == NULL`. Release ignores them; not worth reworking the original teardown order.
-4. **Mods, small to large** (done 2026-10-21: CustomShopSupport item lists, 3D phone booth settings, CustomCarSupport, outfit voices, CustomText Language):
+4. **Mods, small to large** (done 2026-10-21: CustomShopSupport item lists, 3D phone booth settings, CustomCarSupport, outfit voices, CustomText Language,
+   AdditionalScriptFunctionality (most of it; see TODO.md)):
    custom characters, interiors, audio,
    traffic and the rest of the hacks Futurama lists at startup. Test with the user in the loop (shops, phone booth, dialogue).
 5. **Packaging**: install script or AppImage-style bundle (32-bit runtime libraries, FFmpeg, SDL2).
@@ -581,5 +586,6 @@ The base game is feature-complete but not yet verified end to end. In order:
 9. (done 2026-10-14) Widescreen verified by the user: scales correctly at all ratios, including extreme ones.
    Borderless fullscreen and the runtime resolution list added the same day.
 10. (in progress 2026-10-15) Mods: Futurama: Hit & Run demo 0.1.3 drives in Level 1; the car shop (seller,
-    conversation, names), clothes store names and the 3D phone booth work (user-tested). Still unimplemented: custom
-    cars/characters/interiors/audio/traffic, ASF commands, HoverCarRefraction and the rest of the 17 listed at startup.
+    conversation, names), clothes store names and the 3D phone booth work (user-tested). Since then (2026-10-21):
+    CustomCarSupport, AdditionalScriptFunctionality (missions m0-m4 run through with autopass); still unimplemented:
+    custom characters/interiors/audio/traffic, HoverCarRefraction and the rest listed at startup (see the Mods section).
