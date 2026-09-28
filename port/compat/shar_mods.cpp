@@ -73,7 +73,7 @@ pthread_once_t s_Once = PTHREAD_ONCE_INIT;
 const char* const SUPPORTED_HACKS[] = { "CustomFiles", "CustomLimits", "OggVorbisSupport", "LuaSupport", "CustomShopSupport",
                                         "CustomDialogueCharacterCodes", "CustomText", "3DPhoneBoothPreviewSupport",
                                         "CustomCarSupport", "IncreasedVideoResolutionSupport",
-                                        "AdditionalScriptFunctionality" };
+                                        "AdditionalScriptFunctionality", "CustomInteriorSupport", "DynamicTreeNodeEntityLimits", "CustomRoadBehaviour" };
 
 void Init( void );
 

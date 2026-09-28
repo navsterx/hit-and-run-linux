@@ -41,6 +41,7 @@ void* operator new[](size_t size)
 
 #include <render/RenderManager/RenderManager.h>
 #include <render/RenderManager/RenderLayer.h>
+#include <shar_mods.h>
 
 //******************************************************************************
 //
@@ -194,11 +195,12 @@ void RoadManager::Init( bool shutdown )
 
     if( !shutdown )
     {
-        InitializeRoadSegmentDataMemory( 1200 );
+        // Linux port: mods can raise these (CustomLimits.ini [Roads])
+        InitializeRoadSegmentDataMemory( shar_ModLimit( "Roads", "CubeShapeLimit", 1200 ) );
         //TODO: base this on incoming chunk data.
-        InitializeRoadMemory( 150 );
-        InitializeIntersectionMemory( 60 );
-        InitializeRoadSegmentMemory( 1200 );
+        InitializeRoadMemory( shar_ModLimit( "Roads", "RoadLimit", 150 ) );
+        InitializeIntersectionMemory( shar_ModLimit( "Roads", "IntersectionLimit", 60 ) );
+        InitializeRoadSegmentMemory( shar_ModLimit( "Roads", "RoadSegmentLimit", 1200 ) );
     }
 }
 void RoadManager::InitializeRoadMemory( unsigned int numRoads )

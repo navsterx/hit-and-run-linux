@@ -127,6 +127,7 @@ public:
                float kmh );
 
     void InitPos( const rmt::Vector& pos );
+    bool IsOnModUnsnappedRoad();    // Linux port: CustomRoadBehaviour
     void InitFacing( const rmt::Vector& facing );
     void InitVehicleAI( Vehicle* vehicle );
     void InitLane( Lane* lane, unsigned int laneIndex, float mps );

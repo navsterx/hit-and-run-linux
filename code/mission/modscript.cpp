@@ -456,7 +456,7 @@ public:
     {
         ModStage* s = Stage( argv[ 0 ] );
         int group = atoi( argv[ 1 ] );
-        if( s != NULL && group >= 0 && group < PedestrianManager::MAX_MODEL_GROUPS ) s->pedGroup = group;
+        if( s != NULL && group >= 0 && group < PedestrianManager::GetMaxModelGroups() ) s->pedGroup = group;
     }
     static void SetStageMusicEvent( int argc, char** argv )
     {
@@ -516,7 +516,7 @@ public:
     {
         ModStage* s = Stage( argv[ 0 ] );
         int group = atoi( argv[ 1 ] );
-        if( s != NULL && group >= 0 && group < PedestrianManager::MAX_MODEL_GROUPS ) s->checkpointPedGroup = group;
+        if( s != NULL && group >= 0 && group < PedestrianManager::GetMaxModelGroups() ) s->checkpointPedGroup = group;
     }
     // the number (from 0) of the checkpoint the stage being scripted has, -1 for none
     static int ScriptedCheckpoint()

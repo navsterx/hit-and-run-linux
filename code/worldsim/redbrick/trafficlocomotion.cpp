@@ -102,6 +102,15 @@ TrafficLocomotion::~TrafficLocomotion()
     mMyAI->ReleaseVerified();
 }
 
+// Linux port: CustomRoadBehaviour DisableTrafficGroundSnapping: on such a road (a bridge over other ground) the car
+// keeps the road's height
+bool TrafficLocomotion::IsOnModUnsnappedRoad()
+{
+    Lane* lane = mMyAI != NULL ? mMyAI->GetLane() : NULL;
+    const Road* road = lane != NULL ? lane->GetRoad() : NULL;
+    return road != NULL && road->GetModNoGroundSnap();
+}
+
 void TrafficLocomotion::InitPos( const rmt::Vector& pos )
 {
 #ifdef POS_HISTORY
@@ -129,7 +138,7 @@ void TrafficLocomotion::InitPos( const rmt::Vector& pos )
         groundPosition    // OUT
         );  
 
-    if( bFoundPlane )
+    if( bFoundPlane && !IsOnModUnsnappedRoad() )
     {
         mPrevPos.y = groundPosition.y;
     }
@@ -873,7 +882,7 @@ BEGIN_PROFILE( "Traffic Locomotion" );
         groundPosition    // OUT
         );  
 
-    if( bFoundPlane )
+    if( bFoundPlane && !IsOnModUnsnappedRoad() )
     {
         pos.y = groundPosition.y;
     }

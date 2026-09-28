@@ -77,8 +77,9 @@ code left MSVC and Windows.
 
 **Mods**
 - Lucas' Mod Launcher packages (`.lmlm`) and extracted mod folders, with Lua scripting, Ogg audio, HD movies,
-  custom text, car shops, new dialogue characters and the 3D phone booth preview
-- Custom cars, characters, interiors and the remaining launcher hacks are not supported yet
+  custom text, car shops, new dialogue characters, the 3D phone booth preview, custom cars, mission script
+  extensions, moved or added interiors, raised engine limits and per-road traffic behaviour
+- Custom characters, audio, traffic and the remaining launcher hacks are not supported yet
 
 **Robustness**
 - A missing file is reported by name instead of hanging the game behind a disc-error screen
@@ -131,7 +132,7 @@ left is in [`TODO.md`](TODO.md). Next, in order:
 1. **Full verification**: a complete playthrough of all seven levels, races, the bonus game
    with several pads, and the other languages
 2. **Robustness**: fixing whatever those runs turn up, plus continued memory checking (valgrind) of new areas
-3. **Mods**: the remaining Mod Launcher hacks, starting with shop item lists and custom cars
+3. **Mods**: the remaining Mod Launcher hacks, starting with custom characters, audio and traffic
 4. **64-bit build**, then **Windows and macOS**
 5. **Packaging**: a self-contained bundle for each platform
 6. **Steering-wheel force feedback**, once there is a wheel to test with

@@ -34,6 +34,8 @@
 // Linux port: report DSG (render tree) failures that release builds hid: an object that is not in the tree is
 // never drawn, though its collision still works
 #include <stdio.h>
+#include <shar_mods.h>
+#include <memory/srrmemory.h>
 #define DSG_REPORT( ... ) fprintf( stderr, "DSG: " __VA_ARGS__ )
 
 #ifdef DEBUGWATCH
@@ -158,7 +160,8 @@ WorldScene::WorldScene()
     mpStaticTree(NULL)
 {
     GetEventManager()->AddListener(this,(EventEnum)(EVENT_LOCATOR+LocatorEvent::FAR_PLANE));
-    mDrawDist = 200.0f;
+    // Linux port: mods can change it (CustomLimits.ini [TreeNodes] DrawDistance)
+    mDrawDist = (float)shar_ModLimit( "TreeNodes", "DrawDistance", 200 );
     // uninit fix (Linux port): with SetRenderAll (the bonus game's top-down view) MarkCameraVisible never runs, so
     // SetVisCone never set the view vector RenderScene ranks objects by; zero ranks them by distance from the camera
     mViewVector.Set( 0.0f, 0.0f, 0.0f );
@@ -368,7 +371,7 @@ void WorldScene::HandleEvent( EventEnum id, void* pEventData )
             }
             else //exit 
             {
-                mDrawDist = 200.0f;
+                mDrawDist = (float)shar_ModLimit( "TreeNodes", "DrawDistance", 200 );
             }
         }
         return;
@@ -581,8 +584,9 @@ void WorldScene::GenerateSpatialReps()
    }
 
    //temporary to ignore weird bounding values
-   mStaticTreeWalker.rBBox().mBounds.mMin.y = -200.0f;
-   mStaticTreeWalker.rBBox().mBounds.mMax.y = 100.0f;
+   // Linux port: mods can change them (CustomLimits.ini [TreeNodes] BoundsMinimumY / BoundsMaximumY)
+   mStaticTreeWalker.rBBox().mBounds.mMin.y = (float)shar_ModLimit( "TreeNodes", "BoundsMinimumY", -200 );
+   mStaticTreeWalker.rBBox().mBounds.mMax.y = (float)shar_ModLimit( "TreeNodes", "BoundsMaximumY", 100 );
    mStaticTreeWalker.BuildBBoxes(mStaticTreeWalker.rBBox());
 
    PopulateStaticTree();
@@ -1898,6 +1902,21 @@ void WorldScene::GenerateStaticTree()
    mStaticTreeWalker.SetToRoot( *mpStaticTree );*/
 }
 ////////////////////////////////////////////////////////////////////
+// Linux port: DynamicTreeNodeEntityLimits. A tree node's list holds what the art reserved for it (plus the root's
+// margins); a mod's world can place more there. The list grows (level heap) instead of the object being left out
+// of the tree, which made it invisible while its collision stayed.
+////////////////////////////////////////////////////////////////////
+template< class A, class T > static bool AddGrowing( A& irArray, T ipVal )
+{
+   if( irArray.mUseSize >= irArray.mSize )     // grown first: Add asserts when full in debug builds
+   {
+      HeapMgr()->PushHeap( GMA_LEVEL_OTHER );
+      irArray.Grow();
+      HeapMgr()->PopHeap( GMA_LEVEL_OTHER );
+   }
+   return irArray.Add( ipVal );
+}
+////////////////////////////////////////////////////////////////////
 // TODO: this can be per-function templatized for all member types
 ////////////////////////////////////////////////////////////////////
 void WorldScene::PopulateStaticTree()
@@ -1950,7 +1969,7 @@ void WorldScene::Place( IntersectDSG* ipIntersectDSG )
    //mStaticTreeWalker.Place( (ISpatialProxyAA&)DrawableSP, mStaticEntities[i] );
    //mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP).mIntersectElems.Add(ipIntersectDSG);
    SpatialNode* pSpatialNode = &(mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP));
-   if( !pSpatialNode->mIntersectElems.Add(ipIntersectDSG) )
+   if( !AddGrowing( pSpatialNode->mIntersectElems, ipIntersectDSG ) )
    {
        DSG_REPORT( "no room for intersect %s (node full: %d)\n", ipIntersectDSG->GetName(), pSpatialNode->mIntersectElems.mSize );
    }
@@ -1980,7 +1999,7 @@ void WorldScene::Place(    StaticEntityDSG*  ipStaticEntity )
    if(! pSpatialNode->mSEntityElems.Add(ipStaticEntity))
    {
        pSpatialNode = &(mStaticTreeWalker.rIthNode(0));
-       if( ! pSpatialNode->mSEntityElems.Add(ipStaticEntity) )
+       if( ! AddGrowing( pSpatialNode->mSEntityElems, ipStaticEntity ) )
        {
            DSG_REPORT( "no room for static entity %s, even in the root node\n", ipStaticEntity->GetName() );
            rTuneAssert(false);
@@ -2015,7 +2034,7 @@ void WorldScene::Place(      StaticPhysDSG*    ipStaticPhys )
    //mStaticTreeWalker.Place( (ISpatialProxyAA&)DrawableSP, mStaticEntities[i] );
    //mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP).mSPhysElems.Add(ipStaticPhys);
    SpatialNode* pSpatialNode = &(mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP));
-   if( !pSpatialNode->mSPhysElems.Add(ipStaticPhys) )
+   if( !AddGrowing( pSpatialNode->mSPhysElems, ipStaticPhys ) )
    {
        DSG_REPORT( "no room for static phys %s (node full: %d)\n", ipStaticPhys->GetName(), pSpatialNode->mSPhysElems.mSize );
    }
@@ -2045,7 +2064,7 @@ void WorldScene::Place( DynaPhysDSG*      ipDynaPhys )
    if(! pSpatialNode->mDPhysElems.Add(ipDynaPhys))
    {
        pSpatialNode = &(mStaticTreeWalker.rIthNode(0));
-       if( ! pSpatialNode->mDPhysElems.Add(ipDynaPhys) )
+       if( ! AddGrowing( pSpatialNode->mDPhysElems, ipDynaPhys ) )
        {
            DSG_REPORT( "no room for dyna phys %s, even in the root node\n", ipDynaPhys->GetName() );
            rTuneAssert(false);
@@ -2079,7 +2098,7 @@ void WorldScene::Place( FenceEntityDSG*      ipFence )
    
    //mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP).mFenceElems.Add(ipFence);
    SpatialNode* pSpatialNode = &(mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP));
-   if( !pSpatialNode->mFenceElems.Add(ipFence) )
+   if( !AddGrowing( pSpatialNode->mFenceElems, ipFence ) )
    {
        DSG_REPORT( "no room for fence %s (node full: %d)\n", ipFence->GetName(), pSpatialNode->mFenceElems.mSize );
    }
@@ -2108,7 +2127,7 @@ void WorldScene::Place( AnimCollisionEntityDSG* ipAnimColl )
    if(! pSpatialNode->mAnimCollElems.Add(ipAnimColl))
    {
        pSpatialNode = &(mStaticTreeWalker.rIthNode(0));
-       if( ! pSpatialNode->mAnimCollElems.Add(ipAnimColl) )
+       if( ! AddGrowing( pSpatialNode->mAnimCollElems, ipAnimColl ) )
        {
            DSG_REPORT( "no room for anim collision %s, even in the root node\n", ipAnimColl->GetName() );
            rTuneAssert(false);
@@ -2149,7 +2168,7 @@ void WorldScene::Place( AnimEntityDSG* ipAnim )
    if(! pSpatialNode->mAnimElems.Add(ipAnim))
    {
        pSpatialNode = &(mStaticTreeWalker.rIthNode(0));
-       if( ! pSpatialNode->mAnimElems.Add(ipAnim) )
+       if( ! AddGrowing( pSpatialNode->mAnimElems, ipAnim ) )
        {
            DSG_REPORT( "no room for anim %s, even in the root node\n", ipAnim->GetName() );
            rTuneAssert(false);
@@ -2180,7 +2199,7 @@ void WorldScene::Place( TriggerVolume*           ipTriggerVolume )
    
    //mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP).mTrigVolElems.Add(ipTriggerVolume);
    SpatialNode* pSpatialNode = &(mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP));
-   if( !pSpatialNode->mTrigVolElems.Add(ipTriggerVolume) )
+   if( !AddGrowing( pSpatialNode->mTrigVolElems, ipTriggerVolume ) )
    {
        DSG_REPORT( "no room for trigger volume (node full: %d)\n", pSpatialNode->mTrigVolElems.mSize );
    }
@@ -2203,7 +2222,7 @@ void WorldScene::Place( RoadSegment*           ipRoadSegment )
    
    //mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP).mRoadSegmentElems.Add(ipRoadSegment);
    SpatialNode* pSpatialNode = &(mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP));
-   if( !pSpatialNode->mRoadSegmentElems.Add(ipRoadSegment) )
+   if( !AddGrowing( pSpatialNode->mRoadSegmentElems, ipRoadSegment ) )
    {
        DSG_REPORT( "no room for road segment (node full: %d)\n", pSpatialNode->mRoadSegmentElems.mSize );
    }
@@ -2226,7 +2245,7 @@ void WorldScene::Place( PathSegment*           ipPathSegment )
    
    //mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP).mPathSegmentElems.Add(ipPathSegment);
    SpatialNode* pSpatialNode = &(mStaticTreeWalker.rSeekNode((ISpatialProxyAA&)DrawableSP));
-   if( !pSpatialNode->mPathSegmentElems.Add(ipPathSegment) )
+   if( !AddGrowing( pSpatialNode->mPathSegmentElems, ipPathSegment ) )
    {
        DSG_REPORT( "no room for path segment (node full: %d)\n", pSpatialNode->mPathSegmentElems.mSize );
    }

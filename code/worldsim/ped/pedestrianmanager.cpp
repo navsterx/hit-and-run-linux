@@ -17,6 +17,7 @@
 #include <debug/profiler.h> // for the Profiler
 #include <radmath/radmath.hpp> // for rmt::Vector 
 #include <memory/srrmemory.h>
+#include <shar_mods.h>
 
 #include <meta/locatorevents.h>
 #include <meta/pedgrouplocator.h>
@@ -127,7 +128,7 @@ void PedestrianManager::InitDefaultModelGroups()
     // CharacterManager::PreLoad and GamePlayManager::LoadBlahBlah,
     // cuz GamePlayManager will want to parse the level script which 
     // will register the modelgroups... 
-    for( int i=0; i<PedestrianManager::MAX_MODEL_GROUPS; i++ )
+    for( int i=0; i<PedestrianManager::GetMaxModelGroups(); i++ )
     {
         mModelGroups[i].numModels = 4;
         mModelGroups[i].models[0].Init( "male1", 5 );
@@ -496,6 +497,7 @@ PedestrianManager::PedestrianManager() :
     mNumActiveModels( 0 ),
     mAllowAdd( true )
 {
+    mModelGroups = new ModelGroup[ GetMaxModelGroups() ];
     // check some stuff once per compile..
     rAssert( PedestrianManager::ADD_RADIUS > 0 ); 
     rAssert( PedestrianManager::REMOVE_RADIUS > 0 );
@@ -523,9 +525,24 @@ PedestrianManager::PedestrianManager() :
     }
 }
 
+int PedestrianManager::GetMaxModelGroups( void )
+{
+    static int limit = 0;
+    if( limit == 0 )
+    {
+        limit = shar_ModLimit( "Pedestrians", "GroupLimit", MAX_MODEL_GROUPS );
+        if( limit < MAX_MODEL_GROUPS )
+        {
+            limit = MAX_MODEL_GROUPS;
+        }
+    }
+    return limit;
+}
+
 PedestrianManager::~PedestrianManager()
 {
     GetEventManager()->RemoveAll( this );
+    delete[] mModelGroups;
 
     int i;
     for( i=0; i<PedestrianManager::MAX_PEDESTRIANS; i++ )
@@ -1085,7 +1102,12 @@ void PedestrianManager::UnregisterAllModels()
 
 void PedestrianManager::SwitchModelGroup( int toGroupID )
 {
-    rAssert( 0 <= toGroupID && toGroupID < PedestrianManager::MAX_MODEL_GROUPS );
+    rAssert( 0 <= toGroupID && toGroupID < PedestrianManager::GetMaxModelGroups() );
+    // Linux port: the original indexed past the groups
+    if( toGroupID < 0 || toGroupID >= PedestrianManager::GetMaxModelGroups() )
+    {
+        return;
+    }
 #ifdef RAD_DEBUG
     CheckModelCounts();
 #endif 
@@ -1151,8 +1173,13 @@ int PedestrianManager::GetModelIDByName( const char* name )
 
 void PedestrianManager::SetModelGroup( int groupID, const ModelGroup& group )
 {
-    rAssert( 0 <= groupID && groupID < PedestrianManager::MAX_MODEL_GROUPS );
+    rAssert( 0 <= groupID && groupID < PedestrianManager::GetMaxModelGroups() );
     rAssert( 0 <= group.numModels && group.numModels <= PedestrianManager::MAX_MODELS );
+    // Linux port: the original wrote past the groups (a level script defining more than the limit)
+    if( groupID < 0 || groupID >= PedestrianManager::GetMaxModelGroups() )
+    {
+        return;
+    }
 
     mModelGroups[groupID].numModels = group.numModels;
 

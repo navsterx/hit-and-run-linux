@@ -16,6 +16,7 @@
 // System Includes
 //=================================================
 #include <memory/srrmemory.h>
+#include <shar_mods.h>
 
 
 //=================================================
@@ -77,7 +78,8 @@ public:
       mAnimCollElems.Allocate(inSize/4);
       mAnimElems.Allocate(inSize/4);
       mTrigVolElems.Allocate(inSize/4);
-      mRoadSegmentElems.Allocate(1250);
+      // Linux port: CustomLimits.ini [Regions] RoadSegmentLimit
+      mRoadSegmentElems.Allocate(shar_ModLimit( "Regions", "RoadSegmentLimit", 1250 ));
       mPathSegmentElems.Allocate(inSize);
       MEMTRACK_POP_GROUP( "Devin's world" );
    }

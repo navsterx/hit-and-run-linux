@@ -62,6 +62,7 @@
 #include <meta/spheretriggervolume.h>
 #include <meta/triggervolumetracker.h>
 #include <cards/cardgallery.h>
+#include <shar_modinteriors.h>
 #include <mission/charactersheet/charactersheetmanager.h>
 #include <mission/missionmanager.h>
 #include <mission/gameplaymanager.h>
@@ -1008,9 +1009,41 @@ InteriorManager* InteriorManager::CreateInstance()
     return spInstance;
 }
 
+// Linux port: CustomInteriorSupport. The mod's settings for an interior (by its name's UID), or NULL.
+static const SharModInterior* FindModInterior(tUID uid)
+{
+    for(int i = 0; i < shar_ModInteriorCount(); i++)
+    {
+        const SharModInterior* interior = shar_ModInteriorAt(i);
+        if(tEntity::MakeUID(interior->name) == uid)
+        {
+            return interior;
+        }
+    }
+    return NULL;
+}
+
 const tName& InteriorManager::ClassifyPoint(const rmt::Vector& point)
 {
     static tName none((tUID)0);
+
+    // Linux port: a mod's interior list (CustomInteriorSupport) replaces the built-in one: mods list the game's own
+    // interiors again where they want them (in the levels they name)
+    if(shar_ModInteriorCount() > 0)
+    {
+        static tName modNames[64];
+        int level = GetGameplayManager()->GetCurrentLevelIndex();
+        for(int i = 0; i < shar_ModInteriorCount() && i < 64; i++)
+        {
+            const SharModInterior* interior = shar_ModInteriorAt(i);
+            if((interior->levels & (1 << level)) && shar_ModInteriorContains(interior, point.x, point.y, point.z))
+            {
+                modNames[i].SetText(interior->name);
+                return modNames[i];
+            }
+        }
+        return none;
+    }
 
     for(int i = 0; i < 8; i++)
     {
@@ -1356,6 +1389,28 @@ void InteriorManager::Enter(InteriorEntranceLocator* entry, Character* pCharacte
     pSeq->EndSequence( );
 */
 
+}
+
+//==============================================================================
+// InteriorManager::CanJump / CanKick / CanSprint (Linux port)
+//==============================================================================
+// The interior being entered may not be current yet (SwitchToInterior runs under the iris wipe): its loaded UID.
+bool InteriorManager::CanJump(void)
+{
+    const SharModInterior* modInterior = IsInside() ? FindModInterior(mCurrentInteriorUID ? mCurrentInteriorUID : mLoadedInteriorUID) : NULL;
+    return !IsInside() || (modInterior != NULL && modInterior->allowJumping);
+}
+
+bool InteriorManager::CanKick(void)
+{
+    const SharModInterior* modInterior = IsInside() ? FindModInterior(mCurrentInteriorUID ? mCurrentInteriorUID : mLoadedInteriorUID) : NULL;
+    return !IsInside() || (modInterior != NULL && modInterior->allowKicking);
+}
+
+bool InteriorManager::CanSprint(void)
+{
+    const SharModInterior* modInterior = IsInside() ? FindModInterior(mCurrentInteriorUID ? mCurrentInteriorUID : mLoadedInteriorUID) : NULL;
+    return !IsInside() || (modInterior != NULL && modInterior->allowSprinting);
 }
 
 //==============================================================================
@@ -2093,6 +2148,29 @@ void InteriorManager::SwitchToInterior()
         mCurrentInteriorUID = mLoadedInteriorUID;
     }
 
+    // Linux port: a mod's mirror and ambient resets for this interior (CustomInteriorSupport) replace the built-in
+    // ones below; an interior it lists without them keeps those
+    const SharModInterior* modInterior = FindModInterior(mCurrentInteriorUID);
+    bool modMirror = modInterior != NULL && modInterior->hasMirror;
+    bool modResets = modInterior != NULL && modInterior->numResets > 0;
+    if(modMirror)
+    {
+        const float* m = modInterior->mirror;
+        static rmt::Matrix modMirrorMatrix;     // SetMirror keeps the pointer
+        modMirrorMatrix = rmt::Matrix(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7],
+                                      m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]);
+        WorldRenderLayer* pWorldRenderLayer = static_cast< WorldRenderLayer* > (GetRenderManager()->mpLayer( RenderEnums::LevelSlot ));
+        pWorldRenderLayer->SetMirror(true, &modMirrorMatrix);
+    }
+    for(int i = 0; modResets && i < modInterior->numResets; i++)
+    {
+        Character* ambient = GetCharacterManager()->GetCharacterByName(modInterior->resetCharacters[i]);
+        if(ambient && ambient->IsAmbient())
+        {
+            ambient->ResetAmbientPosition();
+        }
+    }
+
     if(mCurrentInteriorUID == tEntity::MakeUID("moe1"))
     {
         static rmt::Matrix mirrorMatrix(-1.0f, 0.0f,  0.0f,  0.0f, 
@@ -2100,10 +2178,13 @@ void InteriorManager::SwitchToInterior()
                                         0.0f, 0.0f,  1.0f,  0.0f, 
                                         109.5f, 0.0f,  0.0f,  1.0f); 
         WorldRenderLayer* pWorldRenderLayer = static_cast< WorldRenderLayer* > (GetRenderManager()->mpLayer( RenderEnums::LevelSlot ));
-        pWorldRenderLayer->SetMirror(true, &mirrorMatrix);
+        if(!modMirror)
+        {
+            pWorldRenderLayer->SetMirror(true, &mirrorMatrix);
+        }
 
         Character* moe = GetCharacterManager()->GetCharacterByName("moe");
-        if(moe && moe->IsAmbient())
+        if(moe && moe->IsAmbient() && !modResets)
         {
             moe->ResetAmbientPosition();
         }
@@ -2115,7 +2196,10 @@ void InteriorManager::SwitchToInterior()
                                         0.0f, 0.0f,  -1.0f,  0.0f, 
                                         0.0f, 0.0f,  -894.0f,  1.0f); 
         WorldRenderLayer* pWorldRenderLayer = static_cast< WorldRenderLayer* > (GetRenderManager()->mpLayer( RenderEnums::LevelSlot ));
-        pWorldRenderLayer->SetMirror(true, &mirrorMatrix);
+        if(!modMirror)
+        {
+            pWorldRenderLayer->SetMirror(true, &mirrorMatrix);
+        }
     }
 
     SetupLightsAndAnims();

@@ -696,7 +696,8 @@ void Loco::SequenceAction( void )
     }
 
     // Sequence in the jump animation
-    if ( theIntention == CharacterController::Jump && !GetInteriorManager()->IsInside())
+    // Linux port: CanJump = not inside, unless a mod's interior allows it (CustomInteriorSupport)
+    if ( theIntention == CharacterController::Jump && GetInteriorManager()->CanJump())
     {
         if( !mpCharacter->IsNPC() && 
             mpCharacter->GetSimState()->GetControl() == sim::simSimulationCtrl )
@@ -818,7 +819,8 @@ void Loco::SequenceAction( void )
 
     // Only do the test for turbo when we are not jumping.
     //
-    if ( mpCharacter->GetController()->IsButtonDown( CharacterController::Dash ) && !GetInteriorManager()->IsInside())
+    // Linux port: CanSprint = not inside, unless a mod's interior allows it (CustomInteriorSupport)
+    if ( mpCharacter->GetController()->IsButtonDown( CharacterController::Dash ) && GetInteriorManager()->CanSprint())
     {
         mpCharacter->SetTurbo( true );
     }

@@ -2315,7 +2315,8 @@ Console::FunctionTableEntry::FunctionTableEntry
     isConditional( false )
 {
     rTuneAssert( in_func != 0 );
-    rTuneAssert( strlen( in_name ) < MAX_FUNCTION_NAME );
+    // Linux port: the entry keeps a pointer to the name (only aliases copy it into MAX_FUNCTION_NAME): mods' script
+    // commands (AdditionalScriptFunctionality) have longer names
     rTuneWarningMsg( strlen( in_help ) < MAX_HELP_LENGTH, "Help text too long.  Text has been truncated.\n" );
 
     functionPointer.voidReturn = in_func;
@@ -2349,7 +2350,8 @@ Console::FunctionTableEntry::FunctionTableEntry
     isConditional( true )
 {
     rTuneAssert( in_func != 0 );
-    rTuneAssert( strlen( in_name ) < MAX_FUNCTION_NAME );
+    // Linux port: the entry keeps a pointer to the name (only aliases copy it into MAX_FUNCTION_NAME): mods' script
+    // commands (AdditionalScriptFunctionality) have longer names
     rTuneAssert( strlen( in_help ) < MAX_HELP_LENGTH );
 
     functionPointer.boolReturn = in_func;

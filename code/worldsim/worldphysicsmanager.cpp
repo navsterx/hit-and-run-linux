@@ -70,6 +70,7 @@
 // just here to hack in a light so I can see the texture damage states better
 #include <render/RenderManager/RenderManager.h>
 #include <render/RenderManager/RenderLayer.h>
+#include <shar_mods.h>
 
 //******************************************************************************
 //
@@ -478,10 +479,11 @@ MEMTRACK_PUSH_GROUP( "WorldPhysicsManager" );
     // only need slots for shit that is in existence simultaneously
     
     // 10 is probably enough
-    mMaxVehicles = 15;
+    // Linux port: mods can raise the collision index limits (CustomLimits.ini [CollisionIndices])
+    mMaxVehicles = shar_ModLimit( "CollisionIndices", "VehicleLimit", 15 );
 
     // 12 - 15 would probably be enough
-    mMaxChars = 18; 
+    mMaxChars = shar_ModLimit( "CollisionIndices", "CharacterLimit", 18 ); 
     
     
 
@@ -553,7 +555,7 @@ MEMTRACK_PUSH_GROUP( "WorldPhysicsManager" );
 
     // TODO - find the right number here
     // TODO - different depending on thing?
-    mMaxStatics = 30;
+    mMaxStatics = shar_ModLimit( "CollisionIndices", "StaticPhysLimit", 30 );
         
     mCurrentStatics = new StaticsInCollisionDetection*[mNumCollisionAreas];
 
@@ -581,7 +583,7 @@ MEMTRACK_PUSH_GROUP( "WorldPhysicsManager" );
     // It has to be larger because of the large radius set in CharacterManager.
     // When anim objects move in the DSG, we can reduce this to a smaller number.
     //
-    mMaxAnimCollisions = 20;
+    mMaxAnimCollisions = shar_ModLimit( "CollisionIndices", "AnimCollLimit", 20 );
         
     mCurrentAnimCollisions = new AnimCollisionInCollisionDetection*[mNumCollisionAreas];
     
@@ -617,7 +619,7 @@ MEMTRACK_PUSH_GROUP( "WorldPhysicsManager" );
     //-------
 
     // TODO - find the right number here!
-    mMaxFencePerArea = 8;
+    mMaxFencePerArea = shar_ModLimit( "CollisionIndices", "FenceLimit", 8 );
 
     mFences = new FencePieces*[mNumCollisionAreas];
 
@@ -696,7 +698,7 @@ MEMTRACK_PUSH_GROUP( "WorldPhysicsManager" );
     // dynamics
     //---------
 
-    mMaxDynamics = 20;
+    mMaxDynamics = shar_ModLimit( "CollisionIndices", "DynaPhysLimit", 20 );
         
     mCurrentDynamics = new DynamicsInCollisionDetection*[mNumCollisionAreas];
 

@@ -35,6 +35,7 @@
 #include <memory/createheap.h>
 #include <memory/srrmemory.h>
 #include <memory/memoryutilities.h>
+#include <shar_mods.h>
 
 #include <cheats/cheatinputsystem.h>
 
@@ -1719,7 +1720,13 @@ void HeapManager::PrepareHeapsStartup ()
     // The temporary heap.
     // This heap is for temporary allocations that happen during loading, to prevent fragmentation.
     //
-    CreateHeap( GMA_TEMP, static_cast<unsigned int>(HS_TEMP * MB * FUDGE) );
+    // Linux port: the collision manager's areas live here (sim::CollisionManager::SetNbArea, ~14 KB each: object,
+    // pair and collision lists); mods raising CustomLimits [CollisionIndices] VehicleLimit / CharacterLimit get room
+    // for their extra areas (WorldPhysicsManager::InitCollisionManager), plus slack: what is left between them fragments
+    int extraAreas = shar_ModLimit( "CollisionIndices", "VehicleLimit", 15 ) - 15 +
+                     shar_ModLimit( "CollisionIndices", "CharacterLimit", 18 ) - 18;
+    unsigned int extraTemp = extraAreas > 0 ? extraAreas * 16 * 1024 + 256 * 1024 : 0;
+    CreateHeap( GMA_TEMP, static_cast<unsigned int>(HS_TEMP * MB * FUDGE) + extraTemp );
 
     // The persistent heap.
     // This heap holds everything that is allocated at the beginning of the game and never gets freed.

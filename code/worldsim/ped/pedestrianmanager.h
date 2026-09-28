@@ -116,6 +116,8 @@ public:
     {
         return MAX_PEDESTRIANS;
     }
+    // Linux port: MAX_MODEL_GROUPS, or more for mods (CustomLimits.ini [Pedestrians] GroupLimit)
+    static int GetMaxModelGroups( void );
 
     // NON-STATICS
 
@@ -196,7 +198,7 @@ private:
     Model mModels[MAX_MODELS]; // array of currently registered models (of current group)
     int mNumRegisteredModels;  // number of currently registerd models
 
-    ModelGroup mModelGroups[MAX_MODEL_GROUPS]; // groups of models for swapping
+    ModelGroup* mModelGroups; // groups of models for swapping (Linux port: GetMaxModelGroups() of them)
     int mCurrGroupID;
 
     struct UsedModel

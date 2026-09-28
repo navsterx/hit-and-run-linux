@@ -5,7 +5,8 @@ Port of the original 2003 source to 32-bit Linux with SDL2 + OpenGL. The untouch
 (sources, included headers, the VS project files `gen_cmake.py` reads, and the Win32 originals it swaps for Linux ones).
 Status (2026-10-17): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
 dialogue, movies, reverb and rumble, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
-Mod Launcher mods partly supported (11 hacks; the Futurama demo plays Level 1 with its shops, phone booth and missions).
+Mod Launcher mods partly supported (14 hacks; the Futurama demo plays Level 1 with its shops, phone booth and missions;
+"Fully Connected Map" 1.0.7 plays its Level 1 with the interiors).
 Missing: steering-wheel force feedback. `README.md` is the user-facing overview, `TODO.md` the done/to-do checklist; `RUST.md` holds notes for a
 possible future Rust/Bevy reimplementation (not started).
 
@@ -377,7 +378,23 @@ virtual file system /Mods, /GameData, /GameDir in `shar_modlua.cpp`). `SHAR_MOD_
 Meta.ini defaults unless ModSettings.ini in the game dir sets them.
 Hacks implemented: CustomFiles, LuaSupport, OggVorbisSupport (x.ogg serves x.rsd; `radsound/linux/oggdecoder.cpp`,
 FFmpeg, detected by the "OggS" header in `rsdfiledatasource.cpp`), CustomLimits [Billboards], [Regions] Limit /
-EntityLimit, [Scripting] ArgumentLengthLimit (console arguments were unbounded copies). Movies up to 1920x1080
+EntityLimit / RoadSegmentLimit, [Scripting] ArgumentLengthLimit (console arguments were unbounded copies), [Roads]
+(`RoadManager`), [Pedestrians] PathLimit / GroupLimit (`PathManager`; `PedestrianManager::GetMaxModelGroups`, the
+model groups array is allocated: Fully Connected Map defines 22 groups, the 11th overwrote the manager), [TreeNodes]
+DrawDistance / BoundsMinimumY / BoundsMaximumY (`WorldScene`), [CollisionIndices] (`WorldPhysicsManager`; the
+collision manager's areas live in the Temp heap, ~14 KB each, so `PrepareHeapsStartup` adds 16 KB per extra vehicle or
+character area plus 256 KB: 64 vehicles ran it out at boot); the rest ([Heaps], [Cars], [AnimEntities], [Sound],
+[Missions], [Triggers], [Miscellaneous]) not yet. DynamicTreeNodeEntityLimits: render tree nodes' lists grow when
+full (`WorldScene` `AddGrowing`, level heap; `SwapArray::Grow`) instead of leaving the object out ("DSG: no room for
+path segment" by the thousand with Fully Connected Map); done for every mod, not only those requiring it.
+CustomInteriorSupport (`port/compat/shar_modinteriors.cpp`; `InteriorManager`): the mod's [Interior] list replaces the
+built-in positions in `ClassifyPoint` (mods restate the game's own interiors; Sphere/Box, Level= 1-7), its Mirror*
+matrix and ResetAmbientCharacter replace Moe's / Bart's room built-in ones (kept when not given), AllowJumping/Kicking/
+Sprinting through `InteriorManager::CanJump/CanKick/CanSprint` (`ai/state.cpp`, `Character::Kick`). Interior loading
+itself is all data (InteriorEntrance locators in the terra, the mod's own lNiNN.p3d). CustomRoadBehaviour
+(`port/compat/shar_modroads.cpp`): DisableTrafficGroundSnapping per road (`Road::GetModNoGroundSnap`, set by
+`RoadLoader` from the name: release builds keep no road names; `TrafficLocomotion` keeps the road's height);
+UTurnTolerance is logged and ignored (undocumented). Movies up to 1920x1080
 (64 tiles) and fitted to the window either way (IncreasedVideoResolutionSupport).
 Config files reach the game through `shar_ModConfig` / `shar_ModConfigFolder`; XML ones through `shar_modxml.h`.
 CustomShopSupport (<CarShop>: the level's seller and conversation, `actionbuttonhandler.cpp`; <PhoneBooth> /
@@ -404,10 +421,14 @@ past the allocation; null merchandise in `CharacterSheetManager::UpdateRewardsMa
 Tested 2026-10-15: "SHAR Remastered" 1.0; Futurama: Hit & Run demo 0.1.3 boots (its movies, menu scene) and reaches
 Level 1 by New Game (5/5 runs) and `skipfe`. 2026-10-21: its Level 1 missions m0-m4 run through with `autopass`
 (scripts, objectives, passengers, cameras; not yet played by hand). Not implemented yet: CustomAnimationSetSupport,
-CustomAudioSupport, CustomBonusMissionSupport, CustomInteriorSupport, CustomLicenseScreenTime, CustomSkinPreviewAnimations,
-CustomStatsTotals, CustomTrafficSupport, NoMainMenuCameraAnimations, OverrideShaderParameters,
-DynamicTreeNodeEntityLimits, CustomRoadBehaviour, CustomTriggerActions, HUDMapIgnorePlayerHeight, and its required
-HoverCarRefraction mod.
+CustomAudioSupport, CustomBonusMissionSupport, CustomLicenseScreenTime, CustomSkinPreviewAnimations,
+CustomStatsTotals, CustomTrafficSupport, NoMainMenuCameraAnimations, OverrideShaderParameters, CustomTriggerActions,
+HUDMapIgnorePlayerHeight, and its required HoverCarRefraction mod.
+Fully Connected Map 1.0.7 (2026-10-21; Levels 1-3 joined into Level 1, interiors moved to x=700-900, all hacks it
+requires implemented): boots, Level 1 plays, Kwik-E-Mart and Moe's (door at 872.3,7.1,-473.8 in its L1; DMV
+951.9,6.9,-799.9, Android's Dungeon 426.5,36.3,-1145.9, Observatory -67.4,33.5,-991.1) entered; ASan clean (64-bit).
+Its Level 2/5 entries put Moe's and the DMV at x=750-800, outside the unmodified L2 terra's render tree (max x 459):
+there the characters inside are not drawn (data, not the port). Traffic on its two bridge roads not checked in play.
 CustomCarSupport (2026-10-21, `port/compat/shar_modcars.cpp`): cars the game does not know already loaded and drove
 (their `mVehicleID` stays `VehicleEnum::INVALID`, 96; car sound parameters are found by name, Futurama's engine
 clips sit in carsound.spt, always loaded). `Vehicle::mModCar` (looked up in `AssignEnumBasedOnName`) adds: Index

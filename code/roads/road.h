@@ -138,6 +138,10 @@ public:  // methods
 
     const rmt::Sphere& GetBoundingSphere() const { return mSphere; };
 
+    // Linux port: CustomRoadBehaviour DisableTrafficGroundSnapping (port/compat/shar_modroads.h), set by RoadLoader
+    void SetModNoGroundSnap( bool noSnap ) { mModNoGroundSnap = noSnap; }
+    bool GetModNoGroundSnap() const { return mModNoGroundSnap; }
+
     float GetRoadLength();
     void SetRoadLength( float len );
 
@@ -184,6 +188,7 @@ private:  // data
     unsigned int mDensity;
     unsigned int mDifficulty;
     bool mIsShortCut;
+    bool mModNoGroundSnap;
     
 #ifndef RAD_RELEASE
     char mName[256];

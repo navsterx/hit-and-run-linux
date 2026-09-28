@@ -70,7 +70,9 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 ### Mods (Lucas' Mod Launcher)
 - [x] `.lmlm` packages and extracted folders, several at once
 - [x] CustomFiles, LuaSupport, OggVorbisSupport
-- [x] CustomLimits (billboards, regions, script argument length)
+- [x] CustomLimits (billboards, regions, roads, pedestrians, tree nodes, collision indices, script argument length)
+- [x] CustomInteriorSupport, CustomRoadBehaviour (DisableTrafficGroundSnapping), DynamicTreeNodeEntityLimits
+- [x] Fully Connected Map 1.0.7: Level 1 plays, interiors entered (Kwik-E-Mart, Moe's)
 - [x] IncreasedVideoResolutionSupport (movies up to 1920x1080)
 - [x] CustomText (with the Language setting)
 - [x] CustomShopSupport: car shop seller and conversation; phone booth and skin shop item lists and icons
@@ -110,7 +112,11 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
   once when used): vehicle character animation/scale/visibility/jump-out, stage vehicle settings, SetStageCharacterModel,
   forces/gravity, stage dyna load data, traffic groups (need CustomTrafficSupport), parked cars/peds switches,
   SetObj/CondSound, explosions, SetObjUseCameraPosition, CON commands (SetConditionalParameter, SetWheelieOffsetX)
-- [ ] Custom characters, interiors, audio, traffic and the other hacks
+- [ ] Custom characters, audio, traffic and the other hacks
+- [ ] CustomLimits [Heaps], [Cars], [AnimEntities], [Sound], [Missions], [Triggers], [Miscellaneous]; CustomRoadBehaviour
+  UTurnTolerance
+- [ ] Fully Connected Map by hand: the Level 2/3 areas, their interiors (DMV, Android's Dungeon, Observatory), traffic
+  on its bridges (Road006/Road0061), missions (its warp missions)
 - [ ] HoverCarRefraction (required by the Futurama demo)
 - [ ] Shaders from more than the first mod's `Shaders/` folder
 

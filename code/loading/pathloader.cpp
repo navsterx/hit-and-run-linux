@@ -15,6 +15,7 @@
 #include <pedpaths/path.h>
 #include <pedpaths/pathsegment.h>
 #include <constants/srrchunks.h>
+#include <stdio.h>
 
 static unsigned int sNumPathsLoaded = 0;
 static unsigned int sNumPathSegmentsLoaded = 0;
@@ -52,6 +53,17 @@ tLoadStatus PathLoader::Load(tChunkFile* f, tEntityStore* store)
     // Get a free path & set up its segments
     Path* path = pm->GetFreePath();
     rAssert( path != NULL );
+    // Linux port: no free path (more than CustomLimits [Pedestrians] PathLimit): the path is left out
+    if( path == NULL )
+    {
+        static bool reported = false;
+        if( !reported )
+        {
+            fprintf( stderr, "PathLoader: more pedestrian paths than the limit; the rest are left out\n" );
+            reported = true;
+        }
+        return LOAD_OK;
+    }
 
     path->AllocateSegments( nSegments );
 

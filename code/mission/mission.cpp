@@ -1547,7 +1547,7 @@ void Mission::InitDynaLoad()
     GetEventManager()->TriggerEvent( EVENT_FIRST_DYNAMIC_ZONE_START, mDynaloadLoc );   
 
     // set the pedgroup sheeyatsu...
-    if( 0 <= mInitPedGroupId && mInitPedGroupId < PedestrianManager::MAX_MODEL_GROUPS )
+    if( 0 <= mInitPedGroupId && mInitPedGroupId < PedestrianManager::GetMaxModelGroups() )
     {
         PedestrianManager::GetInstance()->SwitchModelGroup( mInitPedGroupId );
         PedestrianManager::SetDefaultModelGroup( mInitPedGroupId );
@@ -1556,7 +1556,7 @@ void Mission::InitDynaLoad()
 
 void Mission::SetInitPedGroup( int initGroupId )
 {
-    rTuneAssert( 0 <= mInitPedGroupId && mInitPedGroupId < PedestrianManager::MAX_MODEL_GROUPS );
+    rTuneAssert( 0 <= mInitPedGroupId && mInitPedGroupId < PedestrianManager::GetMaxModelGroups() );
     mInitPedGroupId = initGroupId;
 }
 

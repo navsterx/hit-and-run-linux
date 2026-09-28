@@ -50,7 +50,8 @@ mnRoadSegments( 0 ),
 mSpeed( 0 ),
 mDensity( 0 ),
 mDifficulty( 0 ),
-mIsShortCut( false )
+mIsShortCut( false ),
+mModNoGroundSnap( false )
 {
 }
 

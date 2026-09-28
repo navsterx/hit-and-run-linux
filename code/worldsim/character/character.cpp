@@ -714,7 +714,8 @@ void Character::ResetSpeed( void )
 static rmt::Vector dstart,dend;
 void Character::Kick()
 {
-    if(GetInteriorManager()->IsInside())
+    // Linux port: CanKick = not inside, unless a mod's interior allows it (CustomInteriorSupport)
+    if(!GetInteriorManager()->CanKick())
     {
         return;
     }

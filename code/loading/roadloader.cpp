@@ -38,6 +38,8 @@
 #include <roads/road.h>
 
 #include <constants/srrchunks.h>
+#include <mission/gameplaymanager.h>
+#include <shar_modroads.h>
 
 //******************************************************************************
 //
@@ -164,6 +166,8 @@ MEMTRACK_POP_GROUP( "Road Loading" );
 #ifndef RAD_RELEASE
     road->SetName( name );
 #endif
+    // Linux port: release builds keep no road names; a mod's per-road behaviour is looked up here
+    road->SetModNoGroundSnap( shar_ModRoadNoGroundSnap( GetGameplayManager()->GetCurrentLevelIndex(), name ) != 0 );
 
     rm->AddRoad( road );
     

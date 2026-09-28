@@ -12,6 +12,7 @@
 #include <pedpaths/pathmanager.h>
 #include <pedpaths/path.h>
 #include <memory/srrmemory.h>
+#include <shar_mods.h>
 
 // ************************** STATICS *********************************
 PathManager* PathManager::mInstance = NULL;
@@ -46,7 +47,10 @@ PathManager::PathManager()
     // TODO: 
     // Allow automatic detection of number of paths rather than use some
     // static amount.
-    AllocatePaths( MAX_PATHS );
+    // Linux port: mods can raise it (CustomLimits.ini [Pedestrians] PathLimit, formerly [Miscellaneous])
+    int limit = shar_ModLimit( "Pedestrians", "PathLimit", MAX_PATHS );
+    int oldLimit = shar_ModLimit( "Miscellaneous", "PathLimit", MAX_PATHS );
+    AllocatePaths( limit > oldLimit ? limit : oldLimit );
 
 }
 PathManager::~PathManager()
@@ -93,6 +97,11 @@ Path* PathManager::GetFreePath()
     rAssert( 0 <= mNextFreeIndex && mNextFreeIndex < mnPaths );
     rAssert( mPaths != NULL );
 
+    // Linux port: the original handed out the slot past the end when full; the caller skips the path
+    if( mNextFreeIndex >= mnPaths )
+    {
+        return NULL;
+    }
     mNextFreeIndex++;
     return &mPaths[mNextFreeIndex-1];
 }

@@ -71,6 +71,12 @@ class InteriorManager : public EventListener
         bool IsExiting(void) { return mState == EXIT; }
         tUID GetInterior(void) { return mCurrentInteriorUID;}
 
+        // Linux port: whether the player may jump / kick / sprint: not inside an interior (the game's rule), unless a
+        // mod allows it there (CustomInteriorSupport AllowJumping/AllowKicking/AllowSprinting, shar_modinteriors.h)
+        bool CanJump(void);
+        bool CanKick(void);
+        bool CanSprint(void);
+
         void Update( unsigned int elapsedTime );
 
         void CollectionEffect(const char* Name, const rmt::Vector& Pos);

@@ -115,6 +115,20 @@ public:
       return true;
    }
 
+   // Linux port: room for at least one more element (DynamicTreeNodeEntityLimits: tree nodes' lists grow when full
+   // instead of dropping objects); allocates from the current heap
+   void Grow()
+   {
+      int newSize = mSize > 0 ? mSize * 2 : 4;
+      T* pNew = new T[newSize];
+      for( int i = 0; i < mUseSize; i++ )
+         pNew[i] = mpData[i];
+      if( mpData != NULL )
+         delete[] mpData;
+      mpData = pNew;
+      mSize = newSize;
+   }
+
    T& operator[]( int iIndex )
    {
       ASSSERT( (iIndex < mUseSize) && (iIndex > -1));
@@ -298,6 +312,20 @@ public:
       mpData[mUseSize] = irVal;
       mUseSize++;
       return true;
+   }
+
+   // Linux port: room for at least one more element (DynamicTreeNodeEntityLimits: tree nodes' lists grow when full
+   // instead of dropping objects); allocates from the current heap
+   void Grow()
+   {
+      int newSize = mSize > 0 ? mSize * 2 : 4;
+      T* pNew = new T[newSize];
+      for( int i = 0; i < mUseSize; i++ )
+         pNew[i] = mpData[i];
+      if( mpData != NULL )
+         delete[] mpData;
+      mpData = pNew;
+      mSize = newSize;
    }
 
    T& operator[]( int iIndex )

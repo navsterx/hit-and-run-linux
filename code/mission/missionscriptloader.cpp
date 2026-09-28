@@ -4912,7 +4912,7 @@ void MissionScriptLoader::UsePedGroup( int argc, char** argv )
     rTuneAssert(argc == 2);
     int groupId = atoi(argv[1]);
 
-    rTuneAssertMsg( 0 <= groupId && groupId < PedestrianManager::MAX_MODEL_GROUPS, 
+    rTuneAssertMsg( 0 <= groupId && groupId < PedestrianManager::GetMaxModelGroups(), 
         "Invalid groupId" );
 
     spInstance->mpMission->SetInitPedGroup( groupId );
