@@ -26,6 +26,7 @@
 #include <mission/gameplaymanager.h>
 #include <camera/supercammanager.h>
 #include <radtime.hpp>
+#include <shar_mods.h>
 
 //===========================================================================
 // Local Constants, Typedefs, and Macros
@@ -144,13 +145,15 @@ AnimEntityDSGManager::AnimEntityDSGManager()
 	// Don't worry too much about allocating too many since there it will
 	// be the only array in existence
 
-    mpFloatingRightWayArrows.Allocate(6);
-    mpFloatingWrongWayArrows.Allocate(6);
+    // Linux port: mods can raise these (CustomLimits.ini [AnimEntities]; AnimLimit at most 127, as the Mod Launcher)
+    mpFloatingRightWayArrows.Allocate( shar_ModLimit( "AnimEntities", "DArrowAnimLimit", 6 ) );
+    mpFloatingWrongWayArrows.Allocate( shar_ModLimit( "AnimEntities", "WArrowAnimLimit", 6 ) );
 
-	mEntityList.Allocate( MAX_NUM_ANIM_ENTITY_DSGS );
-    mCollEntityList.Allocate( MAX_NUM_ANIM_ENTITY_DSGS );
-	mMultiControllerlist.Allocate( MAX_NUM_MULTICONTROLLERS );
-    mStatePropList.Allocate( MAX_NUM_STATEPROPS );
+	int animLimit = shar_ModLimit( "AnimEntities", "AnimLimit", MAX_NUM_ANIM_ENTITY_DSGS );
+	mEntityList.Allocate( animLimit > 127 ? 127 : animLimit );
+    mCollEntityList.Allocate( shar_ModLimit( "AnimEntities", "AnimCollLimit", MAX_NUM_ANIM_ENTITY_DSGS ) );
+	mMultiControllerlist.Allocate( shar_ModLimit( "AnimEntities", "MultiControllerLimit", MAX_NUM_MULTICONTROLLERS ) );
+    mStatePropList.Allocate( shar_ModLimit( "AnimEntities", "StatePropLimit", MAX_NUM_STATEPROPS ) );
 	GetEventManager()->AddListener( this, (EventEnum)( EVENT_LOCATOR + LocatorEvent::PARKED_BIRDS ) );
 }
 //===========================================================================

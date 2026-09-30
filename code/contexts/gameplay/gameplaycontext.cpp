@@ -98,6 +98,7 @@
 #include <input/inputmanager.h>
 #include <p3d/light.hpp>
 #include <p3d/view.hpp>
+#include <shar_mods.h>
 
 //******************************************************************************
 //
@@ -354,7 +355,7 @@ void GameplayContext::OnStart( ContextEnum previousContext )
         //Find skid mark shaders in the inventory and set proper values
         SkidMarkGenerator::InitShaders();
 
-        GetSkidmarkManager()->Init();
+        GetSkidmarkManager()->Init( shar_ModLimit( "Cars", "SkidMarkLimit", DEFAULT_NUM_SKID_MARKS ) ); // Linux port: CustomLimits
 
         //
         // Notify the sound system of gameplay start.  This has been moved after

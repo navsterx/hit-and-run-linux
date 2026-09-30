@@ -1726,7 +1726,9 @@ void HeapManager::PrepareHeapsStartup ()
     int extraAreas = shar_ModLimit( "CollisionIndices", "VehicleLimit", 15 ) - 15 +
                      shar_ModLimit( "CollisionIndices", "CharacterLimit", 18 ) - 18;
     unsigned int extraTemp = extraAreas > 0 ? extraAreas * 16 * 1024 + 256 * 1024 : 0;
-    CreateHeap( GMA_TEMP, static_cast<unsigned int>(HS_TEMP * MB * FUDGE) + extraTemp );
+    // CustomLimits.ini [Heaps] TempSize (MB) replaces the size
+    float tempSize = shar_ModLimitFloat( "Heaps", "TempSize", HS_TEMP );
+    CreateHeap( GMA_TEMP, static_cast<unsigned int>(tempSize * MB * FUDGE) + extraTemp );
 
     // The persistent heap.
     // This heap holds everything that is allocated at the beginning of the game and never gets freed.
@@ -1969,7 +1971,8 @@ void HeapManager::PrepareHeapsInGame ()
     DestroyHeapA( GMA_LEVEL_MOVIE );
 
     DestroyHeapA( GMA_LEVEL_HUD );
-    CreateHeap( GMA_LEVEL_HUD, static_cast<unsigned int>(HS_LEVEL_HUD * FUDGE * MB) );
+    // Linux port: CustomLimits.ini [Heaps] LevelHUDNormalGameSize (MB) replaces the size
+    CreateHeap( GMA_LEVEL_HUD, static_cast<unsigned int>(shar_ModLimitFloat( "Heaps", "LevelHUDNormalGameSize", HS_LEVEL_HUD ) * FUDGE * MB) );
 
 #ifdef USE_CHAR_GAG_HEAP
     CreateHeap( GMA_CHARS_AND_GAGS, static_cast<unsigned int>(1.3f * MB) );
@@ -1995,7 +1998,8 @@ void HeapManager::PrepareHeapsSuperSprint ()
     const float FUDGE = GetFudgeFactor ();
 
     DestroyHeapA( GMA_LEVEL_HUD );
-    CreateHeap( GMA_LEVEL_HUD, static_cast<unsigned int>(HS_MINIGAME_HUD * FUDGE * MB) );
+    // Linux port: CustomLimits.ini [Heaps] LevelHUDBonusGameSize (MB) replaces the size
+    CreateHeap( GMA_LEVEL_HUD, static_cast<unsigned int>(shar_ModLimitFloat( "Heaps", "LevelHUDBonusGameSize", HS_MINIGAME_HUD ) * FUDGE * MB) );
 
     if (CommandLineOptions::Get( CLO_NO_HEAPS ))
     {
@@ -2024,7 +2028,8 @@ void HeapManager::PrepareHeapsSuperSprint ()
 //    s_pIRadMemoryHeapLevelOther->AddRef ();
 //    radMemoryRegisterAllocator (GMA_LEVEL_OTHER, GMA_LEVEL, s_pIRadMemoryHeapLevelOther);
 
-    CreateHeap( GMA_LEVEL_HUD, static_cast<unsigned int>(HS_MINIGAME_HUD * FUDGE * MB) );
+    // Linux port: CustomLimits.ini [Heaps] LevelHUDBonusGameSize (MB) replaces the size
+    CreateHeap( GMA_LEVEL_HUD, static_cast<unsigned int>(shar_ModLimitFloat( "Heaps", "LevelHUDBonusGameSize", HS_MINIGAME_HUD ) * FUDGE * MB) );
 
 //    rReleaseString ("Creating Heap: MISSION\n");
 //    s_pIRadMemoryHeapLevelMission = radMemoryCreateDougLeaHeap ( static_cast<unsigned int>(HS_MINIGAME_MISSION * FUDGE * MB), GMA_LEVEL, "Mission" );

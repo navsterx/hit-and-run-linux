@@ -105,8 +105,11 @@ class VehicleCentral : public LoadingManager::ProcessRequestsCallback
         void PreCollisionPrep(float dt, bool firstSubstep);
 
         enum { MAX_ACTIVE_VEHICLES = 30 };
+        // Linux port: the lists hold MAX_VEHICLE_SLOTS; GetMaxActiveVehicles() of them are used: MAX_ACTIVE_VEHICLES,
+        // or more for mods (CustomLimits.ini [Cars] CarLimit, formerly [Miscellaneous]; at most 127)
+        enum { MAX_VEHICLE_SLOTS = 127 };
 
-        static int GetMaxActiveVehicles() {return MAX_ACTIVE_VEHICLES;}
+        static int GetMaxActiveVehicles();
 
         // *** //
         void GetActiveVehicleList(Vehicle** &vList, int& nVehicles);
@@ -115,7 +118,7 @@ class VehicleCentral : public LoadingManager::ProcessRequestsCallback
 
         // hmmm... is there a nicer way to do this?
         // need this so we have object to call script hooks on
-        Vehicle* mVehicleUnderConstruction[MAX_ACTIVE_VEHICLES];
+        Vehicle* mVehicleUnderConstruction[MAX_VEHICLE_SLOTS];
         unsigned int mCurrentVehicleUnderContructionHead;
         unsigned int mCurrentVehicleUnderConstructionTail;
         Vehicle* GetCurrentVehicleUnderConstruction() { return mVehicleUnderConstruction[ mCurrentVehicleUnderContructionHead ]; };
@@ -169,8 +172,8 @@ class VehicleCentral : public LoadingManager::ProcessRequestsCallback
         // pointer to the single instance
         static VehicleCentral* spInstance;
 
-        Vehicle* mActiveVehicleList[MAX_ACTIVE_VEHICLES];
-        VehicleController* mActiveVehicleControllerList[ MAX_ACTIVE_VEHICLES ];
+        Vehicle* mActiveVehicleList[MAX_VEHICLE_SLOTS];
+        VehicleController* mActiveVehicleControllerList[ MAX_VEHICLE_SLOTS ];
         //EventLocator* mDoorTriggerList[ MAX_ACTIVE_VEHICLES ];
         int mNumActiveVehicles;
 
@@ -198,7 +201,7 @@ inline void VehicleCentral::GetActiveVehicleList(Vehicle** &vList, int& nVehicle
 }
 inline bool VehicleCentral::ActiveVehicleListIsFull() const
 {
-    return (mNumActiveVehicles>=MAX_ACTIVE_VEHICLES);
+    return (mNumActiveVehicles>=GetMaxActiveVehicles());
 }
 // *** //
                    

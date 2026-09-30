@@ -20,6 +20,7 @@
 #include <ai/vehicle/vehicleairender.h>
 
 #include <contexts/demo/democontext.h>
+#include <shar_mods.h>
 #include <gameflow/gameflow.h>
 #include <main/commandlineoptions.h>
 #include <main/game.h>
@@ -273,7 +274,7 @@ void DemoContext::OnStart( ContextEnum previousContext )
     //Find skid mark shaders in the inventory and set proper values
     SkidMarkGenerator::InitShaders();
 
-    GetSkidmarkManager()->Init();
+    GetSkidmarkManager()->Init( shar_ModLimit( "Cars", "SkidMarkLimit", DEFAULT_NUM_SKID_MARKS ) ); // Linux port: CustomLimits
 
     ////////////////////////////////////////////////////////////
     // OnStart calls

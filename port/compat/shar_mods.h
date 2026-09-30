@@ -56,6 +56,10 @@ const char* shar_ModSaveDir(void);
 /* A CustomLimits.ini value ([section] key=value, case-insensitive). Several mods setting it: the largest wins.
  * Returns defaultValue when no mod sets it. */
 int shar_ModLimit(const char* section, const char* key, int defaultValue);
+/* The same as a float ([Heaps] sizes in MB). */
+float shar_ModLimitFloat(const char* section, const char* key, float defaultValue);
+/* Whether a mod gives the key with no value ("BoundsMinimumY="; the defaults above apply to it). */
+int shar_ModLimitBlank(const char* section, const char* key);
 
 /* A config file in a mod's root folder ("CustomShopSupport.xml"), from the first mod that has one, as malloc'd
  * NUL-terminated text the caller frees; NULL when no mod has it. */

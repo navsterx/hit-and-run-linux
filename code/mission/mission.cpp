@@ -77,6 +77,18 @@
 #include <ai/actionbuttonhandler.h>
 #ifdef RAD_LINUX
 #include <mission/modscript.h>
+#include <shar_mods.h>
+
+int Mission::GetMaxStages()
+{
+    static int limit = 0;
+    if( limit == 0 )
+    {
+        limit = shar_ModLimit( "Missions", "StageLimit", MAX_STAGES );
+        limit = limit < MAX_STAGES ? MAX_STAGES : limit > MAX_STAGE_SLOTS ? MAX_STAGE_SLOTS : limit;
+    }
+    return limit;
+}
 #endif
 
 //******************************************************************************
@@ -160,7 +172,7 @@ Mission::Mission() :
         mBonusObjectives[ i ] = NULL;
     }
     mElapsedTimems = 0;
-    for (int j =0; j<MAX_STAGES;j++)
+    for (int j =0; j<MAX_STAGE_SLOTS;j++)
     {
         mMissionStages[j]=NULL;
     }
@@ -668,7 +680,7 @@ void Mission::SetToStage( int index, bool resetting )
 
             //Now we always play the dialogue.
 //            //Go to the next stage
-//            rAssert( index < MAX_STAGES );
+//            rAssert( index < MAX_STAGE_SLOTS );
 //            ++index;
         }
     }
@@ -1980,7 +1992,7 @@ bool Mission::CanMDKCar(Vehicle* pVehicle,MissionStage* pStage)
     int i = 0;
     int index =0;
 
-    for (i = 0;i<MAX_STAGES;i++)
+    for (i = 0;i<MAX_STAGE_SLOTS;i++)
     {
         if (mMissionStages[i] != NULL)
         {
@@ -1992,7 +2004,7 @@ bool Mission::CanMDKCar(Vehicle* pVehicle,MissionStage* pStage)
         }
     }
 
-    for (index; index <MAX_STAGES;index++)
+    for (index; index <MAX_STAGE_SLOTS;index++)
     {
         if (mMissionStages[index] != NULL )
         {

@@ -44,6 +44,18 @@
 #include <mission/gameplaymanager.h>
 
 #include <events/eventmanager.h>
+#include <shar_mods.h>
+
+int ActionButtonManager::GetMaxActions()
+{
+    static int limit = 0;
+    if( limit == 0 )
+    {
+        limit = shar_ModLimit( "Miscellaneous", "ActionButtonLimit", MAX_ACTIONS );
+        limit = limit < MAX_ACTIONS ? MAX_ACTIONS : limit;
+    }
+    return limit;
+}
 
 //******************************************************************************
 //
@@ -75,8 +87,10 @@ ActionButtonManager::ActionButtonManager()
 mpCurrentToResolve( 0 ),
 mLoadingIntoInterior( false )
 {
+    mActionButtonList = new HandlerData[ GetMaxActions() ];
+    mbActionButtonNeedsUpdate = new bool[ GetMaxActions() ];
     int i;
-    for ( i = 0; i < MAX_ACTIONS; i++ )
+    for ( i = 0; i < GetMaxActions(); i++ )
     {
         mActionButtonList[ i ].handler = NULL;
         mActionButtonList[ i ].sectionName = 0;
@@ -114,7 +128,7 @@ Return:         ActionButton::ButtonHandler*
 ActionButton::ActionEventHandler* ActionButtonManager::FindHandler( const ActionEventLocator* locator )const
 {
     // Iterate through the ButtonHandlers and find the Handler that contains the given locator
-    for ( int i = 0 ; i < MAX_ACTIONS ; i++ )
+    for ( int i = 0 ; i < GetMaxActions() ; i++ )
     {
         // Expensive dynamic cast 
         ActionButton::ActionEventHandler* handler = dynamic_cast< ActionButton::ActionEventHandler* >( mActionButtonList[i].handler );
@@ -213,6 +227,8 @@ ActionButtonManager::~ActionButtonManager()
     Destroy( );
 
     GetEventManager()->RemoveAll( this );
+    delete[] mActionButtonList;
+    delete[] mbActionButtonNeedsUpdate;
 }
 /*
 ==============================================================================
@@ -229,7 +245,7 @@ Return:         void
 void ActionButtonManager::Destroy( void )
 {
     int i;
-    for ( i = 0; i < MAX_ACTIONS; i++ )
+    for ( i = 0; i < GetMaxActions(); i++ )
     {
         // Delete the actionbuttonhandler.
         //
@@ -351,7 +367,7 @@ Return:         void
 void ActionButtonManager::Update( float timeins )
 {
     int i;
-    for ( i = 0; i < MAX_ACTIONS; i++ )
+    for ( i = 0; i < GetMaxActions(); i++ )
     {
         if ( mActionButtonList[ i ].handler != 0 && mActionButtonList[ i ].handler->NeedsUpdate( ) )
         {
@@ -402,7 +418,7 @@ ActionButton::ButtonHandler* ActionButtonManager::GetActionByIndex( int i ) cons
 {
     i = Find(i);
 
-    if ( i < MAX_ACTIONS && i >= 0 )
+    if ( i < GetMaxActions() && i >= 0 )
     {
         return mActionButtonList[ i ].handler;
     }
@@ -429,14 +445,14 @@ bool ActionButtonManager::AddAction( ActionButton::ButtonHandler* pAction, int& 
 {
     rAssert( pAction );
     int i;
-    for ( i = 0; i < MAX_ACTIONS; i++ )
+    for ( i = 0; i < GetMaxActions(); i++ )
     {
         if ( mActionButtonList[ i ].handler == (ActionButton::ButtonHandler*)0 )
         {
             break;
         }
     }
-    if ( i < MAX_ACTIONS )
+    if ( i < GetMaxActions() )
     {
         mActionButtonList[ i ].handler = pAction;
         mActionButtonList[ i ].handler->AddRef();
@@ -482,14 +498,14 @@ int ActionButtonManager::RemoveAction( ActionButton::ButtonHandler* pAction )
     rAssert( pAction );
     int id = -1;
     int i;
-    for ( i = 0; i < MAX_ACTIONS; i++ )
+    for ( i = 0; i < GetMaxActions(); i++ )
     {
         if ( mActionButtonList[ i ].handler == pAction )
         {
             break;
         }
     }
-    if ( i < MAX_ACTIONS )
+    if ( i < GetMaxActions() )
     {
         RemoveActionByArrayPos( i );
         id = i;
@@ -616,9 +632,9 @@ void ActionButtonManager::EnterActionTrigger( Character* pCharacter, int index )
 {
     index = Find(index);
 
-    rAssert( index < MAX_ACTIONS && index >= 0 );
+    rAssert( index < GetMaxActions() && index >= 0 );
     
-    if ( index < MAX_ACTIONS && index >= 0 )
+    if ( index < GetMaxActions() && index >= 0 )
     {
         rAssert( mActionButtonList[ index ].handler != 0 );
         if ( mActionButtonList[ index ].handler != 0 )
@@ -643,9 +659,9 @@ void ActionButtonManager::ExitActionTrigger( Character* pCharacter, int index )
 {
     index = Find(index);
 
-    rAssert( index < MAX_ACTIONS && index >= 0 );
+    rAssert( index < GetMaxActions() && index >= 0 );
     
-    if ( index < MAX_ACTIONS && index >= 0 )
+    if ( index < GetMaxActions() && index >= 0 )
     {
         rAssert( mActionButtonList[ index ].handler != 0 );
         if ( mActionButtonList[ index ].handler != 0 )
@@ -732,7 +748,7 @@ void ActionButtonManager::HandleEvent( EventEnum id, void* pEventData )
     //compared to the stored section of the action butons.  Any buttons created during the
     //specified load section are released.
     unsigned int i;
-    for ( i = 0; i < MAX_ACTIONS; ++i )
+    for ( i = 0; i < GetMaxActions(); ++i )
     {
         if ( mActionButtonList[ i ].handler != NULL &&
              mActionButtonList[ i ].sectionName == static_cast<tName*>(pEventData)->GetUID() )
@@ -752,7 +768,7 @@ void ActionButtonManager::HandleEvent( EventEnum id, void* pEventData )
 int ActionButtonManager::Find(int id) const
 {
     unsigned int i;
-    for ( i = 0; i < MAX_ACTIONS; ++i )
+    for ( i = 0; i < GetMaxActions(); ++i )
     {
         if ( mActionButtonList[ i ].handler != NULL &&
              mActionButtonList[ i ].id == id )
@@ -765,7 +781,7 @@ int ActionButtonManager::Find(int id) const
 
 bool  ActionButtonManager::RemoveActionByArrayPos(int id)
 {
-    if( id < MAX_ACTIONS && id >= 0 )
+    if( id < GetMaxActions() && id >= 0 )
     {
         if ( mActionButtonList[ id ].handler != 0 )
         {

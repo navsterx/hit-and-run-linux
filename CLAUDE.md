@@ -383,8 +383,18 @@ EntityLimit / RoadSegmentLimit, [Scripting] ArgumentLengthLimit (console argumen
 model groups array is allocated: Fully Connected Map defines 22 groups, the 11th overwrote the manager), [TreeNodes]
 DrawDistance / BoundsMinimumY / BoundsMaximumY (`WorldScene`), [CollisionIndices] (`WorldPhysicsManager`; the
 collision manager's areas live in the Temp heap, ~14 KB each, so `PrepareHeapsStartup` adds 16 KB per extra vehicle or
-character area plus 256 KB: 64 vehicles ran it out at boot); the rest ([Heaps], [Cars], [AnimEntities], [Sound],
-[Missions], [Triggers], [Miscellaneous]) not yet. DynamicTreeNodeEntityLimits: render tree nodes' lists grow when
+character area plus 256 KB: 64 vehicles ran it out at boot), [Heaps] TempSize / LevelHUDNormalGameSize /
+LevelHUDBonusGameSize (MB, `PrepareHeaps*`; `shar_ModLimitFloat`), [Cars] CarLimit (`VehicleCentral`: lists of
+MAX_VEHICLE_SLOTS 127, `GetMaxActiveVehicles()` used), HuskLimit, SkidMarkLimit (gameplay/demo, not the bonus game),
+[AnimEntities] (`AnimEntityDSGManager`; AnimLimit at most 127), [Missions] StageLimit (`Mission::GetMaxStages`, 128
+slots; the 26th stage used to write past the array), [Triggers] VolumeLimit (`TriggerVolumeTracker`, allocated; a full
+list now refuses), [Miscellaneous] DeletedEntityLimit (`RenderManager`), ActionButtonLimit (`ActionButtonManager`,
+allocated), and the old [Miscellaneous] CarLimit / PathLimit. Limits are doubles; several mods: the largest wins (the
+smallest for BoundsMinimumY); a blank TreeNodes bound keeps the k-d tree's (`shar_ModLimitBlank`). Not done: [Sound]
+PlayingClipPlayerLimit / PlayingStreamPlayerLimit: the docs' defaults (25, 8) match nothing in this source (64 clip
+and 9 stream players, fixed arrays in `playermanager.cpp`), probably retail-only code; values up to 64/9 fit already.
+Tested 2026-10-21 with a test mod raising all of them: ASan clean into Level 1 and out, Temp/HUD heap sizes checked
+in gdb; the debug build shows only the usual teardown asserts. DynamicTreeNodeEntityLimits: render tree nodes' lists grow when
 full (`WorldScene` `AddGrowing`, level heap; `SwapArray::Grow`) instead of leaving the object out ("DSG: no room for
 path segment" by the thousand with Fully Connected Map); done for every mod, not only those requiring it.
 CustomInteriorSupport (`port/compat/shar_modinteriors.cpp`; `InteriorManager`): the mod's [Interior] list replaces the

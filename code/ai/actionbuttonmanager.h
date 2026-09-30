@@ -43,6 +43,8 @@ class ActionButtonManager : public LoadingManager::ProcessRequestsCallback, publ
 {
 public:
     enum { MAX_ACTIONS = 128 };
+    // Linux port: MAX_ACTIONS, or more for mods (CustomLimits.ini [Miscellaneous] ActionButtonLimit)
+    static int GetMaxActions();
 
     ActionButtonManager();
     ~ActionButtonManager();
@@ -117,8 +119,8 @@ private:
         int id;
     };
 
-    HandlerData mActionButtonList[ MAX_ACTIONS ];
-    bool mbActionButtonNeedsUpdate[ MAX_ACTIONS ];
+    HandlerData* mActionButtonList;         // Linux port: GetMaxActions() of each
+    bool* mbActionButtonNeedsUpdate;
 
     // Big huge hack here.  But it'll work.
     //

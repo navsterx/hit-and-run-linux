@@ -51,7 +51,8 @@ struct Limit
 {
     char* section;
     char* key;
-    int value;
+    double value;
+    bool blank;             // "Key=" with no value (TreeNodes bounds: keep the k-d tree's)
 };
 
 ModFile* s_Files = NULL;
@@ -584,18 +585,23 @@ void OnLimit( const char* section, const char* key, const char* value, void* )
         return;
     }
     char* end;
-    long v = strtol( value, &end, 10 );
-    if ( end == value )
+    bool blank = value[ 0 ] == '\0';
+    double v = blank ? 0.0 : strtod( value, &end );
+    if ( !blank && end == value )
     {
         return;
     }
+    // several mods: the largest wins (the smallest for a minimum, [TreeNodes] BoundsMinimumY); a value beats a blank
+    bool lowest = strcasestr( key, "Minimum" ) != NULL;
     for ( int i = 0; i < s_NumLimits; i++ )
     {
-        if ( strcasecmp( s_Limits[ i ].section, section ) == 0 && strcasecmp( s_Limits[ i ].key, key ) == 0 )
+        Limit& l = s_Limits[ i ];
+        if ( strcasecmp( l.section, section ) == 0 && strcasecmp( l.key, key ) == 0 )
         {
-            if ( v > s_Limits[ i ].value )
+            if ( !blank && ( l.blank || ( lowest ? v < l.value : v > l.value ) ) )
             {
-                s_Limits[ i ].value = (int)v;
+                l.value = v;
+                l.blank = false;
             }
             return;
         }
@@ -604,7 +610,8 @@ void OnLimit( const char* section, const char* key, const char* value, void* )
     Limit& l = s_Limits[ s_NumLimits++ ];
     l.section = ModDup( section );
     l.key = ModDup( key );
-    l.value = (int)v;
+    l.value = v;
+    l.blank = blank;
 }
 
 void AddRule( const char* path, const char* target, int modIndex )
@@ -946,7 +953,14 @@ void Init( void )
 
     for ( int i = 0; i < s_NumLimits; i++ )
     {
-        fprintf( stderr, "mods: limit [%s] %s=%d\n", s_Limits[ i ].section, s_Limits[ i ].key, s_Limits[ i ].value );
+        if ( s_Limits[ i ].blank )
+        {
+            fprintf( stderr, "mods: limit [%s] %s= (blank)\n", s_Limits[ i ].section, s_Limits[ i ].key );
+        }
+        else
+        {
+            fprintf( stderr, "mods: limit [%s] %s=%g\n", s_Limits[ i ].section, s_Limits[ i ].key, s_Limits[ i ].value );
+        }
     }
 
     // Lua last: CustomFiles.lua may read any mod's files
@@ -1652,17 +1666,35 @@ extern "C" const char* shar_ModSaveDir( void )
     return s_SaveDir[ 0 ] != '\0' ? s_SaveDir : NULL;
 }
 
-extern "C" int shar_ModLimit( const char* section, const char* key, int defaultValue )
+static const Limit* FindLimit( const char* section, const char* key )
 {
     pthread_once( &s_Once, Init );
     for ( int i = 0; i < s_NumLimits; i++ )
     {
         if ( strcasecmp( s_Limits[ i ].section, section ) == 0 && strcasecmp( s_Limits[ i ].key, key ) == 0 )
         {
-            return s_Limits[ i ].value;
+            return &s_Limits[ i ];
         }
     }
-    return defaultValue;
+    return NULL;
+}
+
+extern "C" int shar_ModLimit( const char* section, const char* key, int defaultValue )
+{
+    const Limit* l = FindLimit( section, key );
+    return l != NULL && !l->blank ? (int)l->value : defaultValue;
+}
+
+extern "C" float shar_ModLimitFloat( const char* section, const char* key, float defaultValue )
+{
+    const Limit* l = FindLimit( section, key );
+    return l != NULL && !l->blank ? (float)l->value : defaultValue;
+}
+
+extern "C" int shar_ModLimitBlank( const char* section, const char* key )
+{
+    const Limit* l = FindLimit( section, key );
+    return l != NULL && l->blank;
 }
 
 extern "C" char* shar_ModConfig( const char* name )

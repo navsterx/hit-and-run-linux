@@ -161,7 +161,7 @@ WorldScene::WorldScene()
 {
     GetEventManager()->AddListener(this,(EventEnum)(EVENT_LOCATOR+LocatorEvent::FAR_PLANE));
     // Linux port: mods can change it (CustomLimits.ini [TreeNodes] DrawDistance)
-    mDrawDist = (float)shar_ModLimit( "TreeNodes", "DrawDistance", 200 );
+    mDrawDist = shar_ModLimitFloat( "TreeNodes", "DrawDistance", 200.0f );
     // uninit fix (Linux port): with SetRenderAll (the bonus game's top-down view) MarkCameraVisible never runs, so
     // SetVisCone never set the view vector RenderScene ranks objects by; zero ranks them by distance from the camera
     mViewVector.Set( 0.0f, 0.0f, 0.0f );
@@ -371,7 +371,7 @@ void WorldScene::HandleEvent( EventEnum id, void* pEventData )
             }
             else //exit 
             {
-                mDrawDist = (float)shar_ModLimit( "TreeNodes", "DrawDistance", 200 );
+                mDrawDist = shar_ModLimitFloat( "TreeNodes", "DrawDistance", 200.0f );
             }
         }
         return;
@@ -584,9 +584,12 @@ void WorldScene::GenerateSpatialReps()
    }
 
    //temporary to ignore weird bounding values
-   // Linux port: mods can change them (CustomLimits.ini [TreeNodes] BoundsMinimumY / BoundsMaximumY)
-   mStaticTreeWalker.rBBox().mBounds.mMin.y = (float)shar_ModLimit( "TreeNodes", "BoundsMinimumY", -200 );
-   mStaticTreeWalker.rBBox().mBounds.mMax.y = (float)shar_ModLimit( "TreeNodes", "BoundsMaximumY", 100 );
+   // Linux port: mods can change them (CustomLimits.ini [TreeNodes] BoundsMinimumY / BoundsMaximumY; left blank:
+   // the k-d tree's own value)
+   if( !shar_ModLimitBlank( "TreeNodes", "BoundsMinimumY" ) )
+      mStaticTreeWalker.rBBox().mBounds.mMin.y = shar_ModLimitFloat( "TreeNodes", "BoundsMinimumY", -200.0f );
+   if( !shar_ModLimitBlank( "TreeNodes", "BoundsMaximumY" ) )
+      mStaticTreeWalker.rBBox().mBounds.mMax.y = shar_ModLimitFloat( "TreeNodes", "BoundsMaximumY", 100.0f );
    mStaticTreeWalker.BuildBBoxes(mStaticTreeWalker.rBBox());
 
    PopulateStaticTree();

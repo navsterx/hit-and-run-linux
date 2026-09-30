@@ -70,7 +70,7 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 ### Mods (Lucas' Mod Launcher)
 - [x] `.lmlm` packages and extracted folders, several at once
 - [x] CustomFiles, LuaSupport, OggVorbisSupport
-- [x] CustomLimits (billboards, regions, roads, pedestrians, tree nodes, collision indices, script argument length)
+- [x] CustomLimits: every section except [Sound] (its defaults match nothing in this source; see CLAUDE.md)
 - [x] CustomInteriorSupport, CustomRoadBehaviour (DisableTrafficGroundSnapping), DynamicTreeNodeEntityLimits
 - [x] Fully Connected Map 1.0.7: Level 1 plays, interiors entered (Kwik-E-Mart, Moe's)
 - [x] IncreasedVideoResolutionSupport (movies up to 1920x1080)
@@ -113,8 +113,7 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
   forces/gravity, stage dyna load data, traffic groups (need CustomTrafficSupport), parked cars/peds switches,
   SetObj/CondSound, explosions, SetObjUseCameraPosition, CON commands (SetConditionalParameter, SetWheelieOffsetX)
 - [ ] Custom characters, audio, traffic and the other hacks
-- [ ] CustomLimits [Heaps], [Cars], [AnimEntities], [Sound], [Missions], [Triggers], [Miscellaneous]; CustomRoadBehaviour
-  UTurnTolerance
+- [ ] CustomLimits [Sound] (needs the retail behaviour); CustomRoadBehaviour UTurnTolerance
 - [ ] Fully Connected Map by hand: the Level 2/3 areas, their interiors (DMV, Android's Dungeon, Observatory), traffic
   on its bridges (Road006/Road0061), missions (its warp missions)
 - [ ] HoverCarRefraction (required by the Futurama demo)

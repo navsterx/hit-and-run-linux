@@ -53,6 +53,20 @@
 #include <cheats/cheatinputsystem.h>
 
 #include <p3d/billboardobject.hpp>
+#include <shar_mods.h>
+
+int VehicleCentral::GetMaxActiveVehicles()
+{
+    static int limit = 0;
+    if( limit == 0 )
+    {
+        int cars = shar_ModLimit( "Cars", "CarLimit", MAX_ACTIVE_VEHICLES );
+        int oldCars = shar_ModLimit( "Miscellaneous", "CarLimit", MAX_ACTIVE_VEHICLES );
+        limit = cars > oldCars ? cars : oldCars;
+        limit = limit < MAX_ACTIVE_VEHICLES ? MAX_ACTIVE_VEHICLES : limit > MAX_VEHICLE_SLOTS ? MAX_VEHICLE_SLOTS : limit;
+    }
+    return limit;
+}
 
 //******************************************************************************
 //
@@ -103,7 +117,7 @@ VehicleCentral::VehicleCentral() :
     spGenericAI->AddRef();
 
     int i;
-    for(i = 0; i < MAX_ACTIVE_VEHICLES; i++)
+    for(i = 0; i < GetMaxActiveVehicles(); i++)
     {
         mActiveVehicleList[i] = 0;
 
@@ -646,7 +660,7 @@ VehicleCentral::~VehicleCentral()
 
 
     int i;
-    for(i = 0; i < MAX_ACTIVE_VEHICLES; i++)
+    for(i = 0; i < GetMaxActiveVehicles(); i++)
     {
         if(mActiveVehicleList[i])
         {
@@ -794,7 +808,8 @@ void VehicleCentral::PreLoad()
 {
     // bunch of actual loading moved to frontend startup to reduce load times - nbrooke 3/7/2003
 
-    this->mHuskPool.Init(MAX_HUSKS);
+    // Linux port: mods can raise it (CustomLimits.ini [Cars] HuskLimit)
+    this->mHuskPool.Init(shar_ModLimit( "Cars", "HuskLimit", MAX_HUSKS ));
  
     rAssert( mHeadLights[0] == NULL && mHeadLights[1] == NULL && mHeadLights[2] == NULL );
 
@@ -906,7 +921,7 @@ Vehicle* VehicleCentral::InitVehicle( const char* name, bool addToActiveVehicleL
     // so the script hooks can get at it
     rAssert( mVehicleUnderConstruction[mCurrentVehicleUnderConstructionTail] == NULL );
     mVehicleUnderConstruction[mCurrentVehicleUnderConstructionTail] = vehicle;
-    mCurrentVehicleUnderConstructionTail = (mCurrentVehicleUnderConstructionTail + 1) % MAX_ACTIVE_VEHICLES;
+    mCurrentVehicleUnderConstructionTail = (mCurrentVehicleUnderConstructionTail + 1) % GetMaxActiveVehicles();
 
     //If this happens, we're in big shit. We'll need to up the number of active vehicles or look closer at the loading.
     rAssert( mCurrentVehicleUnderContructionHead != mCurrentVehicleUnderConstructionTail );  
@@ -977,7 +992,7 @@ int VehicleCentral::AddVehicleToActiveList(Vehicle* vehicle)
     int slot = -1;
 
     int i;
-    for(i = 0; i < MAX_ACTIVE_VEHICLES; i++)
+    for(i = 0; i < GetMaxActiveVehicles(); i++)
     {
         // debug test
         if(mActiveVehicleList[i])
@@ -1000,7 +1015,7 @@ int VehicleCentral::AddVehicleToActiveList(Vehicle* vehicle)
         
     }
     
-    for(i = 0; i < MAX_ACTIVE_VEHICLES; i++)
+    for(i = 0; i < GetMaxActiveVehicles(); i++)
     {
         if(mActiveVehicleList[i] == 0)
         {
@@ -1035,7 +1050,7 @@ int VehicleCentral::AddVehicleToActiveList(Vehicle* vehicle)
     // this is perhaps totally redundant right now
     mNumActiveVehicles++;
 
-    if(mNumActiveVehicles > MAX_ACTIVE_VEHICLES)
+    if(mNumActiveVehicles > GetMaxActiveVehicles())
     {
         rAssertMsg(0,"Too many active vehicles!");
         return -1;
@@ -1082,7 +1097,7 @@ int VehicleCentral::AddVehicleToActiveList(Vehicle* vehicle)
     // until the vehicles are moving around in the scenegraph, we need to make sure the cars have a collision pair for each other
            
     /*
-    for(i = 0; i < MAX_ACTIVE_VEHICLES; i++)
+    for(i = 0; i < GetMaxActiveVehicles(); i++)
     {
         if(mActiveVehicleList[i] != 0 && i != slot)
         {
@@ -1129,7 +1144,7 @@ int VehicleCentral::AddVehicleToActiveList(Vehicle* vehicle)
 bool VehicleCentral::RemoveVehicleFromActiveList(Vehicle* vehicle)
 {
     int i;
-    for(i = 0; i < MAX_ACTIVE_VEHICLES; i++)
+    for(i = 0; i < GetMaxActiveVehicles(); i++)
     {
         if(mActiveVehicleList[i] == vehicle)
         {
@@ -1330,7 +1345,7 @@ Vehicle* VehicleCentral::GetVehicle( int id ) const
 void VehicleCentral::SetVehicleController( int id, VehicleController* pVehicleController )
 {
 
-    if ( id >= 0 && id < MAX_ACTIVE_VEHICLES )
+    if ( id >= 0 && id < GetMaxActiveVehicles() )
     {
         //rAssert( id < this->mNumActiveVehicles ); // don't think this is necessary anymore
         if ( pVehicleController )
@@ -1378,7 +1393,7 @@ VehicleController* VehicleCentral::RemoveVehicleController( int mAIIndex )
 //=============================================================================
 VehicleController* VehicleCentral::GetVehicleController( int id ) const
 {
-    if( 0 <= id && id < MAX_ACTIVE_VEHICLES )
+    if( 0 <= id && id < GetMaxActiveVehicles() )
     {
         if( mActiveVehicleControllerList[ id ] == spGenericAI )
         {
@@ -1403,7 +1418,7 @@ VehicleController* VehicleCentral::GetVehicleController( int id ) const
 int VehicleCentral::GetVehicleId( Vehicle* pVehicle, bool checkStrict ) const
 {
     int i;
-    for ( i = 0; i < MAX_ACTIVE_VEHICLES; i++ )              
+    for ( i = 0; i < GetMaxActiveVehicles(); i++ )              
     {
         if(pVehicle == mActiveVehicleList[i])
         {
@@ -1432,7 +1447,7 @@ int VehicleCentral::GetVehicleId( Vehicle* pVehicle, bool checkStrict ) const
 void VehicleCentral::PreSubstepUpdate( float dt )
 {
     int i;
-    for ( i = 0; i < MAX_ACTIVE_VEHICLES; i++ )      
+    for ( i = 0; i < GetMaxActiveVehicles(); i++ )      
     {
         Vehicle* vehicle = mActiveVehicleList[i];
         if( vehicle ) // TODO - wrap with render layer test
@@ -1598,7 +1613,7 @@ void VehicleCentral::Update(float dt)
 {
  
     int i;
-    for ( i = 0; i < MAX_ACTIVE_VEHICLES; i++ )
+    for ( i = 0; i < GetMaxActiveVehicles(); i++ )
     {
         //rAssert( mActiveVehicleList[ i ] );
         if( mActiveVehicleList[i] && 
@@ -1646,7 +1661,7 @@ void VehicleCentral::ClearSpot(rmt::Vector& point, float radius, Vehicle* skipCa
 {
     rAssert(0); // don't call this
     int i;
-    for ( i = 0; i < MAX_ACTIVE_VEHICLES; i++ )
+    for ( i = 0; i < GetMaxActiveVehicles(); i++ )
     {        
         if( mActiveVehicleList[i] && 
             GetRenderManager()->rCurWorldRenderLayer() == mActiveVehicleList[i]->GetRenderLayerEnum() &&
@@ -1727,7 +1742,7 @@ void VehicleCentral::PostSubstepUpdate(float dt)
 {
 
     int i;
-    for ( i = 0; i < MAX_ACTIVE_VEHICLES; i++ )
+    for ( i = 0; i < GetMaxActiveVehicles(); i++ )
     {
         //rAssert( mActiveVehicleList[ i ] );
         if( mActiveVehicleList[i] && 
@@ -1752,7 +1767,7 @@ void VehicleCentral::PostSubstepUpdate(float dt)
 void VehicleCentral::PreCollisionPrep(float dt, bool firstSubstep)
 {
     int i;
-    for ( i = 0; i < MAX_ACTIVE_VEHICLES; i++ )            
+    for ( i = 0; i < GetMaxActiveVehicles(); i++ )            
     {
         if( mActiveVehicleList[i] &&
             GetRenderManager()->rCurWorldRenderLayer() == mActiveVehicleList[i]->GetRenderLayerEnum()) 
@@ -1776,7 +1791,7 @@ void VehicleCentral::PreCollisionPrep(float dt, bool firstSubstep)
 void VehicleCentral::SubmitStatics()
 {
     int i;
-    for ( i = 0; i < MAX_ACTIVE_VEHICLES; i++ )          
+    for ( i = 0; i < GetMaxActiveVehicles(); i++ )          
     {
         if( mActiveVehicleList[i] &&
             GetRenderManager()->rCurWorldRenderLayer() == mActiveVehicleList[i]->GetRenderLayerEnum())
@@ -1861,7 +1876,7 @@ void VehicleCentral::SubmitStatics()
 void VehicleCentral::SubmitDynamics()
 {
     int i;
-    for ( i = 0; i < MAX_ACTIVE_VEHICLES; i++ )          
+    for ( i = 0; i < GetMaxActiveVehicles(); i++ )          
     {
         if( mActiveVehicleList[i] &&
             GetRenderManager()->rCurWorldRenderLayer() == mActiveVehicleList[i]->GetRenderLayerEnum())
@@ -1899,7 +1914,7 @@ void VehicleCentral::SubmitDynamics()
         }
     }
     
-    for ( i = 0; i < MAX_ACTIVE_VEHICLES; i++ )          
+    for ( i = 0; i < GetMaxActiveVehicles(); i++ )          
     {        
         if( mActiveVehicleList[i] &&
             GetRenderManager()->rCurWorldRenderLayer() == mActiveVehicleList[i]->GetRenderLayerEnum())
@@ -1954,7 +1969,7 @@ void VehicleCentral::SubmitDynamics()
 void VehicleCentral::SubmitAnimCollisions()
 {  
     int i;
-    for ( i = 0; i < MAX_ACTIVE_VEHICLES; i++ )          
+    for ( i = 0; i < GetMaxActiveVehicles(); i++ )          
     {
         if( mActiveVehicleList[i] &&
             GetRenderManager()->rCurWorldRenderLayer() == mActiveVehicleList[i]->GetRenderLayerEnum())
@@ -2012,7 +2027,7 @@ Return:         Vehicle
 Vehicle* VehicleCentral::GetVehicleByUID( tUID uid ) const
 {
     Vehicle* vehicle = 0;
-    for( int i = 0; i < MAX_ACTIVE_VEHICLES; i++ )
+    for( int i = 0; i < GetMaxActiveVehicles(); i++ )
     {
         if ( mActiveVehicleList[ i ] != 0 )
         {
@@ -2066,7 +2081,7 @@ void VehicleCentral::OnProcessRequestsComplete( void* pUserData )
 
     //Clear the head.
     mVehicleUnderConstruction[mCurrentVehicleUnderContructionHead] = NULL;
-    mCurrentVehicleUnderContructionHead = (mCurrentVehicleUnderContructionHead + 1) % MAX_ACTIVE_VEHICLES;
+    mCurrentVehicleUnderContructionHead = (mCurrentVehicleUnderContructionHead + 1) % GetMaxActiveVehicles();
 
     if ( mCurrentVehicleUnderContructionHead == mCurrentVehicleUnderConstructionTail )
     {
@@ -2087,7 +2102,7 @@ void VehicleCentral::ActivateVehicleTriggers(bool active)
 
     if( mbVehicleTriggersActive )
     {
-        for(int i = 0; i < MAX_ACTIVE_VEHICLES; i++)
+        for(int i = 0; i < GetMaxActiveVehicles(); i++)
         {
             v = mActiveVehicleList[i];
             if(v)
@@ -2098,7 +2113,7 @@ void VehicleCentral::ActivateVehicleTriggers(bool active)
     }
     else
     {
-        for(int i = 0; i < MAX_ACTIVE_VEHICLES; i++)
+        for(int i = 0; i < GetMaxActiveVehicles(); i++)
         {
             v = mActiveVehicleList[i];
             if( v )
@@ -2207,7 +2222,7 @@ bool VehicleCentral::IsCarUnderConstruction(const char* name)
 {
     //unsigned int pListPtr = mCurrentVehicleUnderContructionHead;
 
-    for(int i=0;i<MAX_ACTIVE_VEHICLES;i++)
+    for(int i=0;i<GetMaxActiveVehicles();i++)
     {
         if (mVehicleUnderConstruction[i] != NULL)
         {
@@ -2222,7 +2237,7 @@ bool VehicleCentral::IsCarUnderConstruction(const char* name)
 
 bool VehicleCentral::IsCarUnderConstruction(const Vehicle* vehicle)
 {
-    for(int i=0;i<MAX_ACTIVE_VEHICLES;i++)
+    for(int i=0;i<GetMaxActiveVehicles();i++)
     {
         if (mVehicleUnderConstruction[i] != NULL)
         {

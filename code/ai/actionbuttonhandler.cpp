@@ -2717,7 +2717,7 @@ bool SummonVehiclePhone::Create( tEntityStore* inStore /* = 0  */ )
 {
     tUID nameUID = tEntity::MakeUID(mpActionEventLocator->GetObjName());
     unsigned int i;
-    for ( i = 0; i < ActionButtonManager::MAX_ACTIONS; ++i )
+    for ( i = 0; i < ActionButtonManager::GetMaxActions(); ++i )
     {
         if ( GetActionButtonManager()->GetActionByIndex( i ) )
         {
@@ -3712,7 +3712,7 @@ MEMTRACK_PUSH_GROUP( "Collectible - Cards" );
     bool found = false;
     tUID nameUID = tEntity::MakeUID(mpActionEventLocator->GetObjName());
     unsigned int i;
-    for ( i = 0; i < ActionButtonManager::MAX_ACTIONS; ++i )
+    for ( i = 0; i < ActionButtonManager::GetMaxActions(); ++i )
     {
         if ( GetActionButtonManager()->GetActionByIndex( i ) )
         {
@@ -3907,7 +3907,7 @@ MEMTRACK_PUSH_GROUP( "Wrench - Icon" );
     bool found = false;
     tUID nameUID = tEntity::MakeUID(mpActionEventLocator->GetObjName());
     unsigned int i;
-    for ( i = 0; i < ActionButtonManager::MAX_ACTIONS; ++i )
+    for ( i = 0; i < ActionButtonManager::GetMaxActions(); ++i )
     {
         if ( GetActionButtonManager()->GetActionByIndex( i ) )
         {
@@ -4107,7 +4107,7 @@ MEMTRACK_PUSH_GROUP( "Nitro - Icon" );
     bool found = false;
     tUID nameUID = tEntity::MakeUID(mpActionEventLocator->GetObjName());
     unsigned int i;
-    for ( i = 0; i < ActionButtonManager::MAX_ACTIONS; ++i )
+    for ( i = 0; i < ActionButtonManager::GetMaxActions(); ++i )
     {
         if ( GetActionButtonManager()->GetActionByIndex( i ) )
         {

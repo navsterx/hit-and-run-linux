@@ -57,6 +57,8 @@
 #include <simcollision/collisionobject.hpp>
 #include <simcollision/collisionvolume.hpp>
 #include <simcollision/collisionmanager.hpp>
+#include <shar_mods.h>
+#include <stdio.h>
 
 
 LocatorEvent::Event ALLOWED_AI_EVENTS[] =
@@ -170,6 +172,10 @@ TriggerVolumeTracker::TriggerVolumeTracker() :
 
     mTriggerCount = 0;
 
+    int limit = shar_ModLimit( "Triggers", "VolumeLimit", MAX_VOLUMES );
+    mMaxVolumes = limit < MAX_VOLUMES ? MAX_VOLUMES : limit;
+    mTriggerVolumes = new TriggerVolume*[ mMaxVolumes ];
+
 #ifndef RAD_RELEASE
     radDbgWatchAddBoolean( &mDisplayActive, "Display Active Vols" , "Trigger Volume Tracker" );
     radDbgWatchAddBoolean( &mDisplayInactive, "Display Inactive Vols" , "Trigger Volume Tracker" );
@@ -222,6 +228,7 @@ pddiShader* TriggerVolumeTracker::GetMaterial(void)
 TriggerVolumeTracker::~TriggerVolumeTracker()
 {
     Cleanup();
+    delete[] mTriggerVolumes;
 
 #ifndef RAD_RELEASE
     radDbgWatchDelete( &mDisplayActive );
@@ -362,7 +369,7 @@ END_PROFILE("Trigger Tracker");
 //=============================================================================
 void TriggerVolumeTracker::AddTrigger( TriggerVolume* triggerVolume )
 {
-    rAssert( mTriggerCount < MAX_VOLUMES );
+    rAssert( mTriggerCount < mMaxVolumes );
     unsigned int index;
     for( index = 0; index < mTriggerCount; index++ )
     {
@@ -370,6 +377,17 @@ void TriggerVolumeTracker::AddTrigger( TriggerVolume* triggerVolume )
         {
             return;
         }
+    }
+    // Linux port: the original wrote past the list when full; the trigger is left out
+    if( mTriggerCount >= mMaxVolumes )
+    {
+        static bool reported = false;
+        if( !reported )
+        {
+            fprintf( stderr, "TriggerVolumeTracker: more than %u trigger volumes; the rest are left out\n", mMaxVolumes );
+            reported = true;
+        }
+        return;
     }
 
     mTriggerVolumes[ mTriggerCount ] = triggerVolume;

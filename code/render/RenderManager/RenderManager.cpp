@@ -86,6 +86,7 @@
 #ifdef DEBUGWATCH
 #include <radmemorymonitor.hpp>
 #include <worldsim/worldphysicsmanager.h>
+#include <shar_mods.h>
 #endif
 
 #ifdef RAD_LINUX
@@ -1819,7 +1820,8 @@ RenderManager::RenderManager() :
     mEnableMotionBlur( false ),
     mBlurAlpha( 0 )
 {
-   mEntityDeletionList.Allocate(5000);
+   // Linux port: mods can raise it (CustomLimits.ini [Miscellaneous] DeletedEntityLimit)
+   mEntityDeletionList.Allocate( shar_ModLimit( "Miscellaneous", "DeletedEntityLimit", 5000 ) );
 #ifdef DEBUGWATCH
    radDbgWatchAddUnsignedInt( &mDebugRenderTime, "Debug Render All Layers micros", "RenderManager", NULL, NULL );
    radDbgWatchAddUnsignedInt( &mDebugSwapTime, "Debug Render Swap micros", "RenderManager", NULL, NULL );

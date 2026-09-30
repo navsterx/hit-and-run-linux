@@ -201,9 +201,13 @@ private:
 
 
     static const int MAX_STAGES = 25;
+    // Linux port: room for MAX_STAGE_SLOTS; GetMaxStages() of them are used: MAX_STAGES, or more for mods
+    // (CustomLimits.ini [Missions] StageLimit). The original wrote past the array from the 26th stage on.
+    static const int MAX_STAGE_SLOTS = 128;
+    static int GetMaxStages();
 
     int mNumMissionStages;
-    MissionStage* mMissionStages[ MAX_STAGES ];
+    MissionStage* mMissionStages[ MAX_STAGE_SLOTS ];
     int mCurrentStage;
     int mResetMission;
 
@@ -317,7 +321,13 @@ inline void Mission::SetName( char* name )
 //=============================================================================
 inline void Mission::SetStage( int index, MissionStage* stage )
 { 
-    rTuneAssertMsg( index < MAX_STAGES, "Too many stages, get Cary to increase the max!\n" );
+    rTuneAssertMsg( index < GetMaxStages(), "Too many stages, get Cary to increase the max!\n" );
+    if( index >= GetMaxStages() )
+    {
+        // Linux port: the stage is left out (its objects stay in the mission heap)
+        mNumMissionStages = GetMaxStages();
+        return;
+    }
     mMissionStages[ index ] = stage; 
 }
 

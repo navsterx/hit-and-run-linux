@@ -727,7 +727,7 @@ bool PedestrianManager::ActivatePed( PathSegment* segment, rmt::Vector spawnPos 
     }
 
     VehicleCentral* vc = GetVehicleCentral();
-    for( int i=0; i<VehicleCentral::MAX_ACTIVE_VEHICLES; i++ )
+    for( int i=0; i<VehicleCentral::GetMaxActiveVehicles(); i++ )
     {
         Vehicle* v = vc->GetVehicle(i);
         if( v )

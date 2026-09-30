@@ -123,7 +123,9 @@ class TriggerVolumeTracker : public EventListener
         };
         
         unsigned int mTriggerCount;
-        TriggerVolume* mTriggerVolumes[ MAX_VOLUMES ];
+        // Linux port: mMaxVolumes of them: MAX_VOLUMES, or more for mods (CustomLimits.ini [Triggers] VolumeLimit)
+        TriggerVolume** mTriggerVolumes;
+        unsigned int mMaxVolumes;
 
         unsigned int mActiveCount[ MAX_PLAYERS ];
         TriggerVolume* mActiveVolumes[ MAX_PLAYERS ][ MAX_ACTIVE ];
