@@ -79,8 +79,8 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [x] CustomDialogueCharacterCodes: new speaker codes, outfit voices ([NongenericOutfits]/[NongenericCharacters])
 - [x] 3DPhoneBoothPreviewSupport (all settings)
 - [x] AdditionalScriptFunctionality: what the Futurama demo uses (see To do for the rest)
+- [x] CustomCarSupport: every setting ([FakeWheel] CopySkidMarks read, not drawn)
 - [x] Futurama: Hit & Run demo plays Level 1 with its shops and phone booth; missions m0-m4 run through (autopass)
-- [ ] Futurama Level 1 missions played by hand (m1-m4, bm1: kicking the pawn, wasps, speed stages)
 
 ## To do
 
@@ -104,20 +104,53 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [ ] Missing-data tolerance where it is cheap (`art\wrench.p3d` missing still crashes later)
 
 ### Mods
-- [x] CustomCarSupport: every setting (2026-10-21; [FakeWheel] CopySkidMarks not drawn); in play still to check: custom
-  husks, PreviewScale, IsHusk
-- [ ] AdditionalScriptFunctionality (2026-10-21, `code/mission/modscript.cpp`): every command registered; done:
-  the objective/condition types except insidetrigger/outsidetrigger, the If* conditionals, stage payout / Hit & Run /
-  ped group / music / cancel settings, DisableTrigger, checkpoints, passengers (AddStageVehicleCharacter); left (logged
-  once when used): vehicle character animation/scale/visibility/jump-out, stage vehicle settings, SetStageCharacterModel,
-  forces/gravity, stage dyna load data, traffic groups (need CustomTrafficSupport), parked cars/peds switches,
-  SetObj/CondSound, explosions, SetObjUseCameraPosition, CON commands (SetConditionalParameter, SetWheelieOffsetX)
-- [ ] Custom characters, audio, traffic and the other hacks
-- [ ] CustomLimits [Sound] (needs the retail behaviour); CustomRoadBehaviour UTurnTolerance
-- [ ] Fully Connected Map by hand: the Level 2/3 areas, their interiors (DMV, Android's Dungeon, Observatory), traffic
-  on its bridges (Road006/Road0061), missions (its warp missions)
-- [ ] HoverCarRefraction (required by the Futurama demo)
-- [ ] Shaders from more than the first mod's `Shaders/` folder
+Order of attack: CustomTrafficSupport first (it also completes ASF's traffic-group commands), then CustomAudioSupport
+and the character/animation hacks (what the larger total conversions use); the small cosmetic hacks are quick wins
+in between. Hacks a mod requires but the port lacks are listed at startup (`mods:   not supported yet, ignored: ...`).
+
+#### Hacks not implemented (all required by the Futurama demo)
+- [ ] **CustomTrafficSupport**: a mod's own traffic cars (ASF's traffic-group commands wait for it)
+- [ ] **CustomAudioSupport**: new sounds and music
+- [ ] **CustomAnimationSetSupport**: animation sets for custom characters
+- [ ] **CustomBonusMissionSupport**: bonus missions beyond the game's own
+- [ ] **CustomTriggerActions**: new trigger volume actions
+- [ ] **CustomSkinPreviewAnimations**: animations in the clothes-shop preview
+- [ ] **CustomStatsTotals**: the stats screen's totals (cards, wasps, gags, ...)
+- [ ] **OverrideShaderParameters**: per-material shader parameters
+- [ ] **HUDMapIgnorePlayerHeight**: HUD map fix
+- [ ] **NoMainMenuCameraAnimations** (cosmetic, small)
+- [ ] **CustomLicenseScreenTime** (cosmetic, small)
+- [ ] **HoverCarRefraction**: a mod (not a hack) the Futurama demo lists as required
+- [ ] The Mod Launcher's other hacks, none of the three test mods uses: survey its hack list for popular mods
+
+#### Partly done
+- [ ] **AdditionalScriptFunctionality** (`code/mission/modscript.cpp`): every command registered (unimplemented ones log
+  once when used). Done: the objective/condition types except insidetrigger/outsidetrigger, the If* conditionals,
+  stage payout / Hit & Run / ped group / music / cancel settings, DisableTrigger, checkpoints, passengers
+  (AddStageVehicleCharacter). Left:
+  - [ ] passengers: animation, scale, visibility, jumping out
+  - [ ] stage vehicle settings, SetStageCharacterModel
+  - [ ] forces and gravity
+  - [ ] stage dyna load data
+  - [ ] traffic groups (need CustomTrafficSupport)
+  - [ ] parked car / pedestrian switches
+  - [ ] SetObjSound / SetCondSound, explosions, SetObjUseCameraPosition
+  - [ ] insidetrigger / outsidetrigger objective and condition types
+  - [ ] CON commands (SetConditionalParameter, SetWheelieOffsetX)
+- [ ] **CustomLimits [Sound]** PlayingClipPlayerLimit / PlayingStreamPlayerLimit: the docs' defaults (25, 8) match
+  nothing in this source (64 clip, 9 stream players); needs the retail behaviour. Values up to 64/9 fit already
+- [ ] **CustomRoadBehaviour UTurnTolerance**: undocumented, logged and ignored
+- [ ] **CustomCarSupport [FakeWheel] CopySkidMarks**: read, not drawn (the skid mark generator has four wheels)
+- [ ] **Material shaders** from more than the first mod's `Shaders/` folder
+
+#### Checks in play (so far only automated runs and screenshots)
+- [ ] **Futurama** Level 1 missions by hand: m1-m4 and bm1 (kicking the pawn in m2, the wasps in m3, the speed
+  objective and the speed-range bar)
+- [ ] **Custom cars**: a destroyed car leaving a custom husk (Husk=), PreviewScale, IsHusk
+- [ ] **Fully Connected Map**: the Level 2/3 areas inside its Level 1, the DMV, Android's Dungeon and Observatory
+  interiors (doors listed in CLAUDE.md), traffic on its bridges (Road006/Road0061), its warp missions
+- [ ] **Raised CustomLimits** pushed past the game's own values in play (cars, stages, trigger volumes, ...): so far
+  only checked that a mod raising them all loads and quits cleanly
 
 ### Platforms
 - [x] **64-bit build** boots and plays: movies, front end, Levels 1/7, races, interiors, driving, sound; AddressSanitizer clean
