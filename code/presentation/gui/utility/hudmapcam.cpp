@@ -21,6 +21,7 @@
 #include <camera/supercamcentral.h>
 
 #include <raddebug.hpp>
+#include <shar_mods.h>
 
 //===========================================================================
 // Global Data, Local Data, Local Classes
@@ -102,6 +103,20 @@ HudMapCam::Update( unsigned int milliseconds )
     rmt::Vector camPosition = m_camera->GetPosition();
     camPosition.y = mMagnitude;
     m_camera->SetPosition( camPosition );
+
+    // Linux port: Mod Launcher HUDMapIgnorePlayerHeight: aim at the player's ground position (y 0), not the player,
+    // so the map does not tilt or turn over when the player is high up (near or above the camera height)
+    static int ignorePlayerHeight = -1;
+    if( ignorePlayerHeight == -1 )
+    {
+        ignorePlayerHeight = shar_ModHackRequired( "HUDMapIgnorePlayerHeight" ) ? 1 : 0;
+    }
+    if( ignorePlayerHeight )
+    {
+        rmt::Vector target = m_camera->GetTarget();
+        target.y = 0.0f;
+        m_camera->SetTarget( target );
+    }
 }
 
 void

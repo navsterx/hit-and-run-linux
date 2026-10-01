@@ -59,6 +59,8 @@
 #include <supersprint/supersprintmanager.h>
 #include <worldsim/worldphysicsmanager.h>
 #include <worldsim/character/charactermanager.h>
+#include <shar_mods.h>
+
 
 #ifdef RAD_GAMECUBE
     #include <main/gamecube_extras/gcmanager.h>
@@ -90,6 +92,34 @@ BootupContext* BootupContext::spInstance = NULL;
 #else
     const int MINIMUM_LICENSE_SCREEN_DISPLAY_TIME = 1000; // in msec
 #endif
+
+// Linux port: Mod Launcher CustomLicenseScreenTime (CustomLicenseScreenTime.ini [Miscellaneous]): Time replaces the
+// minimum display time in ms (-1: until skipped), Skippable lets Enter end it; the boot loads still have to finish
+static int LicenseScreenTime()
+{
+    static int time = -2;
+    if( time == -2 )
+    {
+        time = shar_ModHackRequired( "CustomLicenseScreenTime" )
+             ? shar_ModConfigInt( "CustomLicenseScreenTime.ini", "Miscellaneous", "Time", MINIMUM_LICENSE_SCREEN_DISPLAY_TIME )
+             : MINIMUM_LICENSE_SCREEN_DISPLAY_TIME;
+    }
+    return time;
+}
+
+static bool LicenseScreenSkippable()
+{
+    return shar_ModHackRequired( "CustomLicenseScreenTime" ) &&
+           shar_ModConfigInt( "CustomLicenseScreenTime.ini", "Miscellaneous", "Skippable", 0 ) != 0;
+}
+
+void BootupContext::SkipLicenseScreen()
+{
+    if( LicenseScreenSkippable() )
+    {
+        m_licenseSkipped = true;
+    }
+}
 
 //******************************************************************************
 //
@@ -410,7 +440,8 @@ void BootupContext::OnUpdate( unsigned int elapsedTime )
 {
     if( m_elapsedTime != -1 )
     {
-        if( m_elapsedTime > MINIMUM_LICENSE_SCREEN_DISPLAY_TIME &&
+        bool shown = LicenseScreenTime() >= 0 ? m_elapsedTime > LicenseScreenTime() : false;
+        if( ( shown || m_licenseSkipped ) &&
             m_bootupLoadCompleted && m_soundLoadCompleted )
         {
             // Tell GUI system to quit out of the boot-up state
@@ -595,6 +626,7 @@ BootupContext::BootupContext()
 :   m_elapsedTime( -1 ),
     m_bootupLoadCompleted( false ),
     m_soundLoadCompleted( false ),
+    m_licenseSkipped( false ),
     m_pSharedShader( 0 )
 {
     m_pSharedShader = p3d::device->NewShader("simple");

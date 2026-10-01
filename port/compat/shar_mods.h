@@ -65,6 +65,11 @@ int shar_ModLimitBlank(const char* section, const char* key);
  * NUL-terminated text the caller frees; NULL when no mod has it. */
 char* shar_ModConfig(const char* name);
 
+/* A value from a config file shar_ModConfig(file) would return ([section] key=value, case-insensitive): copied to out,
+ * 1 if found; the int form returns defaultValue when it is missing or blank. */
+int shar_ModConfigValue(const char* file, const char* section, const char* key, char* out, size_t size);
+int shar_ModConfigInt(const char* file, const char* section, const char* key, int defaultValue);
+
 /* The files directly in a mod's root subfolder ("CustomText"), from the first mod that has any: up to max texts
  * (malloc'd, NUL-terminated after sizes[i] bytes, which may include zeros, e.g. UTF-16) and file names (malloc'd),
  * all for the caller to free. Returns the count. */

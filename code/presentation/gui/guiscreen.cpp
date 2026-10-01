@@ -43,6 +43,7 @@
 
 #ifdef RAD_WIN32
 #include <input/inputmanager.h>
+#include <shar_mods.h>
 #endif
 
 //===========================================================================
@@ -762,6 +763,18 @@ CGuiScreen::StartTransitionAnimation( int startFrame,
                                       bool lastTransition )
 {
     if( m_ignoreControllerInputs )
+    {
+        return;
+    }
+
+    // Linux port: Mod Launcher NoMainMenuCameraAnimations: the front end's 3D scene keeps its camera (no transition
+    // animation between menu screens)
+    static int noCameraAnimations = -1;
+    if( noCameraAnimations == -1 )
+    {
+        noCameraAnimations = shar_ModHackRequired( "NoMainMenuCameraAnimations" ) ? 1 : 0;
+    }
+    if( noCameraAnimations )
     {
         return;
     }

@@ -5,7 +5,7 @@ Port of the original 2003 source to 32-bit Linux with SDL2 + OpenGL. The untouch
 (sources, included headers, the VS project files `gen_cmake.py` reads, and the Win32 originals it swaps for Linux ones).
 Status (2026-10-17): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
 dialogue, movies, reverb and rumble, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
-Mod Launcher mods partly supported (14 hacks; the Futurama demo plays Level 1 with its shops, phone booth and missions;
+Mod Launcher mods partly supported (17 hacks; the Futurama demo plays Level 1 with its shops, phone booth and missions;
 "Fully Connected Map" 1.0.7 plays its Level 1 with the interiors).
 Missing: steering-wheel force feedback. `README.md` is the user-facing overview, `TODO.md` the done/to-do checklist; `RUST.md` holds notes for a
 possible future Rust/Bevy reimplementation (not started).
@@ -404,7 +404,13 @@ Sprinting through `InteriorManager::CanJump/CanKick/CanSprint` (`ai/state.cpp`, 
 itself is all data (InteriorEntrance locators in the terra, the mod's own lNiNN.p3d). CustomRoadBehaviour
 (`port/compat/shar_modroads.cpp`): DisableTrafficGroundSnapping per road (`Road::GetModNoGroundSnap`, set by
 `RoadLoader` from the name: release builds keep no road names; `TrafficLocomotion` keeps the road's height);
-UTurnTolerance is logged and ignored (undocumented). Movies up to 1920x1080
+UTurnTolerance is logged and ignored (undocumented). CustomLicenseScreenTime (`bootupcontext.cpp`: Time replaces the
+minimum legal-screen time, -1 = until skipped; Skippable: Enter, `CGuiScreenLicense` -> `BootupContext::SkipLicenseScreen`;
+the boot loads still finish first). NoMainMenuCameraAnimations (`CGuiScreen::StartTransitionAnimation` returns: the
+front end's 3D room keeps its camera between screens; New Game, scrapbook and back checked by screenshot).
+HUDMapIgnorePlayerHeight (`HudMapCam::Update`: the camera height was already absolute, 150 m; its target is put at
+y 0, so a player above the camera no longer turns the map to sky). The small hacks read their ini through
+`shar_ModConfigInt` / `shar_ModConfigValue`. Movies up to 1920x1080
 (64 tiles) and fitted to the window either way (IncreasedVideoResolutionSupport).
 Config files reach the game through `shar_ModConfig` / `shar_ModConfigFolder`; XML ones through `shar_modxml.h`.
 CustomShopSupport (<CarShop>: the level's seller and conversation, `actionbuttonhandler.cpp`; <PhoneBooth> /
@@ -431,9 +437,8 @@ past the allocation; null merchandise in `CharacterSheetManager::UpdateRewardsMa
 Tested 2026-10-15: "SHAR Remastered" 1.0; Futurama: Hit & Run demo 0.1.3 boots (its movies, menu scene) and reaches
 Level 1 by New Game (5/5 runs) and `skipfe`. 2026-10-21: its Level 1 missions m0-m4 run through with `autopass`
 (scripts, objectives, passengers, cameras; not yet played by hand). Not implemented yet: CustomAnimationSetSupport,
-CustomAudioSupport, CustomBonusMissionSupport, CustomLicenseScreenTime, CustomSkinPreviewAnimations,
-CustomStatsTotals, CustomTrafficSupport, NoMainMenuCameraAnimations, OverrideShaderParameters, CustomTriggerActions,
-HUDMapIgnorePlayerHeight, and its required HoverCarRefraction mod.
+CustomAudioSupport, CustomBonusMissionSupport, CustomSkinPreviewAnimations, CustomStatsTotals, CustomTrafficSupport,
+OverrideShaderParameters, CustomTriggerActions, and its required HoverCarRefraction mod.
 Fully Connected Map 1.0.7 (2026-10-21; Levels 1-3 joined into Level 1, interiors moved to x=700-900, all hacks it
 requires implemented): boots, Level 1 plays, Kwik-E-Mart and Moe's (door at 872.3,7.1,-473.8 in its L1; DMV
 951.9,6.9,-799.9, Android's Dungeon 426.5,36.3,-1145.9, Observatory -67.4,33.5,-991.1) entered; ASan clean (64-bit).

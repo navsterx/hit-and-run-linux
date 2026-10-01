@@ -73,6 +73,7 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [x] CustomLimits: every section except [Sound] (its defaults match nothing in this source; see CLAUDE.md)
 - [x] CustomInteriorSupport, CustomRoadBehaviour (DisableTrafficGroundSnapping), DynamicTreeNodeEntityLimits
 - [x] Fully Connected Map 1.0.7: Level 1 plays, interiors entered (Kwik-E-Mart, Moe's)
+- [x] CustomLicenseScreenTime (Time, Skippable), NoMainMenuCameraAnimations, HUDMapIgnorePlayerHeight
 - [x] IncreasedVideoResolutionSupport (movies up to 1920x1080)
 - [x] CustomText (with the Language setting)
 - [x] CustomShopSupport: car shop seller and conversation; phone booth and skin shop item lists and icons
@@ -117,9 +118,6 @@ in between. Hacks a mod requires but the port lacks are listed at startup (`mods
 - [ ] **CustomSkinPreviewAnimations**: animations in the clothes-shop preview
 - [ ] **CustomStatsTotals**: the stats screen's totals (cards, wasps, gags, ...)
 - [ ] **OverrideShaderParameters**: per-material shader parameters
-- [ ] **HUDMapIgnorePlayerHeight**: HUD map fix
-- [ ] **NoMainMenuCameraAnimations** (cosmetic, small)
-- [ ] **CustomLicenseScreenTime** (cosmetic, small)
 - [ ] **HoverCarRefraction**: a mod (not a hack) the Futurama demo lists as required
 - [ ] The Mod Launcher's other hacks, none of the three test mods uses: survey its hack list for popular mods
 

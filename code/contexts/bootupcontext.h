@@ -47,6 +47,8 @@ class BootupContext : public Context,
         void StartMovies();
         void StartLoadingSound();
         void ResetLicenseScreenDisplayTime() { m_elapsedTime = 0; }
+        // Linux port: CustomLicenseScreenTime Skippable: Enter on the license screen (CGuiScreenLicense)
+        void SkipLicenseScreen();
 
 #ifdef RAD_WIN32
         void LoadConfig();
@@ -87,6 +89,7 @@ class BootupContext : public Context,
         int m_elapsedTime;
         bool m_bootupLoadCompleted : 1;
         bool m_soundLoadCompleted : 1;
+        bool m_licenseSkipped : 1;  // Linux port
 
         pddiShader* m_pSharedShader;
 };

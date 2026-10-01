@@ -74,7 +74,8 @@ pthread_once_t s_Once = PTHREAD_ONCE_INIT;
 const char* const SUPPORTED_HACKS[] = { "CustomFiles", "CustomLimits", "OggVorbisSupport", "LuaSupport", "CustomShopSupport",
                                         "CustomDialogueCharacterCodes", "CustomText", "3DPhoneBoothPreviewSupport",
                                         "CustomCarSupport", "IncreasedVideoResolutionSupport",
-                                        "AdditionalScriptFunctionality", "CustomInteriorSupport", "DynamicTreeNodeEntityLimits", "CustomRoadBehaviour" };
+                                        "AdditionalScriptFunctionality", "CustomInteriorSupport", "DynamicTreeNodeEntityLimits", "CustomRoadBehaviour",
+                                        "CustomLicenseScreenTime", "NoMainMenuCameraAnimations", "HUDMapIgnorePlayerHeight" };
 
 void Init( void );
 
@@ -1715,6 +1716,51 @@ extern "C" char* shar_ModConfig( const char* name )
         }
     }
     return NULL;
+}
+
+namespace
+{
+struct IniLookup
+{
+    const char* section;
+    const char* key;
+    char* out;
+    size_t size;
+    bool found;
+};
+
+void OnIniLookup( const char* section, const char* key, const char* value, void* user )
+{
+    IniLookup* l = (IniLookup*)user;
+    if ( key != NULL && strcasecmp( section, l->section ) == 0 && strcasecmp( key, l->key ) == 0 )
+    {
+        snprintf( l->out, l->size, "%s", value );
+        l->found = true;
+    }
+}
+}
+
+extern "C" int shar_ModConfigValue( const char* file, const char* section, const char* key, char* out, size_t size )
+{
+    char* text = shar_ModConfig( file );
+    if ( text == NULL )
+    {
+        return 0;
+    }
+    IniLookup lookup = { section, key, out, size, false };
+    ParseIni( text, OnIniLookup, &lookup );
+    free( text );
+    return lookup.found;
+}
+
+extern "C" int shar_ModConfigInt( const char* file, const char* section, const char* key, int defaultValue )
+{
+    char value[ 64 ];
+    if ( !shar_ModConfigValue( file, section, key, value, sizeof( value ) ) || value[ 0 ] == '\0' )
+    {
+        return defaultValue;
+    }
+    return atoi( value );
 }
 
 static const Mod* s_FolderMod = NULL;   // the mod the last shar_ModConfigFolder call read from

@@ -130,6 +130,12 @@ void CGuiScreenLicense::HandleMessage
 	GuiParam param2 
 )
 {
+	// Linux port: Enter skips the screen when a mod allows it (CustomLicenseScreenTime Skippable)
+	if( message == GUI_MSG_CONTROLLER_SELECT )
+	{
+		GetBootupContext()->SkipLicenseScreen();
+	}
+
 	// Propogate the message up the hierarchy.
 	//
 	CGuiScreen::HandleMessage( message, param1, param2 );
