@@ -5,7 +5,7 @@ Port of the original 2003 source to 32-bit Linux with SDL2 + OpenGL. The untouch
 (sources, included headers, the VS project files `gen_cmake.py` reads, and the Win32 originals it swaps for Linux ones).
 Status (2026-10-17): builds, boots, plays the front end and gameplay (tested into Level 7) with sound, music,
 dialogue, movies, reverb and rumble, at any window aspect ratio. Works with the dump's PC data and the retail PC release.
-Mod Launcher mods partly supported (17 hacks; the Futurama demo plays Level 1 with its shops, phone booth and missions;
+Mod Launcher mods partly supported (18 hacks; the Futurama demo plays Level 1 with its shops, phone booth and missions;
 "Fully Connected Map" 1.0.7 plays its Level 1 with the interiors).
 Missing: steering-wheel force feedback. `README.md` is the user-facing overview, `TODO.md` the done/to-do checklist; `RUST.md` holds notes for a
 possible future Rust/Bevy reimplementation (not started).
@@ -410,7 +410,21 @@ the boot loads still finish first). NoMainMenuCameraAnimations (`CGuiScreen::Sta
 front end's 3D room keeps its camera between screens; New Game, scrapbook and back checked by screenshot).
 HUDMapIgnorePlayerHeight (`HudMapCam::Update`: the camera height was already absolute, 150 m; its target is put at
 y 0, so a player above the camera no longer turns the map to sky). The small hacks read their ini through
-`shar_ModConfigInt` / `shar_ModConfigValue`. Movies up to 1920x1080
+`shar_ModConfigInt` / `shar_ModConfigValue`. CustomTrafficSupport (2026-10-21, `port/compat/shar_modtraffic.cpp`
+parses root + per-level settings, colours, groups; `TrafficManager::ApplyModSettings` in Init): AllocatedCars (slot
+array sized for the largest, `mNumSlots` used), MaxTraffic, MaxTrafficOnFoot (the game's on-foot override was
+MAX_TRAFFIC_MODEL_GROUPS = 10), RoadTrafficLimitMultiplier / RoadLaneMaxTrafficLimit (the per-lane cap of 2),
+Remove/AddInterval, PopulationDuration, Fade/CentreOffset/Add/Remove/PopulateAddDistance, TrafficAI's
+Deceleration/AccelerationSpeed and DecelerationBrakeThreshold, colours (level car -> car -> level -> root -> the game's
+25 swatches, Inherit; also parked cars), Group Multiplier and Car Weight. DynamicTraffic None = the game's (fixed model
+per slot; slots the group's counts cannot fill stay empty instead of crashing), Models = slot models within the group's
+counts, Slots = weighted (weight / (1 + cars of that model)). All cars are made at level load and a spawn only picks
+among free slots: making or swapping cars mid-game (PreallocatedCars, model swaps per spawn) queues a car .con script
+load each, and swapping on every spawn overflowed the loading manager's queue ("Too many load requests" break). So
+PreallocatedCars is ignored, slots keep the model they got at load (a mission switching traffic group changes only the
+pick among them) and "AllocatedCars caps parked cars" is not done. `SHAR_TRAFFIC_LOG=1`: every 5 s the cars on the
+road. Tested: Futurama (Slots, 15 slots, up to 11 on foot) 170 s release + ASan clean; the base game's L1 demo
+unchanged (5 slots, 2-4 cars). Movies up to 1920x1080
 (64 tiles) and fitted to the window either way (IncreasedVideoResolutionSupport).
 Config files reach the game through `shar_ModConfig` / `shar_ModConfigFolder`; XML ones through `shar_modxml.h`.
 CustomShopSupport (<CarShop>: the level's seller and conversation, `actionbuttonhandler.cpp`; <PhoneBooth> /
@@ -437,7 +451,7 @@ past the allocation; null merchandise in `CharacterSheetManager::UpdateRewardsMa
 Tested 2026-10-15: "SHAR Remastered" 1.0; Futurama: Hit & Run demo 0.1.3 boots (its movies, menu scene) and reaches
 Level 1 by New Game (5/5 runs) and `skipfe`. 2026-10-21: its Level 1 missions m0-m4 run through with `autopass`
 (scripts, objectives, passengers, cameras; not yet played by hand). Not implemented yet: CustomAnimationSetSupport,
-CustomAudioSupport, CustomBonusMissionSupport, CustomSkinPreviewAnimations, CustomStatsTotals, CustomTrafficSupport,
+CustomAudioSupport, CustomBonusMissionSupport, CustomSkinPreviewAnimations, CustomStatsTotals,
 OverrideShaderParameters, CustomTriggerActions, and its required HoverCarRefraction mod.
 Fully Connected Map 1.0.7 (2026-10-21; Levels 1-3 joined into Level 1, interiors moved to x=700-900, all hacks it
 requires implemented): boots, Level 1 plays, Kwik-E-Mart and Moe's (door at 872.3,7.1,-473.8 in its L1; DMV

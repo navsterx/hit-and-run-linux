@@ -74,6 +74,7 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [x] CustomInteriorSupport, CustomRoadBehaviour (DisableTrafficGroundSnapping), DynamicTreeNodeEntityLimits
 - [x] Fully Connected Map 1.0.7: Level 1 plays, interiors entered (Kwik-E-Mart, Moe's)
 - [x] CustomLicenseScreenTime (Time, Skippable), NoMainMenuCameraAnimations, HUDMapIgnorePlayerHeight
+- [x] CustomTrafficSupport: counts, distances, intervals, lane limits, acceleration, colours, groups, DynamicTraffic
 - [x] IncreasedVideoResolutionSupport (movies up to 1920x1080)
 - [x] CustomText (with the Language setting)
 - [x] CustomShopSupport: car shop seller and conversation; phone booth and skin shop item lists and icons
@@ -110,7 +111,6 @@ and the character/animation hacks (what the larger total conversions use); the s
 in between. Hacks a mod requires but the port lacks are listed at startup (`mods:   not supported yet, ignored: ...`).
 
 #### Hacks not implemented (all required by the Futurama demo)
-- [ ] **CustomTrafficSupport**: a mod's own traffic cars (ASF's traffic-group commands wait for it)
 - [ ] **CustomAudioSupport**: new sounds and music
 - [ ] **CustomAnimationSetSupport**: animation sets for custom characters
 - [ ] **CustomBonusMissionSupport**: bonus missions beyond the game's own
@@ -138,6 +138,9 @@ in between. Hacks a mod requires but the port lacks are listed at startup (`mods
 - [ ] **CustomLimits [Sound]** PlayingClipPlayerLimit / PlayingStreamPlayerLimit: the docs' defaults (25, 8) match
   nothing in this source (64 clip, 9 stream players); needs the retail behaviour. Values up to 64/9 fit already
 - [ ] **CustomRoadBehaviour UTurnTolerance**: undocumented, logged and ignored
+- [ ] **CustomTrafficSupport** cars made mid-game: PreallocatedCars, model swaps when a mission changes traffic group,
+  parked cars capped by AllocatedCars (needs car loads queued outside the spawn loop, at most a few at a time)
+- [ ] **ASF traffic groups** (SetStageTrafficGroup, SetCheckpointTrafficGroup) now that CustomTrafficSupport exists
 - [ ] **CustomCarSupport [FakeWheel] CopySkidMarks**: read, not drawn (the skid mark generator has four wheels)
 - [ ] **Material shaders** from more than the first mod's `Shaders/` folder
 

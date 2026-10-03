@@ -1158,18 +1158,21 @@ void TrafficAI::MaintainSpeed( float seconds )
 {
     float newSpeed = 0.0f;
     float desiredSpeed = GetGoSpeedMps();
+    // Linux port: CustomTrafficSupport DecelerationSpeed / AccelerationSpeed / DecelerationBrakeThreshold (the game's
+    // DECEL_LO, ACCEL and 1.0 unless a mod sets them)
+    TrafficManager* tm = TrafficManager::GetInstance();
     if( mAISpeed > desiredSpeed )
     {
-        newSpeed = mAISpeed + DECEL_LO * seconds;
+        newSpeed = mAISpeed + tm->GetModDeceleration() * seconds;
         // NOTE: DOn't show brakelights for tiny adjustments in speed...
-        if( (mAISpeed - desiredSpeed) > 1.0f )
+        if( (mAISpeed - desiredSpeed) > tm->GetModBrakeThreshold() )
         {
             this->GetVehicle()->mGeometryVehicle->ShowBrakeLights();
         }
     }
     else
     {
-        newSpeed = mAISpeed + ACCEL * seconds;
+        newSpeed = mAISpeed + tm->GetModAcceleration() * seconds;
         this->GetVehicle()->mGeometryVehicle->HideBrakeLights();
     }
 

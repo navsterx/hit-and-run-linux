@@ -182,9 +182,16 @@ public:
 
     float GetDesiredTrafficSpeed();
     void GenerateRandomColour( pddiColour& colour );
+    // Linux port: the colour for that car model (CustomTrafficSupport colour lists; NULL = any)
+    void GenerateRandomColour( pddiColour& colour, const char* carName );
     void SwapInTrafficHusk( Vehicle* vehicle ); // Remove traffic vehicle, swap in a husk...
 
     bool IsVehicleTrafficVehicle( Vehicle* vehicle );
+
+    // Linux port: CustomTrafficSupport (port/compat/shar_modtraffic.h) values read by TrafficAI
+    float GetModDeceleration() const { return mModDecel; }
+    float GetModAcceleration() const { return mModAccel; }
+    float GetModBrakeThreshold() const { return mModBrakeThreshold; }
 
 //MEMBERS
 private:
@@ -214,6 +221,18 @@ private:
 
     bool mTrafficEnabled;
 
+    // Linux port: CustomTrafficSupport. mNumSlots of mSlotCapacity vehicles are used (AllocatedCars, default
+    // MAX_TRAFFIC); the radii, intervals and lane limits are the game's constants unless a mod sets them (Init).
+    int mSlotCapacity;
+    int mNumSlots;
+    int mDynamicType;           // SHAR_TRAFFIC_DYNAMIC_*
+    int mMaxTrafficOnFoot;
+    float mLaneMultiplier;
+    int mLaneMax;
+    float mFadeRadius, mAddRadius, mCenterOffset, mInitialAddRadius, mRemoveRadius;
+    unsigned int mRemoveInterval, mAddInterval, mPopulateDuration;
+    float mModDecel, mModAccel, mModBrakeThreshold;
+
     TrafficModelGroup mTrafficModelGroups[ MAX_TRAFFIC_MODEL_GROUPS ];
     int mCurrTrafficModelGroup;
 
@@ -237,6 +256,12 @@ private:
 private:
 
     float DetermineDesiredSpeedKph();
+
+    // Linux port: CustomTrafficSupport slot handling
+    void ApplyModSettings();
+    bool CreateSlotVehicle( TrafficVehicle* tv, const char* modelName );
+    int PickModelForSpawn( bool countMade = false );   // index into the current group, -1; countMade: weigh by the
+                                                       // cars made (level load), else by those on the road
 
     // Add a traffic vehicle to the lane and to active list and Initialize
     // some TrafficVehicle-specific fields

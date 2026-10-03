@@ -192,7 +192,7 @@ void ParkedCarManager::HandleEvent( EventEnum id, void* pEventData )
                         {
                             //Assign a new random colour
                             pddiColour colour;
-                            TrafficManager::GetInstance()->GenerateRandomColour( colour );
+                            TrafficManager::GetInstance()->GenerateRandomColour( colour, car->GetName() ); // Linux port: per-car colours
                             car->mGeometryVehicle->SetTrafficBodyColour( colour );
 
                             int added = GetVehicleCentral()->AddVehicleToActiveList( car );

@@ -25,6 +25,8 @@
 
 #include <camera/supercammanager.h>
 #include <worldsim/traffic/trafficmanager.h>
+#include <shar_modtraffic.h>
+#include <strings.h>
 #include <worldsim/redbrick/vehicle.h>
 #include <worldsim/redbrick/trafficlocomotion.h>
 #include <memory/srrmemory.h>
@@ -322,7 +324,7 @@ void TrafficManager::HandleEvent( EventEnum id, void* pEventData )
         rmt::Vector playerPos;
         playerVehicle->GetPosition( &playerPos );
 
-        for( int i=0; i<MAX_TRAFFIC; ++i )
+        for( int i=0; i<mNumSlots; ++i )
         {
             TrafficVehicle* traffV = &mVehicles[i];
             if( !traffV->GetIsActive() )
@@ -372,29 +374,29 @@ void TrafficManager::Init()
     //////////////////////////////////////////
     // Initialize some members
     mNumTraffic = 0;
-    mMillisecondsBetweenRemove = TrafficManager::MILLISECONDS_BETWEEN_REMOVE;
+    ApplyModSettings();     // Linux port: CustomTrafficSupport for this level (the game's values otherwise)
+    mMillisecondsBetweenRemove = mRemoveInterval;
     mMillisecondsBetweenAdd = 0;
-    mMillisecondsPopulateWorld = TrafficManager::MILLISECONDS_POPULATE_WORLD;
+    mMillisecondsPopulateWorld = mPopulateDuration;
     mDesiredTrafficSpeedKph = DetermineDesiredSpeedKph();
-
-    Vehicle* newV = NULL; // vehicle
-    Vehicle* newH = NULL; // vehicle husk
 
     //////////////////////////////////////////
     // Initialize Traffic cars
-    for( int i=0 ; i<MAX_TRAFFIC ; i++ )
+    // Linux port: every slot's car is made here, as the game did (CustomTrafficSupport AllocatedCars of them; for
+    // DynamicTraffic Models / Slots each slot's model is picked by the group's counts / weights). Making cars later
+    // (PreallocatedCars, model swaps) queues a car script load per car: swapping on every spawn filled the loading
+    // manager's request queue ("Too many load requests", a break), so it is not done.
+    for( int i=0 ; i<mNumSlots ; i++ )
     {
         TrafficVehicle* tv = &mVehicles[i];
         rAssert( tv != NULL );
 
-        newV = InitRandomVehicle();
-        rAssert( newV != NULL );
-        newV->AddRef();
-        newV->SetLocomotion( VL_TRAFFIC );
-        newV->mTrafficVehicle = tv;
-
-        tv->SetVehicle( newV );
-        tv->SetHusk( NULL );
+        int model = mDynamicType == SHAR_TRAFFIC_DYNAMIC_NONE ? -1 : PickModelForSpawn( true );
+        const char* name = model >= 0 ? mTrafficModelGroups[mCurrTrafficModelGroup].GetTrafficModel( model )->mModelName : NULL;
+        if( !CreateSlotVehicle( tv, name ) )
+        {
+            break;
+        }
     }
 
 #ifdef DEBUGWATCH
@@ -419,7 +421,7 @@ void TrafficManager::ClearOutOfSightTraffic()
 
     Vehicle* playerVehicle = GetGameplayManager()->GetCurrentVehicle();
 
-    for( int i=0; i<MAX_TRAFFIC; ++i )
+    for( int i=0; i<mNumSlots; ++i )
     {
         TrafficVehicle* traffV = &mVehicles[i];
         if( !traffV->GetIsActive() )
@@ -473,7 +475,7 @@ void TrafficManager::UpdateQueuedTrafficHorns( unsigned int milliseconds )
 
 void TrafficManager::Update( unsigned int milliseconds )
 {
-    rAssert( 0 <= mNumTraffic && mNumTraffic <= MAX_TRAFFIC );
+    rAssert( 0 <= mNumTraffic && mNumTraffic <= mNumSlots );
     
 BEGIN_PROFILE( "Traffic Man" );  
 
@@ -488,6 +490,34 @@ BEGIN_PROFILE( "Traffic Man" );
 
     // play the queued up traffic horn sounds, if the time is right
     UpdateQueuedTrafficHorns( milliseconds );
+
+    // Linux port: SHAR_TRAFFIC_LOG=1: every 5 s the traffic cars on the road (slots, models)
+    static int s_trafficLog = -1;
+    if( s_trafficLog == -1 )
+    {
+        const char* env = getenv( "SHAR_TRAFFIC_LOG" );
+        s_trafficLog = env != NULL && env[0] == '1';
+    }
+    static unsigned int s_trafficLogTime = 0;
+    s_trafficLogTime += milliseconds;
+    if( s_trafficLog && s_trafficLogTime >= 5000 )
+    {
+        s_trafficLogTime = 0;
+        char list[ 512 ] = "";
+        int made = 0;
+        for( int i=0; i<mNumSlots; ++i )
+        {
+            Vehicle* tv = mVehicles[i].GetVehicle();
+            made += tv != NULL;
+            if( tv != NULL && mVehicles[i].GetIsActive() && strlen( list ) < sizeof( list ) - 40 )
+            {
+                strcat( list, " " );
+                strcat( list, tv->GetName() );
+            }
+        }
+        fprintf( stderr, "traffic: %d on the road (max %d, on foot %d), %d of %d slots made, dynamic %d:%s\n",
+                 mNumTraffic, mMaxTraffic, mMaxTrafficOnFoot, made, mNumSlots, mDynamicType, list );
+    }
 
     //
     // ====================================
@@ -525,7 +555,7 @@ BEGIN_PROFILE( "Traffic Man" );
     }
     else
     {
-        center = pPos + camTarget * TrafficManager::CENTER_OFFSET;
+        center = pPos + camTarget * mCenterOffset;
     }
 
     /*
@@ -557,7 +587,7 @@ BEGIN_PROFILE( "Traffic Man: Remove" );
 
     if( mMillisecondsBetweenRemove < milliseconds )
     {
-        mMillisecondsBetweenRemove = MILLISECONDS_BETWEEN_REMOVE;
+        mMillisecondsBetweenRemove = mRemoveInterval;
 
         // don't remove if populating world
         if( mMillisecondsPopulateWorld == 0 )
@@ -571,7 +601,7 @@ BEGIN_PROFILE( "Traffic Man: Remove" );
             //  - haven't been in player's view for some time
             //
             rmt::Sphere traffSphere;
-            traffSphere.Set( center, TrafficManager::REMOVE_RADIUS );
+            traffSphere.Set( center, mRemoveRadius );
             ClearTrafficOutsideSphere( traffSphere );
 
             ClearOutOfSightTraffic();
@@ -602,12 +632,12 @@ BEGIN_PROFILE( "Traffic Man: Add" );
 
         if( mMillisecondsBetweenAdd < milliseconds )
         {
-            mMillisecondsBetweenAdd = MILLISECONDS_BETWEEN_ADD;
+            mMillisecondsBetweenAdd = mAddInterval;
 
-            float addRadius = TrafficManager::ADD_RADIUS;
+            float addRadius = mAddRadius;
             if( mMillisecondsPopulateWorld > 0 )
             {
-                addRadius = TrafficManager::INITIAL_ADD_RADIUS;
+                addRadius = mInitialAddRadius;
             }
 
             rmt::Sphere pSphere( center, addRadius );
@@ -660,9 +690,11 @@ BEGIN_PROFILE( "Traffic Man: Add" );
 
                     // HACK:
                     // We only have 5 traffic cars man c'mon... 
-                    if(nDesiredDensity > 2 )
+                    // Linux port: CustomTrafficSupport RoadTrafficLimitMultiplier / RoadLaneMaxTrafficLimit (1 and 2)
+                    nDesiredDensity = (unsigned int)( nDesiredDensity * mLaneMultiplier );
+                    if(nDesiredDensity > (unsigned int)mLaneMax )
                     {
-                        nDesiredDensity = 2;
+                        nDesiredDensity = mLaneMax;
                     }
 
                     // we add vehicle only if number on the lane < expected density 
@@ -700,7 +732,7 @@ BEGIN_PROFILE( "Traffic Man: Add" );
                             int maxTrafficToUse = mMaxTraffic;
                             if( mMaxTraffic > 0 && !avatar->IsInCar()) 
                             {
-                                maxTrafficToUse = MAX_TRAFFIC_MODEL_GROUPS;
+                                maxTrafficToUse = mMaxTrafficOnFoot; // Linux port: MAX_TRAFFIC_MODEL_GROUPS unless a mod sets it
                             }
 
                             if( mNumTraffic < maxTrafficToUse )
@@ -809,7 +841,7 @@ BEGIN_PROFILE( "Traffic Man: Add" );
                                 rmt::Vector cVel = cDir * speedLimit;
                                 rmt::Vector cPos2 = cPos + cVel * SECONDS_LOOK_AHEAD;
 
-                                minDistSqr = TrafficManager::REMOVE_RADIUS * TrafficManager::REMOVE_RADIUS;
+                                minDistSqr = mRemoveRadius * mRemoveRadius;
                                 distVec.Sub( cPos2, center2 );
 
 
@@ -837,7 +869,7 @@ BEGIN_PROFILE( "Traffic Man: Add" );
 
                                     // Get a random color for this vehicle
                                     pddiColour randomColour;
-                                    GenerateRandomColour( randomColour );
+                                    GenerateRandomColour( randomColour, v->GetName() );
                                     v->mGeometryVehicle->SetTrafficBodyColour( randomColour );
 
                                     // initialize vehicle's position & facing
@@ -913,7 +945,7 @@ BEGIN_PROFILE( "Traffic Man: Update AI & Intersections" );
     }
     int nIntersectionsUpdated = 0;
     
-    for( int i=0; i<MAX_TRAFFIC; ++i )
+    for( int i=0; i<mNumSlots; ++i )
     {
         TrafficVehicle* traffV = &mVehicles[i];
         if( !traffV->GetIsActive() )
@@ -998,7 +1030,7 @@ void TrafficManager::ClearTrafficOutsideSphere( const rmt::Sphere& s )
 
     Vehicle* playerVehicle = GetGameplayManager()->GetCurrentVehicle();//GetAvatarManager()->GetAvatarForPlayer(0)->GetVehicle();
 
-    for( int i=0; i<MAX_TRAFFIC; ++i )
+    for( int i=0; i<mNumSlots; ++i )
     {
         TrafficVehicle* traffV = &mVehicles[i];
         rAssert( traffV != NULL );
@@ -1054,7 +1086,7 @@ void TrafficManager::ClearTrafficInSphere( const rmt::Sphere& s )
     Vehicle* playerVehicle = GetGameplayManager()->GetCurrentVehicle();//GetAvatarManager()->GetAvatarForPlayer(0)->GetVehicle();
 
 
-    for( int i=0; i<MAX_TRAFFIC; ++i )
+    for( int i=0; i<mNumSlots; ++i )
     {
         TrafficVehicle* traffV = &mVehicles[i];
         rAssert( traffV != NULL );
@@ -1104,7 +1136,7 @@ void TrafficManager::RemoveTraffic( Vehicle* vehicle )
 {
     rAssert( vehicle != NULL );
 
-    for( int i=0; i<MAX_TRAFFIC; ++i )
+    for( int i=0; i<mNumSlots; ++i )
     {
         TrafficVehicle* tv = &mVehicles[i];
         rAssert( tv != NULL );
@@ -1178,6 +1210,25 @@ void TrafficManager::RemoveCharacterToStopFor( Character* character )
     }
 }
 
+void TrafficManager::GenerateRandomColour( pddiColour& colour, const char* carName )
+{
+    // Linux port: CustomTrafficSupport colour lists (the level's car, the car, the level, the root; then the game's)
+    unsigned char modColours[ 64 ][ 3 ];
+    int withGame = 1;
+    int numMod = shar_ModTrafficColours( GetGameplayManager()->GetCurrentLevelIndex(), carName, modColours, 64, &withGame );
+    int total = numMod + ( withGame ? TrafficManager::NUM_SWATCH_COLOURS : 0 );
+    if( numMod > 0 && total > 0 )
+    {
+        int index = rand() % total;
+        if( index < numMod )
+        {
+            colour.Set( modColours[index][0], modColours[index][1], modColours[index][2], 255 );
+            return;
+        }
+    }
+    GenerateRandomColour( colour );
+}
+
 void TrafficManager::GenerateRandomColour( pddiColour& colour )
 {
     int alpha = 255;
@@ -1199,7 +1250,7 @@ void TrafficManager::Deactivate( Vehicle* vehicle )
 {
     rAssert( vehicle != NULL );
 
-    for( int i=0; i<MAX_TRAFFIC; ++i )
+    for( int i=0; i<mNumSlots; ++i )
     {
         TrafficVehicle* tv = &mVehicles[i];
         rAssert( tv != NULL );
@@ -1323,9 +1374,9 @@ void TrafficManager::SetMaxTraffic( int n )
     {
         n = 0;
     }
-    else if( n > MAX_TRAFFIC )
+    else if( n > mNumSlots )
     {
-        n = MAX_TRAFFIC;
+        n = mNumSlots;
     }
 
     mMaxTraffic = n;
@@ -1349,10 +1400,15 @@ TrafficManager::TrafficManager()
     GetEventManager()->AddListener( this, EVENT_REPAIR_CAR );
     GetEventManager()->AddListener( this, EVENT_PLAYER_VEHICLE_HORN );
 
-    mVehicles = new TrafficVehicle[ MAX_TRAFFIC ];
+    // Linux port: room for the most traffic cars any level of a mod asks for (CustomTrafficSupport AllocatedCars)
+    mSlotCapacity = shar_ModTrafficMaxAllocated() > MAX_TRAFFIC ? shar_ModTrafficMaxAllocated() : MAX_TRAFFIC;
+    mMaxTraffic = MAX_TRAFFIC;
+    mVehicles = new TrafficVehicle[ mSlotCapacity ];
+    mNumSlots = MAX_TRAFFIC;
+    ApplyModSettings();
 
     mCurrTrafficModelGroup = -1;
-    mMaxTraffic = MAX_TRAFFIC;
+    mMaxTraffic = mNumSlots;
 
     // initialize NULL list.
     mNumCharsToStopFor = 0;
@@ -1449,7 +1505,7 @@ void TrafficManager::Cleanup()
 
     // Clean up traffic vehicles
     //
-    for( int i=0 ; i<MAX_TRAFFIC ; i++ )
+    for( int i=0 ; i<mSlotCapacity ; i++ )
     {
         TrafficVehicle* tv = &mVehicles[i];
         rAssert( tv != NULL );
@@ -1632,16 +1688,168 @@ TrafficVehicle* TrafficManager::GetFreeTrafficVehicle()
     // the same car (and thus same car model) over and over again
     // when maxtraffic is set to a small number
 
-    int randIndex = rand() % MAX_TRAFFIC;
-    for( int i=0; i<MAX_TRAFFIC; ++i )
+    int randIndex = rand() % mNumSlots;
+    if( mDynamicType == SHAR_TRAFFIC_DYNAMIC_NONE )
     {
-        if( !mVehicles[randIndex].GetIsActive() )
+        for( int i=0; i<mNumSlots; ++i )
         {
-            return &mVehicles[randIndex];
+            TrafficVehicle* tv = &mVehicles[randIndex];
+            randIndex = (randIndex + 1) % mNumSlots;
+            // Linux port: a slot whose car could not be made (the group allows fewer cars than AllocatedCars) is skipped
+            if( !tv->GetIsActive() && tv->GetVehicle() != NULL )
+            {
+                return tv;
+            }
         }
-        randIndex = (randIndex + 1) % MAX_TRAFFIC;
+        return NULL;
     }
-    return NULL;
+
+    // Linux port: CustomTrafficSupport DynamicTraffic Models / Slots: the model is chosen for each spawn (by the
+    // group's counts / weights) among the free slots' cars; a free slot with another model if none has it
+    int model = PickModelForSpawn();
+    const char* name = model >= 0 ? mTrafficModelGroups[mCurrTrafficModelGroup].GetTrafficModel( model )->mModelName : NULL;
+    TrafficVehicle* other = NULL;
+    for( int i=0; i<mNumSlots; ++i )
+    {
+        TrafficVehicle* tv = &mVehicles[randIndex];
+        randIndex = (randIndex + 1) % mNumSlots;
+        Vehicle* v = tv->GetVehicle();
+        if( tv->GetIsActive() || v == NULL )
+        {
+            continue;
+        }
+        if( name != NULL && strcasecmp( v->GetName(), name ) == 0 )
+        {
+            return tv;
+        }
+        other = other != NULL ? other : tv;
+    }
+    return other;
+}
+
+//==============================================================================
+// Linux port: CustomTrafficSupport (port/compat/shar_modtraffic.h)
+//==============================================================================
+void TrafficManager::ApplyModSettings()
+{
+    SharModTrafficSettings mod;
+    shar_ModTrafficSettings( GetGameplayManager() != NULL ? GetGameplayManager()->GetCurrentLevelIndex() : -1, &mod );
+    #define MOD_OR( field, game ) ( mod.field != SHAR_MODTRAFFIC_UNSET ? mod.field : (game) )
+    mDynamicType = (int)MOD_OR( dynamicType, SHAR_TRAFFIC_DYNAMIC_NONE );
+    mNumSlots = (int)MOD_OR( allocatedCars, MAX_TRAFFIC );
+    mNumSlots = mNumSlots < 1 ? 1 : mNumSlots > mSlotCapacity ? mSlotCapacity : mNumSlots;
+    mMaxTrafficOnFoot = (int)MOD_OR( maxTrafficOnFoot, MAX_TRAFFIC_MODEL_GROUPS );
+    mLaneMultiplier = MOD_OR( roadTrafficLimitMultiplier, 1.0f );
+    mLaneMax = (int)MOD_OR( roadLaneMaxTrafficLimit, 2 );
+    mFadeRadius = MOD_OR( fadeDistance, FADE_RADIUS );
+    mCenterOffset = MOD_OR( centreOffset, CENTER_OFFSET );
+    mAddRadius = MOD_OR( addDistance, ADD_RADIUS );
+    mRemoveRadius = MOD_OR( removeDistance, REMOVE_RADIUS );
+    mInitialAddRadius = MOD_OR( populateAddDistance, INITIAL_ADD_RADIUS );
+    mRemoveInterval = (unsigned int)MOD_OR( removeInterval, MILLISECONDS_BETWEEN_REMOVE );
+    mAddInterval = (unsigned int)MOD_OR( addInterval, MILLISECONDS_BETWEEN_ADD );
+    mPopulateDuration = (unsigned int)MOD_OR( populationDuration, MILLISECONDS_POPULATE_WORLD );
+    mModDecel = MOD_OR( decelerationSpeed, -10.0f );        // TrafficAI's DECEL_LO, ACCEL and brake light threshold
+    mModAccel = MOD_OR( accelerationSpeed, 3.5f );
+    mModBrakeThreshold = MOD_OR( decelerationBrakeThreshold, 1.0f );
+    if( mod.maxTraffic != SHAR_MODTRAFFIC_UNSET )
+    {
+        SetMaxTraffic( (int)mod.maxTraffic );
+    }
+    else if( mMaxTraffic > mNumSlots )
+    {
+        mMaxTraffic = mNumSlots;
+    }
+    #undef MOD_OR
+}
+
+bool TrafficManager::CreateSlotVehicle( TrafficVehicle* tv, const char* modelName )
+{
+    Vehicle* newV = NULL;
+    if( modelName == NULL )
+    {
+        newV = InitRandomVehicle();
+    }
+    else
+    {
+        newV = ::GetVehicleCentral()->InitVehicle( modelName, false, 0, VT_TRAFFIC );
+    }
+    if( newV == NULL )
+    {
+        return false;
+    }
+    newV->AddRef();
+    newV->SetLocomotion( VL_TRAFFIC );
+    newV->mTrafficVehicle = tv;
+
+    tv->SetVehicle( newV );
+    tv->SetHusk( NULL );
+    return true;
+}
+
+int TrafficManager::PickModelForSpawn( bool countMade )
+{
+    const int MOD_MAX_GROUP_MODELS = 5;     // TrafficModelGroup::MAX_TRAFFIC_MODELS (private)
+    if( mCurrTrafficModelGroup < 0 )
+    {
+        return -1;
+    }
+    TrafficModelGroup& group = mTrafficModelGroups[mCurrTrafficModelGroup];
+    int level = GetGameplayManager()->GetCurrentLevelIndex();
+    float multiplier = shar_ModTrafficGroupMultiplier( level, mCurrTrafficModelGroup );
+    int numModels = group.GetNumModels();
+    numModels = numModels > MOD_MAX_GROUP_MODELS ? MOD_MAX_GROUP_MODELS : numModels;
+    if( numModels <= 0 )
+    {
+        return -1;
+    }
+
+    // active cars of each model
+    int active[ MOD_MAX_GROUP_MODELS ] = { 0 };
+    for( int i=0; i<mNumSlots; ++i )
+    {
+        Vehicle* v = ( countMade || mVehicles[i].GetIsActive() ) ? mVehicles[i].GetVehicle() : NULL;
+        for( int m=0; v != NULL && m<numModels; ++m )
+        {
+            if( strcasecmp( v->GetName(), group.GetTrafficModel( m )->mModelName ) == 0 )
+            {
+                active[m]++;
+            }
+        }
+    }
+
+    float weights[ MOD_MAX_GROUP_MODELS ];
+    float total = 0.0f;
+    for( int m=0; m<numModels; ++m )
+    {
+        TrafficModel* tm = group.GetTrafficModel( m );
+        float count = tm->mMaxInstances * multiplier;
+        if( mDynamicType == SHAR_TRAFFIC_DYNAMIC_MODELS )
+        {
+            // the group's counts are limits
+            weights[m] = active[m] < (int)( count + 0.5f ) ? 1.0f : 0.0f;
+        }
+        else
+        {
+            // the counts (or the mod's Weight) are likelihoods, less likely the more of the model are on the road
+            weights[m] = shar_ModTrafficCarWeight( level, mCurrTrafficModelGroup, tm->mModelName, count ) / ( 1.0f + active[m] );
+        }
+        total += weights[m];
+    }
+    if( total <= 0.0f )
+    {
+        return -1;
+    }
+    float pick = ( rand() / ( RAND_MAX + 1.0f ) ) * total;
+    for( int m=0; m<numModels; ++m )
+    {
+        if( pick < weights[m] )
+        {
+            return m;
+        }
+        pick -= weights[m];
+    }
+    return numModels - 1;
 }
 
 float TrafficManager::DetermineDesiredSpeedKph()
@@ -1679,7 +1887,7 @@ float TrafficManager::DetermineDesiredSpeedKph()
 
 TrafficVehicle* TrafficManager::FindTrafficVehicle( Vehicle* vehicle )
 {
-    for( int i=0; i<MAX_TRAFFIC; ++i )
+    for( int i=0; i<mNumSlots; ++i )
     {
         TrafficVehicle* tv = &mVehicles[i];
         rAssert( tv != NULL );
@@ -1751,8 +1959,8 @@ void TrafficManager::SetVehicleFadeAlpha( Vehicle* v, const rmt::Vector& pPos )
     v->GetPosition( &vPos );
     float distFromPlayer = (pPos - vPos).Length(); // *** SQUARE ROOT! ***
 
-    float fadeMinLimit = TrafficManager::FADE_RADIUS;
-    float fadeMaxLimit = TrafficManager::ADD_RADIUS + TrafficManager::CENTER_OFFSET;
+    float fadeMinLimit = mFadeRadius;
+    float fadeMaxLimit = mAddRadius + mCenterOffset;
     int fadeAlpha = 255;
     if( fadeMinLimit <= distFromPlayer && distFromPlayer <= fadeMaxLimit )
     {
