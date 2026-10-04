@@ -655,7 +655,9 @@ void AnimatedCam::Update( unsigned int milliseconds )
     {
         return;
     }
-    if( g_Multicontroller != NULL )
+    // Linux port: also without the camera (a script naming one that is not loaded, with a multicontroller that is):
+    // the camera values were read through NULL
+    if( g_Multicontroller != NULL && g_Camera != NULL )
     {
         g_Multicontroller->Advance( static_cast< float >( milliseconds ) );
 
