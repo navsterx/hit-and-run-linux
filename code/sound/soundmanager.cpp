@@ -1308,6 +1308,18 @@ void SoundManager::PlayCarOptionMenuStinger()
     m_soundFXPlayer->PlayCarOptionStinger( GetCarVolume() );
 }
 
+#ifdef RAD_LINUX
+void SoundManager::PlayModSound( const char* resource )
+{
+    if( m_isMuted || m_soundFXPlayer == NULL )
+    {
+        return;
+    }
+
+    m_soundFXPlayer->PlayModSound( resource );
+}
+#endif
+
 //=============================================================================
 // SoundManager::PlayDialogueOptionMenuStinger
 //=============================================================================

@@ -60,6 +60,11 @@ class SoundEffectPlayer
         void PlayMusicOptionStinger( float trim );
         void PlaySfxOptionStinger( float trim );
 
+#ifdef RAD_LINUX
+        // Linux port: a mod's one-shot sound effect, played by the current state's effect logic
+        void PlayModSound( const char* resource );
+#endif
+
     private:
         //Prevent wasteful constructor creation.
         SoundEffectPlayer( const SoundEffectPlayer& original );

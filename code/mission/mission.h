@@ -291,6 +291,12 @@ private:
     // last checkpoint reached (counted from 0 in stage order), -1 for none; kept across retries
     friend class ModScriptCommands;
     int mModCheckpoint;
+    // SetPedsEnabled / SetParkedCarsEnabled: 1 / 0, -1 = unset (off only with street race props); and whether
+    // they turned anything off that the street race props' unload would not turn on again
+    int mModPedsEnabled;
+    int mModParkedCarsEnabled;
+    bool mModSpawnsDisabled;
+    void ModStreetRacePropLoad();
 #endif
 };
 

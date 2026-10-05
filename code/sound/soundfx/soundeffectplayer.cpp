@@ -143,6 +143,16 @@ void SoundEffectPlayer::PlayCarOptionStinger( float trim )
     playStinger( "car_stinger", trim );
 }
 
+#ifdef RAD_LINUX
+void SoundEffectPlayer::PlayModSound( const char* resource )
+{
+    if( m_currentState < FXSTATE_MAX_STATES && m_logicObjects[m_currentState] != NULL )
+    {
+        m_logicObjects[m_currentState]->PlayModSound( resource );
+    }
+}
+#endif
+
 void SoundEffectPlayer::PlayDialogOptionStinger( float trim )
 {
     playStinger( "dialog_stinger", trim );

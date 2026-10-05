@@ -51,6 +51,9 @@
 #include <mission/gameplaymanager.h>
 
 #include <worldsim/vehiclecentral.h>
+#ifdef RAD_LINUX
+#include <mission/modscript.h>    // Linux port: mods (AdditionalScriptFunctionality)
+#endif
 
 // in meters, how much to translate spawn & remove radii forward 
 // in the direction of the camera lookat
@@ -247,6 +250,14 @@ BEGIN_PROFILE( "Pedestrian Manager" );
     avatar->GetPosition(pPos);
     avatar->GetVelocity(pVel);
     pSpeed = avatar->GetSpeedMps();
+#ifdef RAD_LINUX
+    // Linux port: a mod's camera objective with SetObjUseCameraPosition: spawn around the camera
+    if( ModScript::SpawnCenter( pPos ) )
+    {
+        pVel.Set( 0.0f, 0.0f, 0.0f );
+        pSpeed = 0.0f;
+    }
+#endif
     /*
     SuperCam* superCam = ::GetSuperCamManager()->GetSCC(0)->GetActiveSuperCam();
     rAssert( superCam != NULL );

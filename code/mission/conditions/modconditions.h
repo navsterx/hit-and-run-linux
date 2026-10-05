@@ -30,6 +30,20 @@ private:
     int mFailingMs;         // -1: not failing yet
 };
 
+// "insidetrigger" / "outsidetrigger": fails once the player has been inside (outside) the locator's triggers for
+// the threshold (SetCondThreshold, default 0: at once)
+class ModTriggerCondition : public MissionCondition
+{
+public:
+    ModTriggerCondition( bool inside ) { mTrigger.inside = inside; }
+    ModTrigger& GetTrigger() { return mTrigger; }
+    virtual void Update( unsigned int elapsedTime );
+protected:
+    virtual void OnInitialize() { mTrigger.Start(); }
+private:
+    ModTrigger mTrigger;
+};
+
 // "maintainspeed": fails when the player's speed leaves a range; shown on the proximity meter
 class ModMaintainSpeedCondition : public MissionCondition
 {

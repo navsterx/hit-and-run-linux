@@ -12,6 +12,8 @@
 
 #ifdef RAD_LINUX
 
+#include <radmath/radmath.hpp>
+
 class Console;
 class Mission;
 class MissionStage;
@@ -41,6 +43,8 @@ struct ModStage
     int pedGroup;               // SetStagePedGroup; -1 = unchanged
     unsigned int musicEvent;    // SetStageMusicEvent (radKey32); 0 = none
     int allowCancel;            // SetStageAllowMissionCancel; -1 = unchanged
+    bool collectibleSoundSet;   // SetCollectibleSoundEffect
+    char collectibleSound[ 48 ];    // "" = none
 
     int numTriggers;            // DisableTrigger
     char triggers[ MAX_TRIGGERS ][ 32 ];
@@ -80,6 +84,14 @@ namespace ModScript
     void OnMissionInitialize( Mission* mission );
     // Mission::Finalize / Reset: passengers leave
     void RemoveVehicleCharacters();
+
+    // SetCollectibleSoundEffect: the sound for collecting a delivery/dump/race item, "" for none, NULL for the game's
+    const char* CollectibleSound();
+
+    // SetObjUseCameraPosition: a camera objective sets it while it runs; then the traffic and pedestrian managers
+    // spawn around the camera (SpawnCenter replaces the player's position and returns true)
+    void SetUseCameraPosition( bool use );
+    bool SpawnCenter( rmt::Vector& position );
 }
 
 #endif // RAD_LINUX

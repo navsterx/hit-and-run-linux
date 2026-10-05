@@ -50,6 +50,9 @@
 
 #include <render/Culling/ReserveArray.h>
 #include <render/IntersectManager/IntersectManager.h>
+#ifdef RAD_LINUX
+#include <mission/modscript.h>    // Linux port: mods (AdditionalScriptFunctionality)
+#endif
 
 //******************************************************************************
 //
@@ -540,6 +543,14 @@ BEGIN_PROFILE( "Traffic Man" );
     avatar->GetPosition(pPos);
     avatar->GetVelocity(pVel);
     pSpeed = avatar->GetSpeedMps();
+#ifdef RAD_LINUX
+    // Linux port: a mod's camera objective with SetObjUseCameraPosition: spawn around the camera
+    if( ModScript::SpawnCenter( pPos ) )
+    {
+        pVel.Set( 0.0f, 0.0f, 0.0f );
+        pSpeed = 0.0f;
+    }
+#endif
 
     // Get the camera for Player 1. 
     // It's what we need to apply the center offset to our spawn & remove radii

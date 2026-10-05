@@ -66,6 +66,11 @@ class SoundFXLogic : public EventListener,
         void OnSoundReady();
         virtual void OnPlaybackComplete();
 
+#ifdef RAD_LINUX
+        // Linux port: mods' sounds (AdditionalScriptFunctionality's SetObjSound / SetCondSound)
+        bool PlayModSound( const char* resource ) { return( playSFXSound( resource, true ) ); }
+#endif
+
     protected:
         // Number of SFXPlayers
         static const unsigned int s_numSFXPlayers = 6;

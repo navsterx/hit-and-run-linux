@@ -42,6 +42,7 @@
 #include <ai/statemanager.h>
 #include <cheats/cheatinputsystem.h>
 #include <events/eventmanager.h>
+#include <camera/supercammanager.h>
 #include <shar_mods.h>
 
 ModStage::ModStage() :
@@ -58,6 +59,7 @@ ModStage::ModStage() :
     pedGroup( -1 ),
     musicEvent( 0 ),
     allowCancel( -1 ),
+    collectibleSoundSet( false ),
     numTriggers( 0 ),
     numVehicleCharacters( 0 ),
     checkpoint( false ),
@@ -69,6 +71,7 @@ ModStage::ModStage() :
     savedFine( 0 ),
     savedNumChaseCars( 0 )
 {
+    collectibleSound[ 0 ] = '\0';
     checkpointDynaLoad[ 0 ] = '\0';
     checkpointInterior[ 0 ] = '\0';
     checkpointCarLocator[ 0 ] = '\0';
@@ -99,6 +102,8 @@ VehicleCharacter s_Passengers[ MAX_PASSENGERS ];
 int s_NumPassengers = 0;
 bool s_Retry = false;       // the mission being set up is a retry (checkpoints apply)
 bool s_Loading = false;     // a retry's script is running (IfCurrentCheckpoint)
+const char* s_CollectibleSound = NULL;  // the current stage's SetCollectibleSoundEffect (its ModStage's string)
+bool s_UseCameraPosition = false;       // a camera objective with SetObjUseCameraPosition is running
 
 bool Log()
 {
@@ -366,8 +371,82 @@ public:
     }
     static void SetObjUseCameraPosition( int argc, char** argv )
     {
-        if( ParseBool( argv[ 1 ] ) ) ReportUnsupported( argv[ 0 ] );
+        ModCameraObjective* o = Objective< ModCameraObjective >( argv[ 0 ] );
+        if( o != NULL ) o->SetUseCameraPosition( ParseBool( argv[ 1 ] ) );
     }
+    static void SetObjExplosion( int argc, char** argv )
+    {
+        ModCountObjective* o = Objective< ModCountObjective >( argv[ 0 ] );
+        if( o == NULL || o->GetCounter().kind != ModCounter::HIT_PEDS )
+        {
+            if( o != NULL ) fprintf( stderr, "mods: %s does not apply to this objective, ignored\n", argv[ 0 ] );
+            return;
+        }
+        float scale = static_cast< float >( atof( argv[ 2 ] ) );
+        o->SetExplosion( atoi( argv[ 1 ] ), scale, argc > 3 ? static_cast< float >( atof( argv[ 3 ] ) ) : scale );
+    }
+
+    // SetObj/SetCondSound, SetObj/SetCondTrigger, ...: hitpeds counters and insidetrigger/outsidetrigger
+    static ModTrigger* ObjectiveTrigger( const char* command )
+    {
+        ModTriggerObjective* o = Objective< ModTriggerObjective >( command );
+        return o != NULL ? &o->GetTrigger() : NULL;
+    }
+    static ModTrigger* ConditionTrigger( const char* command )
+    {
+        ModTriggerCondition* c = Condition< ModTriggerCondition >( command );
+        return c != NULL ? &c->GetTrigger() : NULL;
+    }
+    static void SetSound( int argc, char** argv, ModCounter* counter, ModTrigger* trigger )
+    {
+        if( counter != NULL && counter->kind == ModCounter::HIT_PEDS )
+        {
+            Copy( counter->sound, sizeof( counter->sound ), argv[ 1 ] );
+        }
+        else if( trigger != NULL )
+        {
+            if( !trigger->SetSound( argc, argv ) )
+            {
+                fprintf( stderr, "mods: %s: no event, or one that does not apply to this type, ignored\n", argv[ 0 ] );
+            }
+        }
+        else
+        {
+            fprintf( stderr, "mods: %s does not apply here, ignored\n", argv[ 0 ] );
+        }
+    }
+    static void SetObjSound( int argc, char** argv )
+    {
+        MissionObjective* o = Loader()->mpObjective;
+        ModCountObjective* count = dynamic_cast< ModCountObjective* >( o );
+        ModTriggerObjective* trigger = dynamic_cast< ModTriggerObjective* >( o );
+        SetSound( argc, argv, count != NULL ? &count->GetCounter() : NULL, trigger != NULL ? &trigger->GetTrigger() : NULL );
+    }
+    static void SetCondSound( int argc, char** argv )
+    {
+        MissionCondition* c = Loader()->mpCondition;
+        ModCountCondition* count = dynamic_cast< ModCountCondition* >( c );
+        ModTriggerCondition* trigger = dynamic_cast< ModTriggerCondition* >( c );
+        SetSound( argc, argv, count != NULL ? &count->GetCounter() : NULL, trigger != NULL ? &trigger->GetTrigger() : NULL );
+    }
+    static void SetTrigger( ModTrigger* t, int argc, char** argv ) { if( t != NULL ) t->SetLocator( argv[ 1 ] ); }
+    static void SetThreshold( ModTrigger* t, int argc, char** argv )
+    {
+        if( t != NULL ) t->threshold = static_cast< float >( atof( argv[ 1 ] ) );
+    }
+    static void SetDecay( ModTrigger* t, int argc, char** argv )
+    {
+        if( t != NULL ) t->SetDecay( static_cast< float >( atof( argv[ 1 ] ) ), argc > 2 ? static_cast< float >( atof( argv[ 2 ] ) ) : 0.0f );
+    }
+    static void SetMessageIndex( ModTrigger* t, int argc, char** argv ) { if( t != NULL ) t->messageIndex = atoi( argv[ 1 ] ); }
+    static void SetObjTrigger( int argc, char** argv ) { SetTrigger( ObjectiveTrigger( argv[ 0 ] ), argc, argv ); }
+    static void SetObjThreshold( int argc, char** argv ) { SetThreshold( ObjectiveTrigger( argv[ 0 ] ), argc, argv ); }
+    static void SetObjDecay( int argc, char** argv ) { SetDecay( ObjectiveTrigger( argv[ 0 ] ), argc, argv ); }
+    static void SetObjMessageIndex( int argc, char** argv ) { SetMessageIndex( ObjectiveTrigger( argv[ 0 ] ), argc, argv ); }
+    static void SetCondTrigger( int argc, char** argv ) { SetTrigger( ConditionTrigger( argv[ 0 ] ), argc, argv ); }
+    static void SetCondThreshold( int argc, char** argv ) { SetThreshold( ConditionTrigger( argv[ 0 ] ), argc, argv ); }
+    static void SetCondDecay( int argc, char** argv ) { SetDecay( ConditionTrigger( argv[ 0 ] ), argc, argv ); }
+    static void SetCondMessageIndex( int argc, char** argv ) { SetMessageIndex( ConditionTrigger( argv[ 0 ] ), argc, argv ); }
 
     // Conditions
     static void AddCondTargetModel( int argc, char** argv )
@@ -467,6 +546,31 @@ public:
     {
         ModStage* s = Stage( argv[ 0 ] );
         if( s != NULL ) s->allowCancel = ParseBool( argv[ 1 ] ) ? 1 : 0;
+    }
+    static void SetCollectibleSoundEffect( int argc, char** argv )
+    {
+        ModStage* s = Stage( argv[ 0 ] );
+        if( s == NULL ) return;
+        s->collectibleSoundSet = true;
+        Copy( s->collectibleSound, sizeof( s->collectibleSound ), strcasecmp( argv[ 1 ], "none" ) == 0 ? "" : argv[ 1 ] );
+    }
+
+    // Missions (between SelectMission and CloseMission)
+    static Mission* ScriptedMission( const char* command )
+    {
+        Mission* mission = Loader()->mpMission;
+        if( mission == NULL ) fprintf( stderr, "mods: %s outside a mission, ignored\n", command );
+        return mission;
+    }
+    static void SetPedsEnabled( int argc, char** argv )
+    {
+        Mission* m = ScriptedMission( argv[ 0 ] );
+        if( m != NULL ) m->mModPedsEnabled = ParseBool( argv[ 1 ] ) ? 1 : 0;
+    }
+    static void SetParkedCarsEnabled( int argc, char** argv )
+    {
+        Mission* m = ScriptedMission( argv[ 0 ] );
+        if( m != NULL ) m->mModParkedCarsEnabled = ParseBool( argv[ 1 ] ) ? 1 : 0;
     }
     static void StageVehicleCharacter( int argc, char** argv, bool remove )
     {
@@ -729,6 +833,7 @@ public:
         if( mod->hitAndRun >= 0.0f ) hnr->SetHitnRunValue( mod->hitAndRun );
         if( mod->pedGroup >= 0 ) PedestrianManager::GetInstance()->SwitchModelGroup( mod->pedGroup );
         if( mod->allowCancel >= 0 ) stage->SetMissionAbortEnabled( mod->allowCancel != 0 );
+        if( mod->collectibleSoundSet ) s_CollectibleSound = mod->collectibleSound;
         if( mod->musicEvent != 0 )
         {
             radKey32 key = mod->musicEvent;
@@ -780,6 +885,10 @@ public:
             hnr->SetBustedCoins( mod->savedFine );
             hnr->SetNumChaseCars( mod->savedNumChaseCars );
             mod->saved = false;
+        }
+        if( s_CollectibleSound == mod->collectibleSound )
+        {
+            s_CollectibleSound = NULL;
         }
         // the next stage disables its own again before anything can trigger
         for( int i = 0; i < mod->numTriggers; i++ )
@@ -854,24 +963,24 @@ public:
             { "SetObjCanSkip", SetObjCanSkip, 1, 1 },
             { "SetObjNoLetterbox", SetObjNoLetterbox, 1, 1 },
             { "SetObjUseCameraPosition", SetObjUseCameraPosition, 1, 1 },
-            { "SetObjDecay", Unsupported, 1, 2 },
-            { "SetObjExplosion", Unsupported, 2, 3 },
+            { "SetObjDecay", SetObjDecay, 1, 2 },
+            { "SetObjExplosion", SetObjExplosion, 2, 3 },
             { "SetObjFailDistance", Unsupported, 1, 1 },
-            { "SetObjMessageIndex", Unsupported, 1, 1 },
-            { "SetObjSound", Unsupported, 1, 4 },
-            { "SetObjThreshold", Unsupported, 1, 1 },
-            { "SetObjTrigger", Unsupported, 1, 1 },
+            { "SetObjMessageIndex", SetObjMessageIndex, 1, 1 },
+            { "SetObjSound", SetObjSound, 1, 4 },
+            { "SetObjThreshold", SetObjThreshold, 1, 1 },
+            { "SetObjTrigger", SetObjTrigger, 1, 1 },
             // Conditions
             { "AddCondTargetModel", AddCondTargetModel, 1, 1 },
             { "SetCondTotal", SetCondTotal, 1, 1 },
             { "SetCondDelay", SetCondDelay, 1, 1 },
             { "SetCondSpeedRangeKMH", SetCondSpeedRangeKMH, 2, 2 },
             { "SetCondDisplay", SetCondDisplay, 1, 1 },
-            { "SetCondDecay", Unsupported, 1, 2 },
-            { "SetCondMessageIndex", Unsupported, 1, 1 },
-            { "SetCondSound", Unsupported, 1, 4 },
-            { "SetCondThreshold", Unsupported, 1, 1 },
-            { "SetCondTrigger", Unsupported, 1, 1 },
+            { "SetCondDecay", SetCondDecay, 1, 2 },
+            { "SetCondMessageIndex", SetCondMessageIndex, 1, 1 },
+            { "SetCondSound", SetCondSound, 1, 4 },
+            { "SetCondThreshold", SetCondThreshold, 1, 1 },
+            { "SetCondTrigger", SetCondTrigger, 1, 1 },
             // Stages
             { "DisableTrigger", DisableTrigger, 1, 1 },
             { "SetStagePayout", SetStagePayout, 1, 1 },
@@ -889,7 +998,7 @@ public:
             { "AddStageVehicleCharacter", AddStageVehicleCharacter, 2, 4 },
             { "RemoveStageVehicleCharacter", RemoveStageVehicleCharacter, 2, 2 },
             { "SetNoHitAndRunMusicForStage", Unsupported, 0, 0 },
-            { "SetCollectibleSoundEffect", Unsupported, 1, 1 },
+            { "SetCollectibleSoundEffect", SetCollectibleSoundEffect, 1, 1 },
             { "SetStageCharacterModel", Unsupported, 1, 2 },
             { "SetStageAirGravity", Unsupported, 1, 1 },
             { "SetStageKickForce", Unsupported, 1, 1 },
@@ -921,8 +1030,8 @@ public:
             { "UseTrafficGroup", UseTrafficGroup, 1, 1 },
             { "AddParkedCar", Unsupported, 1, 1 },
             { "SetHUDMapDrawable", Unsupported, 1, 1 },
-            { "SetParkedCarsEnabled", Unsupported, 1, 1 },
-            { "SetPedsEnabled", Unsupported, 1, 1 },
+            { "SetParkedCarsEnabled", SetParkedCarsEnabled, 1, 1 },
+            { "SetPedsEnabled", SetPedsEnabled, 1, 1 },
             // CON commands
             { "SetConditionalParameter", Unsupported, 3, 5 },
             { "SetWheelieOffsetX", Unsupported, 1, 1 },
@@ -1026,6 +1135,37 @@ void ModScript::RemoveVehicleCharacters()
         Unseat( s_Passengers[ i ] );
     }
     s_NumPassengers = 0;
+    s_CollectibleSound = NULL;      // (the mission's stages hold the string)
+    s_UseCameraPosition = false;
+}
+
+const char* ModScript::CollectibleSound()
+{
+    return s_CollectibleSound;
+}
+
+void ModScript::SetUseCameraPosition( bool use )
+{
+    if( use != s_UseCameraPosition && Log() )
+    {
+        fprintf( stderr, "mods: traffic and peds spawn around the %s\n", use ? "camera" : "player" );
+    }
+    s_UseCameraPosition = use;
+}
+
+bool ModScript::SpawnCenter( rmt::Vector& position )
+{
+    if( !s_UseCameraPosition )
+    {
+        return false;
+    }
+    SuperCam* cam = GetSuperCamManager()->GetSCC( 0 )->GetActiveSuperCam();
+    if( cam == NULL )
+    {
+        return false;
+    }
+    cam->GetPosition( &position );
+    return true;
 }
 
 #endif // RAD_LINUX

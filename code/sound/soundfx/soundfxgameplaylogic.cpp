@@ -37,6 +37,9 @@
 #include <worldsim/vehiclecentral.h>
 #include <worldsim/avatarmanager.h>
 #include <mission/gameplaymanager.h>
+#ifdef RAD_LINUX
+#include <mission/modscript.h>    // Linux port: mods (AdditionalScriptFunctionality)
+#endif
 
 //******************************************************************************
 //
@@ -1036,6 +1039,19 @@ void SoundFXGameplayLogic::handleCollection()
         default:
             break;
     }
+
+#ifdef RAD_LINUX
+    // Linux port: a mod's SetCollectibleSoundEffect ("" = none)
+    const char* modSound = ModScript::CollectibleSound();
+    if( modSound != NULL )
+    {
+        if( modSound[0] != '\0' )
+        {
+            playSFXSound( modSound, true );
+        }
+        return;
+    }
+#endif
 
     rAssertMsg( ( soundName != NULL ), "Collection without sound effect, tell Esan\n" );
 

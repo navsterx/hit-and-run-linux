@@ -78,6 +78,8 @@
 #ifdef RAD_LINUX
 #include <mission/modscript.h>
 #include <shar_mods.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 int Mission::GetMaxStages()
 {
@@ -161,6 +163,9 @@ Mission::Mission() :
     mNumValidFailureHints( -1 )
 #ifdef RAD_LINUX
     , mModCheckpoint( -1 )
+    , mModPedsEnabled( -1 )
+    , mModParkedCarsEnabled( -1 )
+    , mModSpawnsDisabled( false )
 #endif
 {
     strcpy( mcName, "" );
@@ -1928,6 +1933,14 @@ bool Mission::GetSwappedCarsFlag()
 
 void Mission::InitStreetRacePropLoad()
 {
+#ifdef RAD_LINUX
+    // Linux port: a mod's SetPedsEnabled / SetParkedCarsEnabled
+    if( mModPedsEnabled >= 0 || mModParkedCarsEnabled >= 0 )
+    {
+        ModStreetRacePropLoad();
+        return;
+    }
+#endif
      //Chuck: Trigger the loading of the Street Race Specify Props
     if (mStreetRacePropsLoad != NULL)
     {
@@ -1949,8 +1962,55 @@ void Mission::InitStreetRacePropLoad()
 
 }
 
+#ifdef RAD_LINUX
+// Linux port: InitStreetRacePropLoad with a mod's SetPedsEnabled / SetParkedCarsEnabled, which override what the
+// street race props imply (peds and parked cars off)
+void Mission::ModStreetRacePropLoad()
+{
+    bool props = mStreetRacePropsLoad != NULL;
+    bool disablePeds = mModPedsEnabled >= 0 ? mModPedsEnabled == 0 : props;
+    bool disableParkedCars = mModParkedCarsEnabled >= 0 ? mModParkedCarsEnabled == 0 : props;
+    if( props )
+    {
+        GetEventManager()->TriggerEvent( (EventEnum)(EVENT_LOCATOR+LocatorEvent::DYNAMIC_ZONE), mStreetRacePropsLoad );
+    }
+    if( disablePeds )
+    {
+        if( IsRaceMission() )
+        {
+            PedestrianManager::GetInstance()->DumpAllPedModels();
+        }
+        else
+        {
+            PedestrianManager::GetInstance()->RemoveAllPeds();
+        }
+        PedestrianManager::GetInstance()->AllowAddingPeds(false);
+    }
+    if( disableParkedCars )
+    {
+        GetPCM().DisableParkedCars();
+    }
+    mModSpawnsDisabled = disablePeds || disableParkedCars;
+    if( getenv( "SHAR_MOD_LOG" ) != NULL )
+    {
+        fprintf( stderr, "mods: %s: peds %s, parked cars %s\n", GetName(), disablePeds ? "off" : "on",
+                 disableParkedCars ? "off" : "on" );
+    }
+}
+#endif
+
 void Mission::InitStreetRacePropUnload()
 {
+#ifdef RAD_LINUX
+    // Linux port: what a mod's SetPedsEnabled / SetParkedCarsEnabled turned off comes back on with the mission's
+    // end, with or without street race props
+    if( mModSpawnsDisabled && mStreetRacePropsUnload == NULL )
+    {
+        PedestrianManager::GetInstance()->AllowAddingPeds(true);
+        GetPCM().EnableParkedCars();
+    }
+    mModSpawnsDisabled = false;
+#endif
     if (mStreetRacePropsUnload != NULL)
     {
         //Chuck: Trigger the unloading of the Street Race Specify Props

@@ -4,6 +4,8 @@
 #ifdef RAD_LINUX
 
 #include <raddebug.hpp>
+#include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -76,7 +78,26 @@ void ModCountCondition::Update( unsigned int elapsedTime )
 
 void ModCountCondition::HandleEvent( EventEnum id, void* pEventData )
 {
-    mCounter.OnEvent( id, pEventData );
+    if( mCounter.OnEvent( id, pEventData ) && mCounter.kind == ModCounter::HIT_PEDS )
+    {
+        ModPlaySound( mCounter.sound );
+    }
+}
+
+//=============================================================================
+// ModTriggerCondition
+//=============================================================================
+void ModTriggerCondition::Update( unsigned int elapsedTime )
+{
+    if( !IsViolated() && mTrigger.Update( elapsedTime ) )
+    {
+        if( getenv( "SHAR_MOD_LOG" ) != NULL )
+        {
+            fprintf( stderr, "mods: %s %s: condition failed\n", mTrigger.inside ? "insidetrigger" : "outsidetrigger",
+                     mTrigger.locator );
+        }
+        SetIsViolated( true );
+    }
 }
 
 //=============================================================================
@@ -135,6 +156,10 @@ MissionCondition* ModCreateCondition( int argc, char** argv )
     {
         return new ModMaintainSpeedCondition();
     }
+    if( strcasecmp( argv[ 1 ], "insidetrigger" ) == 0 || strcasecmp( argv[ 1 ], "outsidetrigger" ) == 0 )
+    {
+        return new ModTriggerCondition( tolower( argv[ 1 ][ 0 ] ) == 'i' );
+    }
     int kind = strcmp( argv[ 1 ], "hitandruncought" ) == 0 ? ModCounter::HIT_AND_RUN_CAUGHT
                                                             : ModCounter::KindOf( argv[ 1 ] );
     if( kind < 0 || kind == ModCounter::COMPLETED_WASPS || kind == ModCounter::REACH_SPEED )
@@ -159,7 +184,8 @@ bool ModSetConditionDisplay( MissionCondition* condition, const char* display )
                          : ModMaintainSpeedCondition::DISPLAY_FILL );
         return true;
     }
-    return dynamic_cast< ModCountCondition* >( condition ) != NULL;     // they show nothing anyway
+    return dynamic_cast< ModCountCondition* >( condition ) != NULL ||    // they show nothing anyway
+           dynamic_cast< ModTriggerCondition* >( condition ) != NULL;
 }
 
 #endif // RAD_LINUX

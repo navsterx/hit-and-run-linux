@@ -44,6 +44,45 @@ struct ModCounter
     float speedKmh;         // REACH_SPEED
     int numModels;
     tUID models[ MAX_MODELS ];
+    char sound[ 48 ];       // HIT_PEDS: SetObjSound / SetCondSound, played for each counted kick; "" = none
+};
+
+// Plays a sound resource (daSoundResourceData name) as a one-shot sound effect; nothing when it is not loaded
+void ModPlaySound( const char* name );
+
+// insidetrigger / outsidetrigger: a meter that fills while the player is inside (or outside) any trigger volume of
+// a locator and decays otherwise; full = the objective is done / the condition fails
+struct ModTrigger
+{
+    enum SoundEvent { SOUND_ENTER, SOUND_INSIDE, SOUND_OUTSIDE, SOUND_EXIT, NUM_SOUNDS };
+
+    ModTrigger();
+    void SetLocator( const char* name );
+    // SetObjSound / SetCondSound: (sound, event) as the syntax says, or (event, sound) as some examples have it;
+    // false for an unknown event or one that does not apply to this type
+    bool SetSound( int argc, char** argv );
+    void SetDecay( float rate, float delay ) { decayRate = rate; decayDelay = delay; }
+    void Start();
+    // true once the meter is full
+    bool Update( unsigned int elapsedTime );
+
+    bool inside;            // insidetrigger (else outsidetrigger)
+    char locator[ 64 ];
+    float threshold;        // seconds
+    float decayRate;        // meter seconds lost per second away from the counting state
+    float decayDelay;       // seconds before the decay starts
+    int messageIndex;       // shown when the counting state begins; -1 = none
+    char sounds[ NUM_SOUNDS ][ 48 ];
+    float soundInterval;    // SOUND_INSIDE / SOUND_OUTSIDE: seconds between plays
+    float soundDelay;       // ... and before the first one
+
+    // state
+    float meter;            // seconds
+    float sinceChange;      // seconds since the last enter/exit
+    float sinceRepeat;      // seconds since the last repeated sound
+    bool repeatStarted;
+    bool wasInside;
+    bool first;
 };
 
 class ModCountObjective : public MissionObjective
@@ -58,9 +97,38 @@ protected:
     virtual void OnUpdate( unsigned int elapsedTime );
 private:
     void ShowCount();
+    void Explode( Character* character );
+    enum { MAX_EXPLODED = 32 };
     ModCounter mCounter;
     int mShownCount;
     bool mShowingCount;
+public:
+    // SetObjExplosion (hitpeds): a breakable effect where a kicked character was, which then leaves the world
+    void SetExplosion( int index, float scale, float verticalScale )
+    {
+        mExplosion = index; mExplosionScale = scale; mExplosionVerticalScale = verticalScale;
+    }
+private:
+    int mExplosion;         // BreakablesEnum::BreakableID; -1 = none
+    float mExplosionScale, mExplosionVerticalScale;
+    // kicked characters blown up: pedestrians leave the world at the next update (the kick that sent the event is
+    // still being handled); other characters stay but count once
+    int mNumExploded;
+    Character* mExploded[ MAX_EXPLODED ];
+    bool mExplodedRemoved[ MAX_EXPLODED ];
+};
+
+// "insidetrigger" / "outsidetrigger"
+class ModTriggerObjective : public MissionObjective
+{
+public:
+    ModTriggerObjective( bool inside ) { mTrigger.inside = inside; }
+    ModTrigger& GetTrigger() { return mTrigger; }
+protected:
+    virtual void OnInitialize() { mTrigger.Start(); }
+    virtual void OnUpdate( unsigned int elapsedTime );
+private:
+    ModTrigger mTrigger;
 };
 
 // "camera": plays an animated camera (multicontroller + camera), done when it ends
@@ -72,6 +140,7 @@ public:
     void SetMulticontrollerName( const char* name );
     void SetCanSkip( bool canSkip ) { mCanSkip = canSkip; }
     void SetNoLetterbox( bool noLetterbox ) { mNoLetterbox = noLetterbox; }
+    void SetUseCameraPosition( bool use ) { mUseCameraPosition = use; }
     virtual void HandleEvent( EventEnum id, void* pEventData );
 protected:
     virtual void OnInitialize();
@@ -82,6 +151,7 @@ private:
     char mMulticontroller[ 64 ];
     bool mCanSkip;
     bool mNoLetterbox;
+    bool mUseCameraPosition;    // traffic and peds spawn around the camera while it plays
     bool mStarted;          // the animated camera became active
     unsigned int mWaitedMs;
 };

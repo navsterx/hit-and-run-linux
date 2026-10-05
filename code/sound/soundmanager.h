@@ -223,6 +223,10 @@ class SoundManager : public EventListener,
         // Option menu stinger stuff
         //
         void PlayCarOptionMenuStinger();
+#ifdef RAD_LINUX
+        // Linux port: a mod's one-shot sound effect by resource name (AdditionalScriptFunctionality)
+        void PlayModSound( const char* resource );
+#endif
         void PlayDialogueOptionMenuStinger();
         void PlayMusicOptionMenuStinger();
         void PlaySfxOptionMenuStinger();
