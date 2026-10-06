@@ -123,17 +123,16 @@ in between. Hacks a mod requires but the port lacks are listed at startup (`mods
 
 #### Partly done
 - [ ] **AdditionalScriptFunctionality** (`code/mission/modscript.cpp`): every command registered (unimplemented ones log
-  once when used). Done: the objective/condition types except insidetrigger/outsidetrigger, the If* conditionals,
+  once when used). Done: every objective/condition type, the If* conditionals,
   stage payout / Hit & Run / ped group / music / cancel settings, DisableTrigger, checkpoints, passengers
-  (AddStageVehicleCharacter). Left:
+  (AddStageVehicleCharacter), SetObj/CondSound, SetObjExplosion, SetObjUseCameraPosition, SetCollectibleSoundEffect
+  (not checked in play), SetPedsEnabled / SetParkedCarsEnabled. Left:
   - [ ] passengers: animation, scale, visibility, jumping out
   - [ ] stage vehicle settings, SetStageCharacterModel
   - [ ] forces and gravity
   - [ ] stage dyna load data
   - [ ] traffic groups (need CustomTrafficSupport)
-  - [ ] parked car / pedestrian switches
-  - [ ] SetObjSound / SetCondSound, explosions, SetObjUseCameraPosition
-  - [ ] insidetrigger / outsidetrigger objective and condition types
+  - [ ] AddParkedCar
   - [ ] CON commands (SetConditionalParameter, SetWheelieOffsetX)
 - [ ] **CustomLimits [Sound]** PlayingClipPlayerLimit / PlayingStreamPlayerLimit: the docs' defaults (25, 8) match
   nothing in this source (64 clip, 9 stream players); needs the retail behaviour. Values up to 64/9 fit already

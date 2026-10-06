@@ -92,6 +92,8 @@ srr2 skipfe tp2                           # 2 s after loading, teleport to the l
 srr2 skipfe skipsunday l2 m1              # skipsunday (the original's dev option): the mission starts at once, no walk to
                                           # its giver. Crashes L3 M1, L6 M1, L7 M3 while loading (their scripts swap the
                                           # player's car before the avatar and the car's physics exist): use autopass instead
+                                          # A retry from Mission Failed stays on the loading screen for good: the original
+                                          # returns to gameplay only from outside the pause context (missionmanager.cpp:447)
 srr2 ... nofail                           # test option: mission conditions never fail a stage (timer stops at 0, losing
                                           # the target, damage...); for play-testing and test runs
 srr2 ... autopass[N]                      # test option: every mission stage counts as completed after N s of game time
@@ -479,8 +481,10 @@ registered (console table 256 -> 512 functions), unimplemented ones log `mods: A
 supported yet` once, conditionals are bool console functions (the original parser's `If(...){ }`). Objective types:
 counters over events or polled state (`ModCounter`: collectcoins/wrench, completedwasps = the level's saved count,
 destroycars, event, hitandrun/caught/lost/rage, hitpeds, jump, reachspeed, spring) and camera (AnimatedCam, done on
-EVENT_ANIMATED_CAM_SHUTDOWN); they run as type "dummy". Conditions: the same counters fail after SetCondDelay (defaults
-from the docs), maintainspeed (proximity meter). Unknown condition names used to put NULL in the stage (crash): now
+EVENT_ANIMATED_CAM_SHUTDOWN; SetObjUseCameraPosition moves traffic/ped spawning to the camera while it plays:
+`ModScript::SpawnCenter`), insidetrigger/outsidetrigger (`ModTrigger`: meter, decay, sounds, message); they run as type
+"dummy". Conditions: the same counters fail after SetCondDelay (defaults from the docs), maintainspeed (proximity
+meter), insidetrigger/outsidetrigger. Unknown condition names used to put NULL in the stage (crash): now
 skipped with a message; the original's "hitandruncought" had no class (now the ASF one). `event` numbers are retail's:
 from 177 one higher than this source (retail split EVENT_FE_CANCEL into _1/_2; `ModTranslateEvent`). Stage settings
 live in `MissionStage::GetModStage()` (made on first use, mission heap) and apply at the end of `MissionStage::Reset`,
