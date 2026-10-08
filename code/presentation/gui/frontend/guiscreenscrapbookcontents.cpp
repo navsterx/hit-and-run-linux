@@ -30,6 +30,9 @@
 #include <mission/charactersheet/charactersheetmanager.h>
 #include <mission/rewards/rewardsmanager.h>
 #include <render/Enums/RenderEnums.h>
+#ifdef RAD_LINUX
+#include <mission/charactersheet/modstatstotals.h>
+#endif
 
 // Scrooby
 //
@@ -459,6 +462,14 @@ void CGuiScreenScrapBookContents::InitIntro()
     rAssert( m_LTrigger != NULL && m_RTrigger != NULL );
     m_LTrigger->SetVisible( true );
     m_RTrigger->SetVisible( true );
+#ifdef RAD_LINUX
+    // Linux port: Mod Launcher CustomStatsTotals, no level switching in a one-level mod
+    if( ModStatsTotals::Levels() == 1 )
+    {
+        m_LTrigger->SetVisible( false );
+        m_RTrigger->SetVisible( false );
+    }
+#endif
 }
 
 //===========================================================================
@@ -509,7 +520,13 @@ void CGuiScreenScrapBookContents::InitOutro()
 void
 CGuiScreenScrapBookContents::OnLevelSelectionChange( int delta )
 {
+#ifdef RAD_LINUX
+    // Linux port: Mod Launcher CustomStatsTotals, only the mod's levels (7 without the hack)
+    const int numLevels = ModStatsTotals::Levels();
+    m_currentLevel = ( static_cast<int>( m_currentLevel ) % numLevels + numLevels + delta ) % numLevels;
+#else
     m_currentLevel = (m_currentLevel + RenderEnums::numLevels + delta) % RenderEnums::numLevels;
+#endif
     rAssert( m_levelSelection );
 
     // update level selection bar
@@ -534,6 +551,21 @@ CGuiScreenScrapBookContents::OnLevelSelectionChange( int delta )
     Scrooby::Text* unlockedText = NULL;
     rAssert( m_pMenu != NULL );
 
+    int totalMissions = 8, totalSkins = 3, totalVehicles = 6, totalCards = NUM_CARDS_PER_LEVEL;
+#ifdef RAD_LINUX
+    // Linux port: Mod Launcher CustomStatsTotals, the mod's totals for this level; clothing and vehicles menus
+    // disabled when the level has none (as the Mod Launcher does)
+    if( ModStatsTotals::Active() )
+    {
+        totalMissions = ModStatsTotals::StoryMissions( m_currentLevel ) + ModStatsTotals::BonusMissions( m_currentLevel );
+        totalSkins = ModStatsTotals::Skins( m_currentLevel );
+        totalVehicles = ModStatsTotals::Cars( m_currentLevel ) + ModStatsTotals::DefaultCars( m_currentLevel );
+        totalCards = ModStatsTotals::CollectorCards( m_currentLevel );
+        m_pMenu->SetMenuItemEnabled( MENU_CHARACTER_CLOTHING, totalSkins > 0 );
+        m_pMenu->SetMenuItemEnabled( MENU_VEHICLES, totalVehicles > 0 );
+    }
+#endif
+
     // missions
     int numMissionsCompleted = GetCharacterSheetManager()->QueryNumMissionsCompleted( static_cast<RenderEnums::LevelEnum>( m_currentLevel ) );
     if( GetCharacterSheetManager()->QueryBonusMissionCompleted( static_cast<RenderEnums::LevelEnum>( m_currentLevel ) ) )
@@ -543,7 +575,7 @@ CGuiScreenScrapBookContents::OnLevelSelectionChange( int delta )
 
     sprintf( buffer, "%d / %d",
              numMissionsCompleted,
-             8 ); // m_currentLevel == 6 ? 5 : 7 );
+             totalMissions ); // m_currentLevel == 6 ? 5 : 7 );
     unlockedText = dynamic_cast<Scrooby::Text*>( m_pMenu->GetMenuItem( MENU_STORY_MISSIONS )->GetItemValue() );
     rAssert( unlockedText != NULL );
     unlockedText->SetString( 0, buffer );
@@ -551,7 +583,7 @@ CGuiScreenScrapBookContents::OnLevelSelectionChange( int delta )
     // clothing
     sprintf( buffer, "%d / %d",
              GetCharacterSheetManager()->QueryNumSkinsUnlocked( static_cast<RenderEnums::LevelEnum>( m_currentLevel ) ),
-             3 );
+             totalSkins );
     unlockedText = dynamic_cast<Scrooby::Text*>( m_pMenu->GetMenuItem( MENU_CHARACTER_CLOTHING )->GetItemValue() );
     rAssert( unlockedText != NULL );
     unlockedText->SetString( 0, buffer );
@@ -564,7 +596,7 @@ CGuiScreenScrapBookContents::OnLevelSelectionChange( int delta )
     }
     sprintf( buffer, "%d / %d",
              numVehiclesUnlocked,
-             6 );
+             totalVehicles );
     unlockedText = dynamic_cast<Scrooby::Text*>( m_pMenu->GetMenuItem( MENU_VEHICLES )->GetItemValue() );
     rAssert( unlockedText != NULL );
     unlockedText->SetString( 0, buffer );
@@ -572,7 +604,7 @@ CGuiScreenScrapBookContents::OnLevelSelectionChange( int delta )
     // cards
     sprintf( buffer, "%d / %d",
              GetCharacterSheetManager()->QueryNumCardsCollected( static_cast<RenderEnums::LevelEnum>( m_currentLevel ) ),
-             NUM_CARDS_PER_LEVEL );
+             totalCards );
     unlockedText = dynamic_cast<Scrooby::Text*>( m_pMenu->GetMenuItem( MENU_COLLECTOR_CARDS )->GetItemValue() );
     rAssert( unlockedText != NULL );
     unlockedText->SetString( 0, buffer );

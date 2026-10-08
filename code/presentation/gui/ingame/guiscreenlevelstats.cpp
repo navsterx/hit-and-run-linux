@@ -23,6 +23,9 @@
 #include <mission/charactersheet/charactersheetmanager.h>
 #include <mission/rewards/rewardsmanager.h>
 #include <render/Enums/RenderEnums.h>
+#ifdef RAD_LINUX
+#include <mission/charactersheet/modstatstotals.h>
+#endif
 
 // Scrooby
 //
@@ -231,30 +234,48 @@ CGuiScreenLevelStats::UpdateLevelStats()
     char buffer[ 32 ];
     RenderEnums::LevelEnum currentLevel = GetGameplayManager()->GetCurrentLevelIndex();
 
-    sprintf( buffer, "%d / %d", GetCharacterSheetManager()->QueryNumMissionsCompleted( currentLevel ), 7 );
+    int totalMissions = 7, totalBonusMissions = 1, totalStreetRaces = 3, totalCards = 7, totalSkins = 3, totalCars = 5;
+    int totalWasps = GetRewardsManager()->GetTotalWasps( currentLevel );
+    int totalGags = GetRewardsManager()->GetTotalGags( currentLevel );
+#ifdef RAD_LINUX
+    // Linux port: Mod Launcher CustomStatsTotals, the mod's totals for this level
+    if( ModStatsTotals::Active() )
+    {
+        totalMissions = ModStatsTotals::StoryMissions( currentLevel );
+        totalBonusMissions = ModStatsTotals::BonusMissions( currentLevel );
+        totalStreetRaces = ModStatsTotals::StreetRaces( currentLevel );
+        totalCards = ModStatsTotals::CollectorCards( currentLevel );
+        totalSkins = ModStatsTotals::Skins( currentLevel );
+        totalCars = ModStatsTotals::Cars( currentLevel );
+        totalWasps = ModStatsTotals::Wasps( currentLevel );
+        totalGags = ModStatsTotals::Gags( currentLevel );
+    }
+#endif
+
+    sprintf( buffer, "%d / %d", GetCharacterSheetManager()->QueryNumMissionsCompleted( currentLevel ), totalMissions );
     m_levelStats[ STAT_STORY_MISSIONS ]->SetString( 0, buffer );
 
-    sprintf( buffer, "%d / %d", GetCharacterSheetManager()->QueryBonusMissionCompleted( currentLevel ) ? 1 : 0, 1 );
+    sprintf( buffer, "%d / %d", GetCharacterSheetManager()->QueryBonusMissionCompleted( currentLevel ) ? 1 : 0, totalBonusMissions );
     m_levelStats[ STAT_BONUS_MISSIONS ]->SetString( 0, buffer );
 
-    sprintf( buffer, "%d / %d", GetCharacterSheetManager()->QueryNumStreetRacesCompleted( currentLevel ), 3 );
+    sprintf( buffer, "%d / %d", GetCharacterSheetManager()->QueryNumStreetRacesCompleted( currentLevel ), totalStreetRaces );
     m_levelStats[ STAT_STREET_RACES ]->SetString( 0, buffer );
 
-    sprintf( buffer, "%d / %d", GetCardGallery()->GetCollectedCards( currentLevel )->m_numCards, 7 );
+    sprintf( buffer, "%d / %d", GetCardGallery()->GetCollectedCards( currentLevel )->m_numCards, totalCards );
     m_levelStats[ STAT_CARDS ]->SetString( 0, buffer );
 
-    sprintf( buffer, "%d / %d", GetCharacterSheetManager()->QueryNumSkinsUnlocked( currentLevel ), 3 );
+    sprintf( buffer, "%d / %d", GetCharacterSheetManager()->QueryNumSkinsUnlocked( currentLevel ), totalSkins );
     m_levelStats[ STAT_CLOTHING ]->SetString( 0, buffer );
 
-    sprintf( buffer, "%d / %d", GetCharacterSheetManager()->QueryNumCarUnlocked( currentLevel ), 5 );
+    sprintf( buffer, "%d / %d", GetCharacterSheetManager()->QueryNumCarUnlocked( currentLevel ), totalCars );
     m_levelStats[ STAT_VEHICLES ]->SetString( 0, buffer );
 
     sprintf( buffer, "%d / %d", GetCharacterSheetManager()->QueryNumWaspsDestroyed( currentLevel ),
-                                GetRewardsManager()->GetTotalWasps( currentLevel ) );
+                                totalWasps );
     m_levelStats[ STAT_WASPS ]->SetString( 0, buffer );
 
     sprintf( buffer, "%d / %d", GetCharacterSheetManager()->QueryNumGagsViewed( currentLevel ),
-                                GetRewardsManager()->GetTotalGags( currentLevel ) );
+                                totalGags );
     m_levelStats[ STAT_GAGS ]->SetString( 0, buffer );
 
     sprintf( buffer, "%.1f %%", GetCharacterSheetManager()->QueryPercentLevelCompleted( currentLevel ) );

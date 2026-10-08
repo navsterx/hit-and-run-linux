@@ -22,6 +22,9 @@
 #include <mission/charactersheet/charactersheetmanager.h>
 #include <mission/rewards/rewardsmanager.h>
 #include <render/Enums/RenderEnums.h>
+#ifdef RAD_LINUX
+#include <mission/charactersheet/modstatstotals.h>
+#endif
 
 // Scrooby
 //
@@ -188,7 +191,41 @@ void CGuiScreenScrapBookStats::InitIntro()
     int numTotalGagsInGame = 0;
     int numTotalWaspsInGame = 0;
 
-    for( int i = 0; i < RenderEnums::numLevels; i++ )
+    // Linux port: the original's totals (7 levels), in an array for CustomStatsTotals
+    //
+    int numTotals[ NUM_GAME_STATS ];
+    memset( numTotals, 0, sizeof( numTotals ) );
+    numTotals[ STAT_STORY_MISSIONS ] = 49;
+    numTotals[ STAT_BONUS_MISSIONS ] = 7;
+    numTotals[ STAT_STREET_RACES ] = 21;
+    numTotals[ STAT_CARDS ] = 49;
+    numTotals[ STAT_CLOTHING ] = 21;
+    numTotals[ STAT_VEHICLES ] = 35;
+    numTotals[ STAT_MOVIES ] = 7;
+    int numLevels = RenderEnums::numLevels;
+
+#ifdef RAD_LINUX
+    // Linux port: Mod Launcher CustomStatsTotals, the mod's levels and their totals
+    //
+    const bool modTotals = ModStatsTotals::Active();
+    if( modTotals )
+    {
+        numLevels = ModStatsTotals::Levels();
+        memset( numTotals, 0, sizeof( numTotals ) );
+        for( int i = 0; i < numLevels; i++ )
+        {
+            numTotals[ STAT_STORY_MISSIONS ] += ModStatsTotals::StoryMissions( i );
+            numTotals[ STAT_BONUS_MISSIONS ] += ModStatsTotals::BonusMissions( i );
+            numTotals[ STAT_STREET_RACES ] += ModStatsTotals::StreetRaces( i );
+            numTotals[ STAT_CARDS ] += ModStatsTotals::CollectorCards( i );
+            numTotals[ STAT_CLOTHING ] += ModStatsTotals::Skins( i );
+            numTotals[ STAT_VEHICLES ] += ModStatsTotals::Cars( i );
+            numTotals[ STAT_MOVIES ] += ModStatsTotals::Movies( i );
+        }
+    }
+#endif
+
+    for( int i = 0; i < numLevels; i++ )
     {
         numUnlocked[ STAT_STORY_MISSIONS ] += GetCharacterSheetManager()->QueryNumMissionsCompleted( static_cast<RenderEnums::LevelEnum>( i ) );
         numUnlocked[ STAT_BONUS_MISSIONS ] += GetCharacterSheetManager()->QueryBonusMissionCompleted( static_cast<RenderEnums::LevelEnum>( i ) ) ? 1 : 0;
@@ -200,6 +237,14 @@ void CGuiScreenScrapBookStats::InitIntro()
         numUnlocked[ STAT_GAGS ] += GetCharacterSheetManager()->QueryNumGagsViewed( static_cast<RenderEnums::LevelEnum>( i ) );
         numUnlocked[ STAT_MOVIES ] += GetCharacterSheetManager()->QueryFMVUnlocked( static_cast<RenderEnums::LevelEnum>( i ) ) ? 1 : 0;
 
+#ifdef RAD_LINUX
+        if( modTotals )
+        {
+            numTotalGagsInGame += ModStatsTotals::Gags( i );
+            numTotalWaspsInGame += ModStatsTotals::Wasps( i );
+            continue;
+        }
+#endif
         numTotalGagsInGame += GetRewardsManager()->GetTotalGags( i );
         numTotalWaspsInGame += GetRewardsManager()->GetTotalWasps( i );
     }
@@ -210,22 +255,22 @@ void CGuiScreenScrapBookStats::InitIntro()
 
     char buffer[ 32 ];
 
-    sprintf( buffer, "%d / %d", numUnlocked[ STAT_STORY_MISSIONS ], 49 );
+    sprintf( buffer, "%d / %d", numUnlocked[ STAT_STORY_MISSIONS ], numTotals[ STAT_STORY_MISSIONS ] );
     m_gameStats[ STAT_STORY_MISSIONS ]->SetString( 0, buffer );
 
-    sprintf( buffer, "%d / %d", numUnlocked[ STAT_BONUS_MISSIONS ], 7 );
+    sprintf( buffer, "%d / %d", numUnlocked[ STAT_BONUS_MISSIONS ], numTotals[ STAT_BONUS_MISSIONS ] );
     m_gameStats[ STAT_BONUS_MISSIONS ]->SetString( 0, buffer );
 
-    sprintf( buffer, "%d / %d", numUnlocked[ STAT_STREET_RACES ], 21 );
+    sprintf( buffer, "%d / %d", numUnlocked[ STAT_STREET_RACES ], numTotals[ STAT_STREET_RACES ] );
     m_gameStats[ STAT_STREET_RACES ]->SetString( 0, buffer );
 
-    sprintf( buffer, "%d / %d", numUnlocked[ STAT_CARDS ], 49 );
+    sprintf( buffer, "%d / %d", numUnlocked[ STAT_CARDS ], numTotals[ STAT_CARDS ] );
     m_gameStats[ STAT_CARDS ]->SetString( 0, buffer );
 
-    sprintf( buffer, "%d / %d", numUnlocked[ STAT_CLOTHING ], 21 );
+    sprintf( buffer, "%d / %d", numUnlocked[ STAT_CLOTHING ], numTotals[ STAT_CLOTHING ] );
     m_gameStats[ STAT_CLOTHING ]->SetString( 0, buffer );
 
-    sprintf( buffer, "%d / %d", numUnlocked[ STAT_VEHICLES ], 35 );
+    sprintf( buffer, "%d / %d", numUnlocked[ STAT_VEHICLES ], numTotals[ STAT_VEHICLES ] );
     m_gameStats[ STAT_VEHICLES ]->SetString( 0, buffer );
 
     sprintf( buffer, "%d / %d", numUnlocked[ STAT_WASPS ], numTotalWaspsInGame );
@@ -234,7 +279,7 @@ void CGuiScreenScrapBookStats::InitIntro()
     sprintf( buffer, "%d / %d", numUnlocked[ STAT_GAGS ], numTotalGagsInGame );
     m_gameStats[ STAT_GAGS ]->SetString( 0, buffer );
 
-    sprintf( buffer, "%d / %d", numUnlocked[ STAT_MOVIES ], 7 );
+    sprintf( buffer, "%d / %d", numUnlocked[ STAT_MOVIES ], numTotals[ STAT_MOVIES ] );
     m_gameStats[ STAT_MOVIES ]->SetString( 0, buffer );
 
     sprintf( buffer, "%.1f %%", GetCharacterSheetManager()->QueryPercentGameCompleted() );

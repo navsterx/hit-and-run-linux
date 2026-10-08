@@ -82,6 +82,7 @@ What the port does so far and what is left. User-facing overview: [`README.md`](
 - [x] 3DPhoneBoothPreviewSupport (all settings)
 - [x] AdditionalScriptFunctionality: what the Futurama demo uses (see To do for the rest)
 - [x] CustomCarSupport: every setting ([FakeWheel] CopySkidMarks read, not drawn)
+- [x] CustomStatsTotals: every setting (scrapbook, level progress, mission select, completion percentages)
 - [x] Futurama: Hit & Run demo plays Level 1 with its shops and phone booth; missions m0-m4 run through (autopass)
 
 ## To do
@@ -116,7 +117,6 @@ in between. Hacks a mod requires but the port lacks are listed at startup (`mods
 - [ ] **CustomBonusMissionSupport**: bonus missions beyond the game's own
 - [ ] **CustomTriggerActions**: new trigger volume actions
 - [ ] **CustomSkinPreviewAnimations**: animations in the clothes-shop preview
-- [ ] **CustomStatsTotals**: the stats screen's totals (cards, wasps, gags, ...)
 - [ ] **OverrideShaderParameters**: per-material shader parameters
 - [ ] **HoverCarRefraction**: a mod (not a hack) the Futurama demo lists as required
 - [ ] The Mod Launcher's other hacks, none of the three test mods uses: survey its hack list for popular mods

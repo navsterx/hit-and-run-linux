@@ -51,7 +51,8 @@ LINUX_EXTRA = {
     "srr2": ["code/main/linuxplatform_sdl.cpp",
              "code/mission/modscript.cpp",                          # mods' script commands (AdditionalScriptFunctionality)
              "code/mission/objectives/modobjectives.cpp",
-             "code/mission/conditions/modconditions.cpp"],
+             "code/mission/conditions/modconditions.cpp",
+             "code/mission/charactersheet/modstatstotals.cpp"],     # CustomStatsTotals
     "radmovie": ["libs/radmovie/src/linux/binkffmpeg.cpp"],     # the Bink SDK subset radmovie uses, on FFmpeg
     "radsound": ["libs/radsound/src/hal/linux/linuxhal.cpp",
                  "libs/radsound/src/hal/win32/bufferloader.cpp",          # platform-neutral, reused as is

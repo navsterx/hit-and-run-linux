@@ -19,6 +19,9 @@
 #include <mission/gameplaymanager.h>
 #include <mission/charactersheet/charactersheetmanager.h>
 #include <mission/rewards/rewardsmanager.h>
+#ifdef RAD_LINUX
+#include <mission/charactersheet/modstatstotals.h>
+#endif
 
 // Scrooby
 #include <Page.h>
@@ -55,6 +58,17 @@ HudWaspDestroyed::Start()
     bool isComplete = m_isGagInsteadOfWasp ?
                       GetCharacterSheetManager()->QueryNumGagsViewed( currentLevel ) == GetRewardsManager()->GetTotalGags( currentLevel ) :
                       GetCharacterSheetManager()->QueryNumWaspsDestroyed( currentLevel ) == GetRewardsManager()->GetTotalWasps( currentLevel );
+
+#ifdef RAD_LINUX
+    // Linux port: Mod Launcher CustomStatsTotals, "all found" against the mod's wasp / gag totals
+    if( ModStatsTotals::Active() )
+    {
+        int total = m_isGagInsteadOfWasp ? ModStatsTotals::Gags( currentLevel ) : ModStatsTotals::Wasps( currentLevel );
+        int found = m_isGagInsteadOfWasp ? GetCharacterSheetManager()->QueryNumGagsViewed( currentLevel )
+                                         : GetCharacterSheetManager()->QueryNumWaspsDestroyed( currentLevel );
+        isComplete = total > 0 && found == total;
+    }
+#endif
 
     if( isComplete )
     {

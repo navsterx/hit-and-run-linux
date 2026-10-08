@@ -20,6 +20,9 @@
 #include <mission/charactersheet/charactersheetmanager.h>
 #include <mission/charactersheet/charactersheet.h>
 #include <mission/rewards/rewardsmanager.h>
+#ifdef RAD_LINUX
+#include <mission/charactersheet/modstatstotals.h>
+#endif
 
 #include <cards/cardgallery.h>
 #include <cheats/cheatinputsystem.h>
@@ -1668,6 +1671,13 @@ int CharacterSheetManager::QueryNumCardsCollected(RenderEnums::LevelEnum level)
 
 float CharacterSheetManager::QueryPercentLevelCompleted(RenderEnums::LevelEnum level) const
     {
+#ifdef RAD_LINUX
+       // Linux port: Mod Launcher CustomStatsTotals, the mod's totals (0 = left out)
+       if( ModStatsTotals::Active() )
+       {
+           return ModStatsTotals::PercentLevelCompleted( level );
+       }
+#endif
        float level_completed = 0.0f;
        float cars = 0.0f;
        float skins = 0.0f;
@@ -1723,6 +1733,14 @@ float CharacterSheetManager::QueryPercentGameCompleted( ) const
     {
         float gameCompleted = 0.0f;
 
+#ifdef RAD_LINUX
+        // Linux port: Mod Launcher CustomStatsTotals, the mod's levels and movies
+        if( ModStatsTotals::Active() )
+        {
+            return ModStatsTotals::PercentGameCompleted();
+        }
+#endif
+
         float l1,l2,l3,l4,l5,l6,l7 = 0.0f;
 
         l1 = spInstance->QueryPercentLevelCompleted(RenderEnums::L1);
@@ -1752,6 +1770,21 @@ bool
 CharacterSheetManager::IsAllStoryMissionsCompleted()
 {
     bool isAllMissionsCompleted = true;
+
+#ifdef RAD_LINUX
+    // Linux port: Mod Launcher CustomStatsTotals, the mod's levels and story missions
+    if( ModStatsTotals::Active() )
+    {
+        for( int i = 0; i < ModStatsTotals::Levels(); i++ )
+        {
+            if( this->QueryNumMissionsCompleted( static_cast<RenderEnums::LevelEnum>( i ) ) < ModStatsTotals::StoryMissions( i ) )
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+#endif
 
     for( int i = 0; i < RenderEnums::numLevels; i++ )
     {

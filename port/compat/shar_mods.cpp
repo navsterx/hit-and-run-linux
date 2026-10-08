@@ -76,7 +76,7 @@ const char* const SUPPORTED_HACKS[] = { "CustomFiles", "CustomLimits", "OggVorbi
                                         "CustomCarSupport", "IncreasedVideoResolutionSupport",
                                         "AdditionalScriptFunctionality", "CustomInteriorSupport", "DynamicTreeNodeEntityLimits", "CustomRoadBehaviour",
                                         "CustomLicenseScreenTime", "NoMainMenuCameraAnimations", "HUDMapIgnorePlayerHeight",
-                                        "CustomTrafficSupport" };
+                                        "CustomTrafficSupport", "CustomStatsTotals" };
 
 void Init( void );
 

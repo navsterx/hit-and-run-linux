@@ -453,7 +453,7 @@ past the allocation; null merchandise in `CharacterSheetManager::UpdateRewardsMa
 Tested 2026-10-15: "SHAR Remastered" 1.0; Futurama: Hit & Run demo 0.1.3 boots (its movies, menu scene) and reaches
 Level 1 by New Game (5/5 runs) and `skipfe`. 2026-10-21: its Level 1 missions m0-m4 run through with `autopass`
 (scripts, objectives, passengers, cameras; not yet played by hand). Not implemented yet: CustomAnimationSetSupport,
-CustomAudioSupport, CustomBonusMissionSupport, CustomSkinPreviewAnimations, CustomStatsTotals,
+CustomAudioSupport, CustomBonusMissionSupport, CustomSkinPreviewAnimations,
 OverrideShaderParameters, CustomTriggerActions, and its required HoverCarRefraction mod.
 Fully Connected Map 1.0.7 (2026-10-21; Levels 1-3 joined into Level 1, interiors moved to x=700-900, all hacks it
 requires implemented): boots, Level 1 plays, Kwik-E-Mart and Moe's (door at 872.3,7.1,-473.8 in its L1; DMV
@@ -499,6 +499,13 @@ logs passengers and checkpoints. Found on the way: more than 18 characters in ph
 long session) made `Character/NPCharacter::AddToPhysics` index collision area -1 (crash in sim::VoidPList::Add); now
 such a character goes without collision. Raising the 18 areas to 32 ran the Temp heap out of memory loading a zone.
 `PrintOutOfMemoryMessage` now also prints the heap and sizes to stderr (it only drew them, then trapped: SIGILL).
+CustomStatsTotals (2026-10-21, `code/mission/charactersheet/modstatstotals.cpp`): Levels and per-level StoryMissions /
+BonusMissions / StreetRaces / CollectorCards / Movies / IncludeMovieInTotal replace the hard-coded totals in the
+scrapbook (game stats, level pages, level cycling), the pause menu's Level Progress, mission select (StoryMissions=0 =
+none, RemoveUnusedMissionFromMissionSelect hides the rest) and `QueryPercentLevel/GameCompleted`; wasp and gag totals
+stay the level scripts', clothing and cars are counted from the registered rewards (the bonus mission's / street races'
+car only when the level has them); totals of 0 are left out of percentages. A defaults-only ini gives the original's
+numbers exactly (checked against a complete save, 100.3% both); fractions are not capped, as in the original.
 Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/.
 
 ## Priorities (2026-10-17)

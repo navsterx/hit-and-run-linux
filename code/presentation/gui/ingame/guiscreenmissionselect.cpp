@@ -28,6 +28,9 @@
 #include <mission/charactersheet/charactersheetmanager.h>
 #include <mission/charactersheet/charactersheet.h>
 #include <render/Enums/RenderEnums.h>
+#ifdef RAD_LINUX
+#include <mission/charactersheet/modstatstotals.h>
+#endif
 
 #include <raddebug.hpp> // Foundation
 #include <Page.h>
@@ -361,10 +364,25 @@ void CGuiScreenMissionSelect::InitIntro()
         m_numLevelSelections = RenderEnums::numLevels;
     }
 
+    int currentLevel = GetGameplayManager()->GetCurrentLevelIndex();
+#ifdef RAD_LINUX
+    // Linux port: Mod Launcher CustomStatsTotals, only the mod's levels
+    if( ModStatsTotals::Active() )
+    {
+        if( m_numLevelSelections > ModStatsTotals::Levels() )
+        {
+            m_numLevelSelections = ModStatsTotals::Levels();
+        }
+        if( currentLevel >= m_numLevelSelections )
+        {
+            m_numLevelSelections = currentLevel + 1;
+        }
+    }
+#endif
+
     rAssert( m_pMenuLevel != NULL );
     m_pMenuLevel->SetSelectionValueCount( 0, m_numLevelSelections );
 
-    int currentLevel = GetGameplayManager()->GetCurrentLevelIndex();
     m_pMenuLevel->SetSelectionValue( 0, currentLevel );
     this->OnLevelSelectionChange( currentLevel );
 }
@@ -450,6 +468,19 @@ CGuiScreenMissionSelect::OnLevelSelectionChange( int currentLevel )
 
             isMissionUnlocked = ( i <= highestMissionPlayed );
         }
+
+#ifdef RAD_LINUX
+        // Linux port: Mod Launcher CustomStatsTotals, a level with StoryMissions=0 has no mission select;
+        // RemoveUnusedMissionFromMissionSelect hides the slots past the level's story missions
+        if( ModStatsTotals::Active() )
+        {
+            int numMissions = ModStatsTotals::StoryMissions( currentLevel );
+            if( numMissions == 0 || ( ModStatsTotals::RemoveUnusedMissions() && i >= numMissions ) )
+            {
+                isMissionUnlocked = false;
+            }
+        }
+#endif
 
         if( isMissionUnlocked )
         {
