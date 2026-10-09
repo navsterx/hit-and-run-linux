@@ -79,13 +79,18 @@ An effect of several passes that needs the picture as it was before it began (bl
 occlusion darkens it) puts `#pragma shar_original` in its first pass: from that pass on, `uOriginal` is that pass's
 input. Without it, `uOriginal` is the picture as the stage began.
 
+A pass that does not need every pixel (ambient occlusion, blurs) can work at a smaller size: `#pragma shar_scale 0.5`
+draws it at half the width and height, a quarter of the cost. The next pass reads its output through `uScene` as
+usual (`textureSize(uScene, 0)` gives its size), and `uResolution` is the size the pass draws at. The last pass of a
+stage always works at full size.
+
 `uDepth` is copied only when a pass uses it. In the final stage it also holds what the HUD and menus drew.
 
 ## The examples (post/)
 
 | File | Stage | What it does |
 |------|-------|--------------|
-| `ssao.glsl`, `ssao_apply.glsl` | scene | ambient occlusion: darkens corners, recesses and the ground around objects (two passes, in this order; `SHOW_AO` in `ssao_apply.glsl` shows it alone) |
+| `ssao.glsl`, `ssao_apply.glsl` | scene | ambient occlusion: darkens corners, recesses and the ground around objects (two passes, in this order; `SHOW_AO` in `ssao_apply.glsl` shows it alone; works at half size, `#pragma shar_scale` in `ssao.glsl`) |
 | `tonemap.glsl` | scene | filmic tone mapping (`CURVE`: ACES, Hable, Reinhard): softer highlights, richer midtones; mid grey stays put; `SATURATION` sets how much of the curve's colour boost to keep |
 | `grade.glsl` | scene | colour grading: white balance, exposure, contrast, saturation, vibrance, lift / gamma / gain, split toning |
 | `lut.glsl` | scene | colour grading with a lookup-table image (`lut/`: `neutral`, `warm`, `teal_orange`, `cool`); see below |

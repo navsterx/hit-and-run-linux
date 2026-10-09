@@ -130,6 +130,9 @@ struct Pass
     pglProgram program;
     bool ok;
     bool beginsEffect;          // "#pragma shar_original": uOriginal is this pass's input from here on
+    float scale;                // "#pragma shar_scale <f>": draws at f times the picture's size (not the last pass)
+    GLuint texture, framebuffer;    // its own target when scaled (kept in the slot, resized as needed)
+    int texW, texH;
     int textureCount;
     GLint textureUniform[MAX_PASS_TEXTURES];
     int textureImage[MAX_PASS_TEXTURES];    // indices in s_images
@@ -328,6 +331,12 @@ static void BuildPass(Pass& p)
     snprintf(header + strlen(header), sizeof(header) - strlen(header), "#line 1\n");
     p.ok = p.program.Build(path, s_passVertexSource, source, NULL, header);
     p.beginsEffect = strstr(source, "#pragma shar_original") != NULL;
+    p.scale = 1.0f;
+    const char* scale = strstr(source, "#pragma shar_scale");
+    if(scale && sscanf(scale + strlen("#pragma shar_scale"), " %f", &p.scale) == 1)
+        p.scale = p.scale < 0.1f ? 0.1f : p.scale > 1.0f ? 1.0f : p.scale;
+    else
+        p.scale = 1.0f;
     p.textureCount = 0;
     if(p.ok)
         FindTextures(p, source);
@@ -587,16 +596,45 @@ void pglPostRun(pglPostStage stage, int w, int h, pglPipeline* pipeline)
     s_frame++;
     float time = SDL_GetTicks() / 1000.0f;
 
-    glViewport(0, 0, w, h);
     glBindVertexArray(s_vao);
     GLuint input = s_original;
+    GLuint inputFramebuffer = s_framebuffers[2];
+    int inputW = w, inputH = h;
     for(int i = 0; i < n; i++)
     {
         Pass& p = *passes[i];
         bool last = i == n - 1;
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, last ? saved.drawFramebuffer : s_framebuffers[i & 1]);
+
+        // where the pass draws: the frame (last pass), its own smaller target (scaled), or a ping-pong texture
+        GLuint output = s_pingPong[i & 1], framebuffer = last ? saved.drawFramebuffer : s_framebuffers[i & 1];
+        int outW = w, outH = h;
+        if(!last && p.scale < 1.0f)
+        {
+            outW = (int)(w * p.scale + 0.5f);
+            outH = (int)(h * p.scale + 0.5f);
+            outW = outW < 1 ? 1 : outW;
+            outH = outH < 1 ? 1 : outH;
+            if(!p.texture)
+            {
+                glGenTextures(1, &p.texture);
+                glGenFramebuffers(1, &p.framebuffer);
+            }
+            if(p.texW != outW || p.texH != outH)
+            {
+                p.texW = outW;
+                p.texH = outH;
+                SetupTexture(p.texture, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, GL_LINEAR, outW, outH);
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, p.framebuffer);
+                glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, p.texture, 0);
+            }
+            output = p.texture;
+            framebuffer = p.framebuffer;
+        }
+
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
+        glViewport(0, 0, outW, outH);
         glUseProgram(p.program.Handle());
-        glUniform2f(p.uResolution, (float)w, (float)h);
+        glUniform2f(p.uResolution, (float)outW, (float)outH);
         glUniform1f(p.uTime, time);
         glUniform1i(p.uFrame, s_frame);
         glUniform1f(p.uNear, nearPlane);
@@ -608,10 +646,11 @@ void pglPostRun(pglPostStage stage, int w, int h, pglPipeline* pipeline)
         // written again two passes on)
         if(p.beginsEffect && input != s_original)
         {
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, s_framebuffers[(i - 1) & 1]);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, inputFramebuffer);
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_framebuffers[2]);
-            glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, last ? saved.drawFramebuffer : s_framebuffers[i & 1]);
+            glBlitFramebuffer(0, 0, inputW, inputH, 0, 0, w, h, GL_COLOR_BUFFER_BIT,
+                              inputW == w && inputH == h ? GL_NEAREST : GL_LINEAR);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
             glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
         }
         for(int t = 0; t < p.textureCount; t++)
@@ -622,7 +661,10 @@ void pglPostRun(pglPostStage stage, int w, int h, pglPipeline* pipeline)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, input);
         glDrawArrays(GL_TRIANGLES, 0, 3);
-        input = s_pingPong[i & 1];
+        input = output;
+        inputFramebuffer = framebuffer;
+        inputW = outW;
+        inputH = outH;
     }
     glBindVertexArray(0);
     glUseProgram(0);
