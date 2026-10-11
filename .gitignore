@@ -7,6 +7,7 @@ run/
 __pycache__/
 .git-accesstoken
 simpsons.sh
+simpsons-x64.sh
 simpsons-skipfe.sh
 mod/lmlm
 # port/package.sh output
