@@ -2,7 +2,7 @@
 
 Port of the 2003 source to Linux (32-bit default, 64-bit works), SDL2 + OpenGL 3.3 core. Original dump:
 `~/Documents/Decomp/hitnrun_source/game` (never modify). Base game plays end to end as far as tested (L7); retail PC
-data works; Mod Launcher mods partly. Missing: steering-wheel FFB. `README.md` user overview, `TODO.md` checklist,
+data works; Mod Launcher mods partly. Missing: steering-wheel FFB. `README.md` user overview, `TODO.md` checklist, `DONE.md` completed checklist,
 `RUST.md` possible Rust/Bevy rewrite.
 
 Private leaked source: keep everything private (origin github.com/zeropaulsy/simpsons-hit-and-run-recomp, private).
