@@ -64,6 +64,15 @@ Fader::Fader( globalSettings* duckSettings,
     m_State = FadedIn;
     m_callback = NULL;
     m_nextUpdatableFader = NULL;
+#ifdef RAD_LINUX
+    // uninit fix (Linux port): volumes were only set by the first Fade(); faded in = full volume, nothing to step
+    for( unsigned int i = 0; i < NUM_DUCK_VOLUMES; i++ )
+    {
+        m_currentVolumes.duckVolume[i] = 1.0f;
+        m_targetVolumes.duckVolume[i] = 1.0f;
+        m_stepValues[i] = 0.0f;
+    }
+#endif
 
     ReinitializeFader( duckSettings );
 }

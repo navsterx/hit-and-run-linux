@@ -159,6 +159,12 @@ SimpsonsSoundPlayer::~SimpsonsSoundPlayer()
 bool SimpsonsSoundPlayer::PlaySound( const char* resourceName,
                                      SimpsonsSoundPlayerCallback* callback )
 {
+#ifdef RAD_LINUX
+    if( SoundLogOn() && s_resourceManager->FindResource( ::radMakeKey32( resourceName ) ) == NULL )
+    {
+        SOUND_LOG( "PlaySound: no resource named '%s'\n", resourceName );
+    }
+#endif
     return( PlaySound( ::radMakeKey32( resourceName ), callback ) );
 }
 
