@@ -154,7 +154,13 @@ void daSoundResourceData::GetFileNameAt( unsigned int index, char* buffer, unsig
 void daSoundResourceData::GetFileKeyAt( unsigned int index, char* buffer, unsigned int max )
 {
     rTuneAssert( index < m_NumFiles );
+#ifdef RAD_LINUX
+    // Linux port: SetResourceLockdown packs the keys as radKey32s; FileId holds a pointer, so indexing FileIds read
+    // the wrong key for files after the first on 64-bit (wrong clip, or noise past the table's end)
+    KeyToStringKey32( buffer, reinterpret_cast< radKey32* >( m_pFileIds )[ index ] );
+#else
     KeyToStringKey32( buffer, m_pFileIds[ index ].m_Key );
+#endif
 }
 
 //=============================================================================

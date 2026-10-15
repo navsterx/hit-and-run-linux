@@ -42,6 +42,8 @@
   `music00-03.rcf` (slot count 10).
 - Sound memory: clip budget (PS2 `TOTAL_PS2_FREE_UNCOMPRESSED_CLIP_BYTES`) and root allocations doubled on Linux; a
   failed clip finishes as silence (else `daSoundDynaLoadRegion`, serial, stalled every later clip/dialogue).
+- Resource file names become packed radKey32s at lockdown (`SetResourceLockdown`); read them as radKey32[], not
+  `FileId[]` (64-bit stride: multi-file resources played a neighbour's clip or noise).
 - Logs: `SHAR_SOUND_LOG=1` (players, ducking, queue, memory), `SHAR_DIALOG_LOG=1` (keys = radMakeCaseInsensitiveKey32
   of the path in dialog.rcf), `SHAR_RSD_LOG=1`. No speakers: `SDL_AUDIODRIVER=disk SDL_DISKAUDIOFILE=out.raw`
   (f32 stereo 48 kHz).
