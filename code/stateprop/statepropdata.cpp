@@ -5,6 +5,9 @@
 #include <p3d/chunkfile.hpp>
 
 #include "stateprop/statepropdata.hpp"
+#ifdef RAD_LINUX
+#include <constants/statepropenum.h>
+#endif
 
 using namespace StatePropDataTypes;
 
@@ -127,6 +130,9 @@ tEntity* CStatePropDataLoader::LoadObject(tChunkFile* f, tEntityStore* store)
     char buf[256];     
     f->GetPString(buf);
     statePropData->SetName(buf);
+#ifdef RAD_LINUX
+    bool isL5Crate = ( strcmp( buf, "l5_crate" ) == 0 ); // data fix below
+#endif
     
     //get the object factory
     f->GetPString(buf);   
@@ -159,6 +165,12 @@ tEntity* CStatePropDataLoader::LoadObject(tChunkFile* f, tEntityStore* store)
         unsigned int numEvents = f->GetLong();
         unsigned int numCallbacks = f->GetLong();
         float onFrame = f->GetFloat();
+
+#ifdef RAD_LINUX
+        // data fix (Linux port): retail l5_crate state1 has no coin callback (l1-l4 crates spawn 10 on every
+        // hit), so its first kick dropped only the 1 hit-and-run coin. Append SPAWN_10_COINS like the others.
+        bool addCrateCoins = ( currState == 1 && numCallbacks == 0 && isL5Crate );
+#endif
         
         //give me memory dammit
         int memsize = ( sizeof(StateData) ) + 
@@ -166,6 +178,12 @@ tEntity* CStatePropDataLoader::LoadObject(tChunkFile* f, tEntityStore* store)
             ( sizeof(FrameControllerData) * numFrameControllers ) +
             ( sizeof(EventData) * numEvents ) +
             ( sizeof(CallbackData) * numCallbacks );
+#ifdef RAD_LINUX
+        if ( addCrateCoins )
+        {
+            memsize += sizeof(CallbackData);
+        }
+#endif
 
         unsigned char* memptr = new unsigned char[ memsize ];
 
@@ -243,6 +261,16 @@ tEntity* CStatePropDataLoader::LoadObject(tChunkFile* f, tEntityStore* store)
             p->onFrame = f->GetFloat();
             f->EndChunk();
         }
+#ifdef RAD_LINUX
+        if ( addCrateCoins )
+        {
+            CallbackData* p = &(statePropData->m_StateData[currState]->callbackData[numCallbacks]);
+            strcpy( p->callbackName, "SPAWN_10_COINS" );
+            p->callbackID = StatePropEnum::eSpawn10Coins;
+            p->onFrame = 0.0f;
+            statePropData->m_StateData[currState]->numCallbacks++;
+        }
+#endif
          
         f->EndChunk();
     }

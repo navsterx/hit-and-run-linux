@@ -44,3 +44,8 @@
 - Sound loads complete only from SoundManager::Update/UpdateOncePerFrame (relevant to cancel/shutdown hangs).
 - >18 characters in physics: collision area -1 -> now no collision for the extra (raising areas to 32 ran Temp out).
   `PrintOutOfMemoryMessage` prints heap/sizes to stderr.
+
+## Retail data fixes
+- `l5_crate` state1 lacks SPAWN_10_COINS (l1-l4 crates have it): appended in `CStatePropDataLoader::LoadObject`.
+  Dump stateprop state machines: parse chunk 0x08020000 (layout in that loader). Release builds don't keep entity
+  names: compare the loaded string, not `GetName()`.
