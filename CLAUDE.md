@@ -63,7 +63,7 @@ Linux is a PC platform: `RAD_WIN32` stays defined, `RAD_LINUX` marks OS differen
 ## Priorities
 1. Verify base game: the user plays (Claude doesn't script gameplay it can't see). L1-2 done, on L3. Riskiest: bonus
    game with 2-4 pads, races, later levels, other languages.
-2. Memcheck coverage (Claude, unattended): remaining missions in testing.md.
+2. Memcheck coverage (Claude, unattended): every mission done; cutscenes, bonus game with player driving.
 3. Robustness: crashes/asserts from those runs, shutdown paths.
 4. Mods: remaining hacks (mods.md), tested with the user. 5. Packaging. 6. Wheel FFB. 7. Renderer follow-ups.
 8. 64-bit long sessions.

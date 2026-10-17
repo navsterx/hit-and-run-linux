@@ -58,7 +58,8 @@ set +e
 # nouserintercepts: the game replaces operator new/delete itself; memcheck must not swap in its own.
 # fair-sched: valgrind runs one thread at a time; without it the main and load threads handing the load mutex
 # back and forth starved the drive thread, and Level 1 took over 15 minutes to load instead of ~3.
-VALGRIND_LIB="$T/vg/usr/libexec/valgrind" SDL_AUDIODRIVER=${SDL_AUDIODRIVER:-dummy} \
+# X11 (XWayland): on Wayland a libglycin thread (window decorations) segfaults under valgrind at window creation.
+VALGRIND_LIB="$T/vg/usr/libexec/valgrind" SHAR_X11=${SHAR_X11:-1} SDL_AUDIODRIVER=${SDL_AUDIODRIVER:-dummy} \
 timeout -s INT "$SECS" "$T/vg/usr/bin/valgrind" --tool=memcheck --error-limit=no --num-callers=24 --track-origins=yes --fair-sched=yes \
     --leak-check=no --soname-synonyms=somalloc=nouserintercepts $VG_OPTS --log-file="$RUN/memcheck.log" "$GAME" "$@" \
     > "$RUN/memcheck.out" 2>&1

@@ -32,10 +32,16 @@
 - Recipes: `memcheck.sh 900 skipfe demo l1`; races `1200 skipfe race2` (Enter taps from 120 s, W held); missions
   `1500 skipfe incar autopass20 nofail lN m1` (Enter every 15 s, W held, MAX_FRAME_MS=50); chains from M2 `autopass15`
   (75 min/run); bonus `SHAR_BUILD=build-linux64 ... 1500 skipfe l0` (Enter every 10 s from 90 s).
-- Known noise: X11/udev/dbus/SDL startup; vsnprintf %s past terminator (Rig::ReadFromScript, LoadingManager, HandleOption).
+- Runs on X11 (`SHAR_X11=1`, memcheck.sh default): on Wayland libglycin segfaults under valgrind at window creation.
+- A level's last mission ends at the save prompt; Enter taps then loop slot list <-> "Are you sure?" (NO): run idles.
+  Check an M7 finished by its objective types in the autopass log (ObjectiveTypeEnum, missionobjective.h).
+- Known noise: X11/udev/dbus/SDL startup; vsnprintf %s past terminator (Rig::ReadFromScript, LoadingManager, HandleOption,
+  UserController::LoadConfig).
 - Covered clean: boot, L1 walk/drive/races 1-4/interiors (all levels' interiors), L7 M1 interior, demos L1-7, bonus
-  game (AI driving only), M1 of every level, all missions of L1, L2, L4, L3 M1-5.
-  **Not yet: L3 M6-7, L5-L7 M2+, cutscenes beyond those, bonus game with player driving.**
+  game (AI driving only), all missions of every level (L3 M7 -> L4 transition too).
+  **Not yet: cutscenes beyond those, bonus game with player driving.**
+- `MissionObjective::LightPath` with no road within 50 m of player or target (zone not streamed, autopass) used
+  uninitialised path elements: now lights no path.
 
 ## Robustness / shutdown
 - Quit sweeps done (release + debug, all contexts incl. mid-load, bonus game): clean.

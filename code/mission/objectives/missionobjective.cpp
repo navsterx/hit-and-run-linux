@@ -1376,6 +1376,13 @@ void MissionObjective::LightPath
     GetIntersectManager()->FindClosestRoad(sourcePosn, 50.0f, pSourceRoadSeg, dummy );
     rAssert( pSourceRoadSeg != NULL );
 
+    // Linux port: no road within 50 m of either end (its zone isn't streamed in) left the path elements
+    // uninitialised and the road searches below dereferenced them; light no path instead.
+    if( pSourceRoadSeg == NULL || pTargetRoadSeg == NULL )
+    {
+        return;
+    }
+
     RoadManager::PathElement sourcePath, targetPath;
 
     if( pSourceRoadSeg != NULL )    sourcePath.elem = pSourceRoadSeg->GetRoad();
