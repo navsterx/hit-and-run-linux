@@ -1,6 +1,6 @@
 # Progress
 
-What is left for the port. Once a seciton is completed, it moves to: [`DONE.md`](DONE.md). User-facing overview: [`README.md`](README.md); porting details:
+What is left for the port. Completed items move to [`DONE.md`](DONE.md). User-facing overview: [`README.md`](README.md); porting details:
 [`CLAUDE.md`](CLAUDE.md).
 
 ## To do
@@ -12,10 +12,10 @@ What is left for the port. Once a seciton is completed, it moves to: [`DONE.md`]
 - [ ] **French, German and Spanish**
 
 ### Memory checking
-- [x] The bonus game (2026-10-20, 64-bit: menus, a 3-lap AI race, standings; one fix: WorldScene view vector)
-- [x] Later levels' missions: one per level, every stage via `autopass` (2026-10-20; 5 fixes)
-- [x] The other missions of each level (L1, L2, L4 M2-7 and L3 M2-5 2026-10-20, 1 fix + 2 crashes fixed; L3 M6-7,
-  L5-L7 M2-7 2026-10-23, 1 crash fixed: LightPath)
+Every mission of every level is done (see DONE.md). Left:
+- [ ] Cutscenes other than those the mission runs passed through (FMV objectives, the ending)
+- [ ] The bonus game with a player driving (so far only AI racers)
+- [ ] Street races, wager races and time trials outside Level 1
 
 ### Robustness
 - [ ] Shutdown paths: closing the window in every context. Release and debug builds swept with `SHAR_QUIT_AT` (boot,
@@ -80,7 +80,6 @@ in between. Hacks a mod requires but the port lacks are listed at startup (`mods
 
 ### Renderer extras
 - [ ] Anti-aliasing entry in the display menu
-- [ ] Half-resolution post-processing passes
 - [ ] Sun lighting on the world (needs shadow maps; prototyped and dropped)
 - [ ] **Vulkan renderer** (shelved 2026-10-19): a third pddi beside GL, GL kept as fallback. Reuses the GL
   pipeline's CPU state tracking and GLSL (compiled to SPIR-V with glslang); new work is pipeline objects/cache,

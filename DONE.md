@@ -27,6 +27,7 @@ What the port does so far. User-facing overview: [`README.md`](README.md); porti
 - [x] Vsync plus a 60 fps cap (physics and AI break at thousands of fps)
 - [x] Colour-write masks and alpha testing matching Direct3D (HUD map, see-through fences and ramps)
 - [x] Gamma applied by a shader pass (works in a window and under Wayland)
+- [x] Post-processing passes at reduced size (`#pragma shar_scale`); SSAO at half size
 - [x] Multisample anti-aliasing (4x by default) with alpha-to-coverage for cut-out textures
 - [x] Mipmaps with up to 16x anisotropic filtering
 - [x] User post-processing shaders (ambient occlusion, bloom, colour grading, tone mapping, CRT, ...)
@@ -49,12 +50,14 @@ What the port does so far. User-facing overview: [`README.md`](README.md); porti
 - [x] Software mixer on SDL audio with 3D positioning: sound effects, music, dialogue
 - [x] EAX reverb in software, driven by the game's own presets; verified by ear
 - [x] Bink movies decoded with FFmpeg, audio through the game's mixer
+- [x] 64-bit: sound resources made of several files play the right clip (keys read as 32-bit)
 
 ### Game data and gameplay
 - [x] **Retail PC data**: split music archives (`music00`–`03.rcf`), Radical ADPCM dialogue, logo movies replaced
   by stubs in some copies
 - [x] **Gameplay**: loads levels and plays, tested into Level 7
 - [x] **Uninitialised reads** that were zero by luck under MSVC: fixed where found
+- [x] **Retail data fix**: Level 5 crates give their 10 coins on the first hit, like Levels 1-4
 - [x] **Saving from a `skipfe` session**
 - [x] **Save, quit, load** round trip from a normal game; verified in play
 - [x] **Test launch options**: `skipfe`, `skipfe l<N> m<N>`, `demo l<N>`, `incar`, `tp<N>`, `race<N>`, `coins`
@@ -66,6 +69,10 @@ What the port does so far. User-facing overview: [`README.md`](README.md); porti
 - [x] Interiors: Kwik-E-Mart, school, Simpsons' house and Bart's room, Moe's, DMV, Android's Dungeon, Observatory
 - [x] Level 7 Mission 1 (Simpsons' house, talking to Lisa, walking outdoors)
 - [x] Attract demos (AI driving) of all seven levels
+- [x] The bonus game (64-bit: menus, a 3-lap AI race, standings; fix: WorldScene view vector)
+- [x] Every mission of every level, every stage via `autopass`: M1 of each level (5 fixes), L1, L2, L4, L3 M2-5
+  (2026-10-20, 1 fix + 2 crashes fixed); L3 M6-7, L5-L7 M2-7 and the L3 -> L4 transition (2026-10-23, one crash
+  fixed: arrow path lighting with no road nearby)
 
 ### Mods (Lucas' Mod Launcher)
 - [x] `.lmlm` packages and extracted folders, several at once
