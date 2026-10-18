@@ -6,7 +6,7 @@ What is left for the port. Completed items move to [`DONE.md`](DONE.md). User-fa
 ## To do
 
 ### Verification (playing the game)
-- [ ] **Full playthrough** of all seven levels: missions and cutscenes (in progress: Levels 1-2 done, smooth; on Level 3)
+- [ ] **Full playthrough** of all seven levels: missions and cutscenes (in progress: Levels 1-6 done, smooth; on Level 7)
 - [ ] **Bonus game** (Itchy & Scratchy racing) with 2-4 pads
 - [ ] **Street races, wager races and time trials** in every level
 - [ ] **French, German and Spanish**
