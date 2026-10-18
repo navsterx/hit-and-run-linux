@@ -169,7 +169,8 @@ port/play.sh --64 --data DIR                # builds and runs it (configures bui
 ```
 
 Boot movies only play in the release build. `port/package.sh` (`--64` for the 64-bit build) makes a self-contained
-tarball for another Linux machine. The porting details are in [`CLAUDE.md`](CLAUDE.md).
+tarball for another Linux machine. `port/dist.sh` refreshes the binary-only `dist` branch (an orphan branch, no source) from both
+bundles. The porting details are in [`CLAUDE.md`](CLAUDE.md).
 
 `CMakeLists.txt` is generated from the original Visual Studio projects: change `port/gen_cmake.py`, never the
 generated file.
