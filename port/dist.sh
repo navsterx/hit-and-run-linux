@@ -1,16 +1,17 @@
 #!/bin/bash
-# Refresh the 'dist' branch: a binary-only, bring-your-own-game release. It is an orphan branch (no history shared with
-# dev/main, so no source is reachable from it) holding, per architecture, port/package.sh's bundle with the game
-# stripped, plus README.md (from port/dist_README.md). The unstripped binaries go to dist/symbols/ (by build ID) for
-# decoding crash reports. Makes one commit on 'dist'; the user pushes.
-# usage: port/dist.sh [--no-build]     (--no-build: use the newest existing bundles in dist/)
+# Refresh the 'dist' branch: a binary-only, bring-your-own-game release of the x86-64 build. It is an orphan branch (no
+# history shared with dev/main, so no source is reachable from it) holding port/package.sh --64's bundle with the game
+# stripped. Only SDL2 and its libraries stay loose in lib/; ffmpeg (movies) and the rest go in ffmpeg-libs.tar.xz,
+# which setup.sh unpacks (run.sh calls it on first start). README.md comes from port/dist_README.md. The unstripped
+# binary goes to dist/symbols/ (by build ID) for decoding crash reports. The 32-bit build is not on the branch: hand
+# out port/package.sh's i386 tarball separately. Makes one commit on 'dist'; the user pushes.
+# usage: port/dist.sh [--no-build]     (--no-build: use the newest existing x86-64 bundle in dist/)
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
-if [ "$1" != --no-build ]; then
-    port/package.sh --64 > /dev/null
-    port/package.sh > /dev/null
-fi
+[ "$1" = --no-build ] || port/package.sh --64 > /dev/null
+SRC=$(ls -d dist/shar-linux-x86_64-[0-9]* | grep -v '\.tar\.gz$' | sort | tail -1)
+[ -n "$SRC" ] || { echo "no x86_64 bundle in dist/" >&2; exit 1; }
 
 WT=$(mktemp -d)
 if git rev-parse -q --verify refs/heads/dist > /dev/null; then
@@ -21,21 +22,55 @@ fi
 trap 'git -C "$ROOT" worktree remove --force "$WT"' EXIT
 git -C "$WT" rm -rqf --ignore-unmatch .
 
+cp "$SRC/srr2" "$SRC/run.sh" "$WT/"
+cp -r "$SRC/shaders" "$WT/shaders"
+strip "$WT/srr2"
+ID=$(readelf -n "$SRC/srr2" | awk '/Build ID/ { print $3 }')
 mkdir -p dist/symbols
-for ARCH in x86_64 i386; do
-    SRC=$(ls -d dist/shar-linux-$ARCH-[0-9]* | grep -v '\.tar\.gz$' | sort | tail -1)
-    [ -n "$SRC" ] || { echo "no $ARCH bundle in dist/" >&2; exit 1; }
-    cp -r "$SRC" "$WT/$ARCH"
-    rm -rf "$WT/$ARCH/run"
-    strip "$WT/$ARCH/srr2"
-    ID=$(readelf -n "$SRC/srr2" | awk '/Build ID/ { print $3 }')
-    cp "$SRC/srr2" "dist/symbols/srr2-$ARCH-$ID"
-    echo "$ARCH: $(basename "$SRC"), build ID $ID"
+cp "$SRC/srr2" "dist/symbols/srr2-x86_64-$ID"
+
+# lib/: SDL2 and the bundled libraries it needs; everything else (ffmpeg and its codecs) into the tarball
+mkdir -p "$WT/lib"
+KEEP="libSDL2-2.0.so.0 $(LD_LIBRARY_PATH=$SRC/lib ldd "$SRC/lib/libSDL2-2.0.so.0" | awk -v d="$SRC/lib/" 'index($3, d) == 1 { print $1 }')"
+REST=
+for f in $(ls "$SRC/lib"); do
+    if echo " $KEEP " | tr '\n' ' ' | grep -q " $f "; then cp "$SRC/lib/$f" "$WT/lib/"; else REST="$REST $f"; fi
 done
+tar -C "$SRC/lib" -cf - $REST | xz -9 -T0 > "$WT/ffmpeg-libs.tar.xz"
+
+cat > "$WT/setup.sh" <<'EOF'
+#!/bin/bash
+# Get the release ready to run: unpack ffmpeg-libs.tar.xz (the movie player's libraries) into lib/ and check that the
+# system has the graphics and windowing libraries the game needs. run.sh calls this on first start; safe to rerun.
+HERE=$(cd "$(dirname "$0")" && pwd)
+if [ ! -e "$HERE/lib/.unpacked" ] || [ "$HERE/ffmpeg-libs.tar.xz" -nt "$HERE/lib/.unpacked" ]; then
+    echo "Unpacking libraries..."
+    tar -C "$HERE/lib" -xJf "$HERE/ffmpeg-libs.tar.xz" || { echo "setup: could not unpack ffmpeg-libs.tar.xz" >&2; exit 1; }
+    touch "$HERE/lib/.unpacked"
+fi
+chmod +x "$HERE/srr2" "$HERE/run.sh"
+MISSING=$(LD_LIBRARY_PATH="$HERE/lib" ldd "$HERE/srr2" "$HERE/lib/libSDL2-2.0.so.0" 2>/dev/null | awk '/not found/ { print $1 }' | sort -u)
+if [ -n "$MISSING" ]; then
+    echo "setup: these system libraries are missing:" $MISSING >&2
+    echo "On Debian / Ubuntu:  sudo apt install libgl1 libgl1-mesa-dri libegl1 libx11-6 libxext6 libxcursor1 libxi6 \\" >&2
+    echo "    libxrandr2 libxss1 libxfixes3 libxkbcommon0 libwayland-client0 libwayland-cursor0 libwayland-egl1 \\" >&2
+    echo "    libdecor-0-0 libxrender1 libx11-xcb1 libxcb-render0 libxcb-shm0 libxcb-dri3-0 libgbm1 libdrm2" >&2
+    exit 1
+fi
+echo "Ready: ./run.sh \"/path/to/The Simpsons - Hit & Run\""
+EOF
+chmod +x "$WT/setup.sh"
+# run.sh: set up on first start
+sed -i 's|^RUN=\$HERE/run$|[ -e "$HERE/lib/.unpacked" ] \&\& [ ! "$HERE/ffmpeg-libs.tar.xz" -nt "$HERE/lib/.unpacked" ] \|\| "$HERE/setup.sh" \|\| exit 1\n&|' "$WT/run.sh"
+grep -q setup.sh "$WT/run.sh" || { echo "run.sh: setup hook not inserted" >&2; exit 1; }
+
 cp port/dist_README.md "$WT/README.md"
-printf '*/run/\n' > "$WT/.gitignore"
+# run/ and the unpacked libraries are the player's; lib/'s own files are tracked regardless (added with -f)
+printf '/run/\n/lib/\n' > "$WT/.gitignore"
 
 git -C "$WT" add -A
+git -C "$WT" add -f lib
 git -C "$WT" -c user.name=zeropaulsy -c user.email=13328895+zeropaulsy@users.noreply.github.com \
     commit -q -m "Release $(date +%Y-%m-%d) (dev $(git rev-parse --short HEAD))"
+echo "x86_64: $(basename "$SRC"), build ID $ID, lib/ $(ls "$WT/lib" | wc -l) files, ffmpeg-libs.tar.xz $(du -h "$WT/ffmpeg-libs.tar.xz" | cut -f1)"
 git log -1 --oneline refs/heads/dist --
