@@ -2,8 +2,9 @@
 # Refresh the 'dist' branch: a binary-only, bring-your-own-game release of the x86-64 build. It is an orphan branch (no
 # history shared with dev/main, so no source is reachable from it) holding port/package.sh --64's bundle with the game
 # stripped. Only SDL2 and its libraries stay loose in lib/; ffmpeg (movies) and the rest go in ffmpeg-libs.tar.xz,
-# which setup.sh unpacks (run.sh calls it on first start). README.md comes from port/dist_README.md. The unstripped
-# binary goes to dist/symbols/ (by build ID) for decoding crash reports. The 32-bit build is not on the branch: hand
+# which setup.sh unpacks (run.sh calls it on first start). README.md comes from port/dist_README.md. The binary is
+# renamed Simpsons; the unstripped one goes to dist/symbols/x86_64-<build ID>/Simpsons (same basename: crash reports
+# name the module, and port/crash_symbolize.py matches on it). The 32-bit build is not on the branch: hand
 # out port/package.sh's i386 tarball separately. Makes one commit on 'dist'; the user pushes.
 # usage: port/dist.sh [--no-build]     (--no-build: use the newest existing x86-64 bundle in dist/)
 set -e
@@ -22,12 +23,13 @@ fi
 trap 'git -C "$ROOT" worktree remove --force "$WT"' EXIT
 git -C "$WT" rm -rqf --ignore-unmatch .
 
-cp "$SRC/srr2" "$SRC/run.sh" "$WT/"
+cp "$SRC/srr2" "$WT/Simpsons"
+cp "$SRC/run.sh" "$WT/"
 cp -r "$SRC/shaders" "$WT/shaders"
-strip "$WT/srr2"
+strip "$WT/Simpsons"
 ID=$(readelf -n "$SRC/srr2" | awk '/Build ID/ { print $3 }')
-mkdir -p dist/symbols
-cp "$SRC/srr2" "dist/symbols/srr2-x86_64-$ID"
+mkdir -p "dist/symbols/x86_64-$ID"
+cp "$SRC/srr2" "dist/symbols/x86_64-$ID/Simpsons"
 
 # lib/: SDL2 and the bundled libraries it needs; everything else (ffmpeg and its codecs) into the tarball
 mkdir -p "$WT/lib"
@@ -49,8 +51,8 @@ if [ ! -e "$HERE/lib/.unpacked" ] || [ "$HERE/ffmpeg-libs.tar.xz" -nt "$HERE/lib
     tar -C "$HERE/lib" -xJf "$HERE/ffmpeg-libs.tar.xz" || { echo "setup: could not unpack ffmpeg-libs.tar.xz" >&2; exit 1; }
     touch "$HERE/lib/.unpacked"
 fi
-chmod +x "$HERE/srr2" "$HERE/run.sh"
-MISSING=$(LD_LIBRARY_PATH="$HERE/lib" ldd "$HERE/srr2" "$HERE/lib/libSDL2-2.0.so.0" 2>/dev/null | awk '/not found/ { print $1 }' | sort -u)
+chmod +x "$HERE/Simpsons" "$HERE/run.sh"
+MISSING=$(LD_LIBRARY_PATH="$HERE/lib" ldd "$HERE/Simpsons" "$HERE/lib/libSDL2-2.0.so.0" 2>/dev/null | awk '/not found/ { print $1 }' | sort -u)
 if [ -n "$MISSING" ]; then
     echo "setup: these system libraries are missing:" $MISSING >&2
     echo "On Debian / Ubuntu:  sudo apt install libgl1 libgl1-mesa-dri libegl1 libx11-6 libxext6 libxcursor1 libxi6 \\" >&2
@@ -64,6 +66,8 @@ chmod +x "$WT/setup.sh"
 # run.sh: set up on first start
 sed -i 's|^RUN=\$HERE/run$|[ -e "$HERE/lib/.unpacked" ] \&\& [ ! "$HERE/ffmpeg-libs.tar.xz" -nt "$HERE/lib/.unpacked" ] \|\| "$HERE/setup.sh" \|\| exit 1\n&|' "$WT/run.sh"
 grep -q setup.sh "$WT/run.sh" || { echo "run.sh: setup hook not inserted" >&2; exit 1; }
+sed -i 's|"\$HERE/srr2"|"$HERE/Simpsons"|' "$WT/run.sh"
+grep -qF '"$HERE/Simpsons"' "$WT/run.sh" && ! grep -q srr2 "$WT/run.sh" || { echo "run.sh: binary not renamed" >&2; exit 1; }
 
 cp port/dist_README.md "$WT/README.md"
 # run/ and the unpacked libraries are the player's; lib/'s own files are tracked regardless (added with -f)
