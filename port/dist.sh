@@ -36,7 +36,8 @@ REST=
 for f in $(ls "$SRC/lib"); do
     if echo " $KEEP " | tr '\n' ' ' | grep -q " $f "; then cp "$SRC/lib/$f" "$WT/lib/"; else REST="$REST $f"; fi
 done
-tar -C "$SRC/lib" -cf - $REST | xz -9 -T0 > "$WT/ffmpeg-libs.tar.xz"
+# reproducible (fixed order, times and owners), so an unchanged set of libraries adds nothing to the branch
+tar -C "$SRC/lib" --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -cf - $REST | xz -9 -T1 > "$WT/ffmpeg-libs.tar.xz"
 
 cat > "$WT/setup.sh" <<'EOF'
 #!/bin/bash

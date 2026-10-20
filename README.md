@@ -38,7 +38,8 @@ code left MSVC and Windows.
 - **A foundation for modding.** Mods made for Lucas' Mod Launcher load natively, and engine limits that mods once
   had to patch into a running executable can be changed in the source.
 - **Modern presentation without changing the game.** Widescreen, high resolutions, anti-aliasing and texture
-  filtering, plus optional shaders, all leave the look of the original art untouched by default.
+  filtering and optional shaders. Ambient occlusion, tone mapping and soft character lighting are on by
+  default; **M** turns them off for the original look.
 
 ## Platforms
 
@@ -70,7 +71,7 @@ code left MSVC and Windows.
 - Gamepads through SDL with console-style default bindings; Start pauses; gamepad rumble (which the Windows
   release never supported)
 
-**Shaders (optional, off by default)**
+**Shaders (ambient occlusion, tone mapping and soft character lighting on by default)**
 - Post-processing passes: ambient occlusion, bloom, colour grading, tone mapping, CRT and more
 - Per-material shaders such as toon shading or new car paint, assigned by material type, file or name
 - Everything reloads while the game runs. Press **M** to compare with and without them

@@ -25,7 +25,8 @@ After the first run, `./run.sh` alone is enough. It sets up a `run/` folder next
 data and its own copies of `simpsons.ini` and the saves, so your original install is never written to.
 
 - Settings: `run/simpsons.ini` (`#System` section: display mode, resolution, anti-aliasing, mipmaps, anisotropy)
-- Shaders: `shaders/` (see `shaders/README.md`). Press M in the game to turn them on and off.
+- Shaders: `shaders/` (see `shaders/README.md`). Ambient occlusion, tone mapping and soft lighting on characters are
+  on by default; press M in the game to turn them off and on, or edit `shaders/post.ini` and `shaders/materials.ini`.
 - Options: `./run.sh skipfe` skips the front end and goes straight into level 1
 
 ## 32-bit build
