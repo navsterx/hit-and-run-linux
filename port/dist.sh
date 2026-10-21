@@ -1,24 +1,25 @@
 #!/bin/bash
-# Refresh the 'dist' branch: a binary-only, bring-your-own-game release of the x86-64 build. It is an orphan branch (no
-# history shared with dev/main, so no source is reachable from it) holding port/package.sh --64's bundle with the game
-# stripped. Only SDL2 and its libraries stay loose in lib/; ffmpeg (movies) and the rest go in ffmpeg-libs.tar.xz,
-# which setup.sh unpacks (run.sh calls it on first start). README.md comes from port/dist_README.md. The binary is
-# renamed Simpsons; the unstripped one goes to dist/symbols/x86_64-<build ID>/Simpsons (same basename: crash reports
-# name the module, and port/crash_symbolize.py matches on it). The 32-bit build is not on the branch: hand
-# out port/package.sh's i386 tarball separately. Makes one commit on 'dist'; the user pushes.
+# Refresh the 'dist-linux-x86_64' branch: a binary-only, bring-your-own-game release of the x86-64 build. It is an
+# orphan branch (no history shared with dev/main, so no source is reachable from it) holding port/package.sh --64's
+# bundle with the game stripped. Only SDL2 and its libraries stay loose in lib/; ffmpeg (movies) and the rest go in
+# ffmpeg-libs.tar.xz, which setup.sh unpacks (run.sh calls it on first start). README.md comes from port/dist_README.md.
+# The binary is renamed Simpsons; the unstripped one goes to dist/symbols/x86_64-<build ID>/Simpsons (same basename:
+# crash reports name the module, and port/crash_symbolize.py matches on it). The 32-bit build is not on the branch: hand
+# out port/package.sh's i386 tarball separately. Makes one commit on that branch; the user pushes.
 # usage: port/dist.sh [--no-build]     (--no-build: use the newest existing x86-64 bundle in dist/)
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
+BRANCH=dist-linux-x86_64
 [ "$1" = --no-build ] || port/package.sh --64 > /dev/null
 SRC=$(ls -d dist/shar-linux-x86_64-[0-9]* | grep -v '\.tar\.gz$' | sort | tail -1)
 [ -n "$SRC" ] || { echo "no x86_64 bundle in dist/" >&2; exit 1; }
 
 WT=$(mktemp -d)
-if git rev-parse -q --verify refs/heads/dist > /dev/null; then
-    git worktree add -q "$WT" dist
+if git rev-parse -q --verify refs/heads/$BRANCH > /dev/null; then
+    git worktree add -q "$WT" "$BRANCH"
 else
-    git worktree add -q --orphan -b dist "$WT"
+    git worktree add -q --orphan -b "$BRANCH" "$WT"
 fi
 trap 'git -C "$ROOT" worktree remove --force "$WT"' EXIT
 git -C "$WT" rm -rqf --ignore-unmatch .
@@ -78,4 +79,4 @@ git -C "$WT" add -f lib
 git -C "$WT" -c user.name=zeropaulsy -c user.email=13328895+zeropaulsy@users.noreply.github.com \
     commit -q -m "Release $(date +%Y-%m-%d) (dev $(git rev-parse --short HEAD))"
 echo "x86_64: $(basename "$SRC"), build ID $ID, lib/ $(ls "$WT/lib" | wc -l) files, ffmpeg-libs.tar.xz $(du -h "$WT/ffmpeg-libs.tar.xz" | cut -f1)"
-git log -1 --oneline refs/heads/dist --
+git log -1 --oneline "refs/heads/$BRANCH" --
