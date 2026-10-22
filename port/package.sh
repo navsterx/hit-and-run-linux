@@ -27,12 +27,28 @@ done
 
 cat > "$OUT/run.sh" <<'EOF'
 #!/bin/bash
-# Start the game. usage: ./run.sh /path/to/game-data [game options...]
+# Start the game. usage: ./run.sh /path/to/game-data [--mod MOD]... [game options...]
 # game-data is your copy's PC data folder (holding art/, scripts/ and the .rcf files). The first time, a run/ folder
 # is made next to this script with links to the data and copies of simpsons.ini and the saves (the game writes
 # those); the shaders/ folder here is used too. Console output goes to run/logs/last-session.log.
+# --mod MOD loads a Mod Launcher mod: a .lmlm file or an extracted mod folder. Repeat it for several; when two mods
+# change the same file, the one given first wins.
 HERE=$(cd "$(dirname "$0")" && pwd)
 RUN=$HERE/run
+MODS=; ARGS=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --mod) [ $# -ge 2 ] || { echo "--mod needs a .lmlm file or a mod folder" >&2; exit 1; }; M=$2; shift 2 ;;
+        --mod=*) M=${1#--mod=}; shift ;;
+        *) ARGS+=("$1"); shift; continue ;;
+    esac
+    [ -e "$M" ] || { echo "Mod not found: $M" >&2; exit 1; }
+    M=$(cd "$(dirname "$M")" && pwd)/$(basename "$M")
+    case "$M" in *:*) echo "Mod paths cannot contain ':': $M" >&2; exit 1 ;; esac
+    MODS=${MODS:+$MODS:}$M
+done
+set -- "${ARGS[@]}"
+[ -n "$MODS" ] && export SHAR_MODS=$MODS
 DATA=
 if [ -n "$1" ] && [ -d "$1" ]; then DATA=$1; shift
 elif [ -f "$RUN/.data" ]; then DATA=$(cat "$RUN/.data"); fi
@@ -83,6 +99,7 @@ The Simpsons Hit & Run - Linux port, $ARCH (test build)
 $NEEDS
 2. Start it:  ./run.sh "/path/to/The Simpsons - Hit & Run"
    (afterwards just ./run.sh; options go after the path or on their own, e.g. ./run.sh skipfe)
+   Mods (Mod Launcher .lmlm files or mod folders):  ./run.sh --mod MyMod.lmlm --mod OtherMod
 
 Settings: run/simpsons.ini (#System: display, resolution, antialiasing, mipmaps, anisotropy).
 Shaders: shaders/ (see shaders/README.md); M in the game turns them off and on.
