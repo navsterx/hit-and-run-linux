@@ -141,6 +141,8 @@ def main():
         "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} ${SHAR_ARCH} -g -fno-strict-aliasing ${SHAR_WARN}\")",
         "# gnu++98 + permissive: closest to what 2003-era MSVC accepted",
         "set(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} ${SHAR_ARCH} -g -std=gnu++98 -fpermissive -fno-strict-aliasing ${SHAR_WARN}\")",
+        "# __FILE__ (assert text) relative to the source root: no home directory in shipped binaries",
+        "add_compile_options(\"-fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=\")",
         "# static C++ runtime + no exported runtime symbols: the game's own operator new must not leak into",
         "# shared libraries (GPU drivers) the way it would by default on ELF (see SHAR_LOCAL in msvc_compat.h)",
         "set(CMAKE_EXE_LINKER_FLAGS \"${CMAKE_EXE_LINKER_FLAGS} ${SHAR_ARCH} -static-libstdc++ -static-libgcc -Wl,--exclude-libs,ALL\")",
