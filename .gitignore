@@ -1,2 +1,15 @@
-/run/
-/lib/
+build-linux*/
+port/*.log
+*.o
+*.a
+# run directory: symlinks to your own game data + private config/saves, logs, screenshots
+run/
+__pycache__/
+mod/lmlm
+# port/package.sh output
+dist/
+port/survey64.json
+port/syntax_survey.json
+# CodeGraph index
+.codegraph/
+.mcp.json
