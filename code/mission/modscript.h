@@ -1,0 +1,99 @@
+//=============================================================================
+// Linux port: Lucas' Mod Launcher's AdditionalScriptFunctionality hack (docs.donutteam.com,
+// Hacks/AdditionalScriptFunctionality): the script commands it adds for mods' MFK/CON scripts, the per-stage
+// settings they make (ModStage, kept by MissionStage), checkpoints and passengers in cars. The objective and
+// condition types are in objectives/modobjectives.h and conditions/modconditions.h.
+//
+// The commands are always registered (the original's scripts never use their names); the original's
+// SetHitAndRunDecayInterior, wired to KillAllChaseAI, is only corrected for mods that require the hack.
+//=============================================================================
+#ifndef MODSCRIPT_H
+#define MODSCRIPT_H
+
+#ifdef RAD_LINUX
+
+#include <radmath/radmath.hpp>
+
+class Console;
+class Mission;
+class MissionStage;
+
+struct ModStageVehicleCharacter
+{
+    char car[ 32 ];             // "current": the player's car when the stage starts
+    char character[ 32 ];
+    char joint[ 16 ];
+    float rotation;             // degrees; 180 faces forwards
+    bool remove;                // RemoveStageVehicleCharacter
+};
+
+struct ModStage
+{
+    enum { MAX_TRIGGERS = 8, MAX_VEHICLE_CHARACTERS = 8 };
+
+    ModStage();
+
+    int payout;                 // coins for completing the stage; 0 = none
+    bool paidOut;               // (the completion check runs every frame until the next stage)
+    float hitAndRun;            // the meter at the start; < 0 = unchanged
+    bool resetHitAndRun;
+    // Hit & Run settings for the stage, restored after it; < 0 = unchanged
+    float decay, decayHitAndRun, decayInterior, carChangeHitAndRun;
+    int fine, numChaseCars;
+    int pedGroup;               // SetStagePedGroup; -1 = unchanged
+    unsigned int musicEvent;    // SetStageMusicEvent (radKey32); 0 = none
+    int allowCancel;            // SetStageAllowMissionCancel; -1 = unchanged
+    bool collectibleSoundSet;   // SetCollectibleSoundEffect
+    char collectibleSound[ 48 ];    // "" = none
+
+    int numTriggers;            // DisableTrigger
+    char triggers[ MAX_TRIGGERS ][ 32 ];
+    int numVehicleCharacters;
+    ModStageVehicleCharacter vehicleCharacters[ MAX_VEHICLE_CHARACTERS ];
+
+    // CHECKPOINT_HERE and what resuming from it uses (unset values: those of the checkpoint before)
+    bool checkpoint;
+    char checkpointDynaLoad[ 512 ];
+    char checkpointInterior[ 32 ];
+    char checkpointCarLocator[ 32 ];
+    char checkpointPlayerLocator[ 32 ];
+    int checkpointPedGroup;
+
+    // the Hit & Run manager's settings before the stage changed them
+    bool saved;
+    float savedDecay, savedDecayHitAndRun, savedDecayInterior;
+    int savedFine, savedNumChaseCars;
+    bool triggerWasActive[ MAX_TRIGGERS ];
+};
+
+namespace ModScript
+{
+    void Register( Console* console );
+
+    // MissionStage: entering the stage (end of Reset), completing it, leaving it (Finalize), each frame
+    void OnStageStart( MissionStage* stage );
+    void OnStageComplete( MissionStage* stage );
+    void OnStageFinalize( MissionStage* stage );
+    void Update( unsigned int elapsedTime );
+    // Mission::SetToStage replaying the stages before the one a retry resumes at (their passengers)
+    void OnStageSkipped( MissionStage* stage );
+
+    // MissionManager::RestartCurrentMission: the next Mission::Initialize is a retry (resumes at the checkpoint)
+    void OnRetry();
+    // Mission::Initialize (the mission's script has just run): apply or forget its checkpoint
+    void OnMissionInitialize( Mission* mission );
+    // Mission::Finalize / Reset: passengers leave
+    void RemoveVehicleCharacters();
+
+    // SetCollectibleSoundEffect: the sound for collecting a delivery/dump/race item, "" for none, NULL for the game's
+    const char* CollectibleSound();
+
+    // SetObjUseCameraPosition: a camera objective sets it while it runs; then the traffic and pedestrian managers
+    // spawn around the camera (SpawnCenter replaces the player's position and returns true)
+    void SetUseCameraPosition( bool use );
+    bool SpawnCenter( rmt::Vector& position );
+}
+
+#endif // RAD_LINUX
+
+#endif // MODSCRIPT_H

@@ -1,0 +1,22 @@
+[radcore]
+  libs/radcore/src/raddebugcommunication/host.cpp
+  libs/radcore/src/raddebugcommunication/host1394socket.cpp
+  libs/radcore/src/raddebugcommunication/hostchannel.cpp
+  libs/radcore/src/raddebugcommunication/hosthiosocket.cpp
+  libs/radcore/src/raddebugcommunication/targetconnection.cpp
+  libs/radcore/src/raddebugcommunication/targetsocketchannel.cpp
+  libs/radcore/src/raddebugcommunication/targetx.cpp
+  libs/radcore/src/radcontroller/directinputcontroller.cpp
+  libs/radcore/src/rad1394/win32lib/rad1394master.cpp
+  libs/radcore/src/raddebugfileserver/fileserver.cpp
+[radmovie]
+  libs/radmovie/src/common/binkradfile.cpp
+[radsound]
+  libs/radsound/src/hal/win32/buffer.cpp
+  libs/radsound/src/hal/win32/bufferloader.cpp
+  libs/radsound/src/hal/win32/effect.cpp
+  libs/radsound/src/hal/win32/listener.cpp
+  libs/radsound/src/hal/win32/positionalgroup.cpp
+  libs/radsound/src/hal/win32/radsoundwin.cpp
+  libs/radsound/src/hal/win32/system.cpp
+  libs/radsound/src/hal/win32/voice.cpp

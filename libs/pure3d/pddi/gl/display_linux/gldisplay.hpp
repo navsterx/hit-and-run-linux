@@ -1,0 +1,107 @@
+//=============================================================================
+// Copyright (c) 2002 Radical Games Ltd.  All rights reserved.
+//=============================================================================
+
+
+#ifndef _GLDISPLAY_HPP_
+#define _GLDISPLAY_HPP_
+#include <pddi/pddi.hpp>
+
+#include <sys/time.h>
+#include <SDL2/SDL.h>
+#include <pddi/gl/display_linux/gl.hpp>
+#include <pddi/gl/glpipeline.hpp>
+
+class pglContext;
+class pglWrapper;
+
+class pglDisplay : public pddiDisplay
+{
+public:
+    pglDisplay();
+    ~pglDisplay();
+
+    // cross-platform functions
+    bool InitDisplay(const pddiDisplayInit*);
+    bool InitDisplay(int x, int y, int bpp);
+
+    pddiDisplayInfo* GetDisplayInfo(void);
+
+    int GetHeight(void);
+    int GetWidth(void);
+    int GetDepth(void);
+    pddiDisplayMode GetDisplayMode(void);
+    int GetNumColourBuffer(void);
+    unsigned GetBufferMask(void);
+
+    unsigned GetFreeTextureMem(void);
+
+    void SwapBuffers();
+
+    unsigned Screenshot(pddiColour* buffer, int nBytes);
+    
+    pddiSurface* NewSurface(int x, int y);
+
+    // linux specific functions (SDL2): the window handle is an SDL_Window*
+    void  SetWindowHandle(void* sdlWindow);
+    void* GetWindowHandle();
+
+    // internal functions
+    void BeginTiming();
+    float EndTiming();
+
+    void SetContext(pglContext* c) {context = c;}
+    pglPipeline* GetPipeline(void) { return &pipeline; }
+    void PostProcess(int stage);    // user post-processing shaders, pglPostStage (glpost.cpp)
+
+    // Linux port: multisample anti-aliasing. Frames are drawn into a multisampled framebuffer (bound by
+    // BeginFrameTarget), resolved into the window by ResolveFrame: before the HUD when the game drew the 3D world
+    // (the scene post-processing point), else before the swap. Changes apply on the next frame.
+    void SetAntialiasing(int samples);
+    void BeginFrameTarget(void);    // pglContext::BeginFrame
+    void ResolveFrame(void);
+    bool ExtBGRA(void) { return extBGRA;}
+    bool CheckExtension(char*);
+    bool HasReset(void) { return reset; }
+
+    static unsigned FillDisplayModes(pddiModeInfo*);
+
+    void BeginContext(void);
+    void EndContext(void);
+
+    void SetGamma(float r, float g, float b);
+    void GetGamma(float* r, float* g, float* b);
+
+
+private:
+    pddiDisplayMode mode;
+    int winWidth;
+    int winHeight;
+    int winBitDepth;
+
+    pglContext* context;
+
+    unsigned short initialGammaRamp[3][256];
+    float gammaR,gammaG,gammaB;
+
+    SDL_Window*   window;
+    SDL_GLContext glContext;
+    pglPipeline   pipeline;     // the GL context's program, vertex array and stream buffer, and the state they draw with
+
+    bool extBGRA;
+    bool reset;
+
+    int msaaRequested, msaaSamples, msaaWidth, msaaHeight;
+    GLuint msaaFramebuffer, msaaColour, msaaDepth;
+    bool msaaBound;
+
+    struct timeval beginTime;
+};
+
+// hack for now.  Ask Nigel how to fix this
+
+// GL_BGRA_EXT comes from <GL/gl.h> (0x80E1). The old Linux code defined it as GL_RGBA, which uploaded
+// BGRA texel data as RGBA and swapped red and blue.
+
+#endif
+

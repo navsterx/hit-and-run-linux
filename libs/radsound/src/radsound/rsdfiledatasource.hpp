@@ -1,0 +1,131 @@
+//=============================================================================
+// Copyright (c) 2002 Radical Games Ltd.  All rights reserved.
+//=============================================================================
+
+
+#include <radsoundobject.hpp>
+#include <radsound.hpp>
+#include <radfile.hpp>
+
+struct radSoundRsdFileDataSource
+	:
+	public IRadSoundRsdFileDataSource,
+	public IRadFileCompletionCallback,
+	public radSoundObject
+{
+
+	IMPLEMENT_REFCOUNTED( "radSoundRsdFileDataSource" )
+
+	radSoundRsdFileDataSource( void );
+	virtual ~radSoundRsdFileDataSource( void );
+	
+	// IRadSoundHalFileDataSource
+	
+	virtual void InitializeFromFile( 
+		IRadFile * pIRadFile,
+		unsigned int initialPlaybackPosition,
+		IRadSoundHalAudioFormat::SizeType positionType,
+        IRadSoundHalAudioFormat * pIRadSoundHalAudioFormat = NULL );
+
+	virtual void InitializeFromFileName( 
+		const char * pFileName,
+		bool highPriority,
+		unsigned int initialPlaybackPosition,
+		IRadSoundHalAudioFormat::SizeType positionType,
+        IRadSoundHalAudioFormat * pIRadSoundHalAudioFormat = NULL );
+
+	// IRadSoundHalDataStream
+
+	virtual IRadSoundHalDataSource::State GetState( void );
+	virtual IRadSoundHalAudioFormat * GetFormat( void );
+	virtual unsigned GetRemainingFrames( void );
+
+	virtual void GetFramesAsync(
+		void * pBytes, 
+		radMemorySpace destinationMemorySpace, 
+		unsigned int size, 
+		IRadSoundHalDataSourceCallback * pIRshdsc );
+
+	// IRadFileCompletionCallback
+
+	virtual void OnFileOperationsComplete( void * pUserData );
+
+    virtual const char* GetName( void ) { return fileName; }
+    
+	private:
+
+        void InitFile( void );
+
+		void _StateOpeningFile( void );
+		void _StateReadingHeader( void );
+		void _StateIdle( void );
+		void _StateReadingData( void );
+
+		unsigned int GetAvailableFrames( void ) { return 0xFFFFFFFF; }
+
+		unsigned int m_FramesLeftInFile;
+
+		struct StateInfo
+		{
+			enum State { NONE, INITIALIZED, OPENING_FILE, FILE_ERROR, READING_HEADER, IDLE, READING_DATA,
+			             READING_OGG } m_State;                 // READING_OGG: Linux port, see below
+
+			union
+			{
+			    struct
+			    {
+			        unsigned int                      m_InitialPlaybackPos;
+			        IRadSoundHalAudioFormat::SizeType m_InitalPlaybackPosUnits;
+			        bool                              m_HighPriority;
+			    } m_InitializedInfo;
+                			    			    
+				struct
+				{
+			        unsigned int                      m_InitialPlaybackPos;
+			        IRadSoundHalAudioFormat::SizeType m_InitalPlaybackPosUnits;				
+					radSoundHalFileHeader * m_pRadSoundHalFileHeader;
+				} m_ReadingHeaderInfo;
+
+				struct
+				{
+					unsigned int m_ReadSizeInFrames;
+				} m_ReadingDataInfo;
+
+			};
+
+		} m_StateInfo;
+
+		ref< IRadSoundHalDataSourceCallback > m_refIRadSoundHalDataSourceCallback;
+		ref< IRadSoundHalAudioFormat >        m_refIRadSoundHalAudioFormat;
+		ref< IRadFile >                       m_refIRadFile;
+		
+		char fileName[ 64 ];
+
+        // RADP decoding (Linux port). The game passes a PCM format for every stream and clip, which
+        // skipped the header; retail PC dialog.rcf is Radical ADPCM, so such files are decoded here
+        // and served as PCM. A read ends mid-block: the rest of that block waits in m_Carry.
+
+        void DecodeReadBlocks( void );
+
+        bool           m_Decode;
+        unsigned int   m_Channels;
+        unsigned int   m_AdpcmBlockBytes;
+        void *         m_pAdpcm;
+        unsigned int   m_AdpcmCapacity;
+        short          m_Carry[ 32 * 2 ];
+        unsigned int   m_CarryOffset;
+        unsigned int   m_CarryFrames;
+        char *         m_pDecodeDest;
+        unsigned int   m_DecodeFrames;
+
+        // Ogg Vorbis (Linux port, the Mod Launcher's OggVorbisSupport): a mod's .ogg stands in for an .rsd
+        // (port/compat/shar_mods.cpp serves it under the .rsd name). Found by its "OggS" header, read whole,
+        // then decoded to PCM as frames are asked for (radsound/linux/oggdecoder.hpp).
+
+        void _StateReadingOgg( void );
+
+        struct radOggDecoder * m_pOgg;
+        unsigned char *        m_pOggData;
+        unsigned int           m_OggInitialPos;
+        IRadSoundHalAudioFormat::SizeType m_OggInitialPosUnits;
+};
