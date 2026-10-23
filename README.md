@@ -1,6 +1,6 @@
 # The Simpsons Hit & Run: Linux port
 
-AW Linux 64-Bit build of The Simpsons Hit & Run (2003) using SDL2 and OpenGL 3.3. It runs on X11 and Wayland, with
+A Linux 64-Bit build of The Simpsons Hit & Run (2003) using SDL2 and OpenGL 3.3. It runs on X11 and Wayland, with
 widescreen, high resolutions, anti-aliasing, anisotropic filtering, controllers and optional post-processing shaders.
 
 **Bring your own game.** This release has no game data. You need your own copy of the PC game, installed or copied
