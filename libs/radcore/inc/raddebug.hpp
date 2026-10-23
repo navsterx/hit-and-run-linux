@@ -124,10 +124,17 @@ void rDebugSetOutputHandler     ( radDebugOutputHandler * pOutputProc );
 //
 
 
-#define rReleaseAssert( x ) if (!(x)) if ( rDebugAssertFail_Implementation(#x,__FILE__,__LINE__) ) { rReleaseBreak(); }
-#define rReleaseAssertMsg( x, msg )  if (!(x)) if ( rDebugAssertFail_Implementation(msg,__FILE__,__LINE__) ) { rReleaseBreak(); }
-#define rReleaseWarning( x ) if (!(x)) rDebugWarningFail_Implementation(#x,__FILE__,__LINE__)
-#define rReleaseWarningMsg( x, msg ) if (!(x)) rDebugWarningFail_Implementation(msg,__FILE__,__LINE__)
+// Linux port: release builds leave source paths out of the binary (line number still reported)
+#if defined (RAD_LINUX) && !defined (RAD_DEBUG)
+    #define RAD_RELEASE_FILE ""
+#else
+    #define RAD_RELEASE_FILE __FILE__
+#endif
+
+#define rReleaseAssert( x ) if (!(x)) if ( rDebugAssertFail_Implementation(#x,RAD_RELEASE_FILE,__LINE__) ) { rReleaseBreak(); }
+#define rReleaseAssertMsg( x, msg )  if (!(x)) if ( rDebugAssertFail_Implementation(msg,RAD_RELEASE_FILE,__LINE__) ) { rReleaseBreak(); }
+#define rReleaseWarning( x ) if (!(x)) rDebugWarningFail_Implementation(#x,RAD_RELEASE_FILE,__LINE__)
+#define rReleaseWarningMsg( x, msg ) if (!(x)) rDebugWarningFail_Implementation(msg,RAD_RELEASE_FILE,__LINE__)
 
 void rReleasePrintf( const char *fmt, ... );
 
@@ -165,7 +172,12 @@ void rReleasePrintf( const char *fmt, ... );
         #endif
     #endif
 
-    #if defined (RAD_WIN32) || defined (RAD_XBOX)
+    #if defined (RAD_LINUX)
+        // Linux port: GCC never inlines variadic functions, so the empty inline kept every format string in
+        // the binary. Drop the format; the arguments are still evaluated as before.
+        inline void rTunePrintf_Discard( int, ... ) { }
+        #define rTunePrintf( fmt, ... ) rTunePrintf_Discard( 0, ##__VA_ARGS__ )
+    #elif defined (RAD_WIN32) || defined (RAD_XBOX)
         inline void rTunePrintf( const char *fmt, ... ) { }
     #endif
 
