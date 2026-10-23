@@ -1,22 +1,12 @@
-# SHAR Native
+# The Simpsons Hit & Run: Linux port
 
-**A native source port of *The Simpsons: Hit & Run* (2003): the original game, running natively on modern systems.**
+AW Linux 64-Bit build of The Simpsons Hit & Run (2003) using SDL2 and OpenGL 3.3. It runs on X11 and Wayland, with
+widescreen, high resolutions, anti-aliasing, anisotropic filtering, controllers and optional post-processing shaders.
 
-> **Private repository.** This port is built on the game's original, proprietary source code. It must never be
-> made public, forked publicly or distributed. No game data is included: you need your own copy of the PC game.
+**Bring your own game.** This release has no game data. You need your own copy of the PC game, installed or copied
+from the disc: the folder holding `art/`, `scripts/` and the `.rcf` files.
 
----
-
-## What this is
-
-*The Simpsons: Hit & Run* shipped in 2003 for Windows XP, Direct3D 8 and 32-bit x86. Twenty years on, the PC
-release survives through compatibility shims, community patches and Wine. Each of those layers stands between the
-player and the game, and any of them can break.
-
-SHAR Native removes those layers. It is the **original game's own code**, compiled for modern operating systems,
-with everything Windows-specific under it rewritten:
-
-| Original (2003) | SHAR Native |
+| Original (2003) | This project |
 |---|---|
 | Direct3D 8, fixed-function | OpenGL 3.3 core, GLSL shaders matching Direct3D 8's output |
 | DirectInput | SDL2: keyboard, mouse, any modern gamepad, rumble |
@@ -25,77 +15,15 @@ with everything Windows-specific under it rewritten:
 | Win32 threads, files, windowing | Portable platform layer |
 | 640x480 to 1600x1200, 4:3 | Any resolution, any aspect ratio, resizable window |
 
-It is **not** an emulator, a remake or a reimplementation that approximates the game. The physics, AI, mission
-scripting and timing are the shipped game's. The only gameplay changes are fixes for bugs that showed up once the
-code left MSVC and Windows.
+## Requirements
 
-## Why it matters
-
-- **Preservation.** The game no longer depends on an old OS, an old graphics API or 32-bit Windows compatibility.
-  It is an ordinary codebase that can be built, debugged and kept running as platforms change.
-- **Fidelity.** Because this is the original code, edge cases, glitches players know and speedrun tricks behave
-  as they always did.
-- **A foundation for modding.** Mods made for Lucas' Mod Launcher load natively, and engine limits that mods once
-  had to patch into a running executable can be changed in the source.
-- **Modern presentation without changing the game.** Widescreen, high resolutions, anti-aliasing and texture
-  filtering and optional shaders. Ambient occlusion, tone mapping and soft character lighting are on by
-  default; **M** turns them off for the original look.
-
-## Platforms
-
-| Platform | Status |
-|---|---|
-| Linux x86 (32-bit) | **Playable.** Tested through Level 7 |
-| Linux x86-64 | **Boots and plays** (tested: movies, front end, levels, races, interiors, the bonus game, mods); long play sessions in progress |
-| Windows x64 | Planned |
-| macOS (Apple silicon / Intel) | Planned |
-| Android / handhelds | Possible later: the renderer and input layers already allow it |
-
-## Features
-
-**Display**
-- Any aspect ratio: 16:9, 16:10, ultrawide and narrower. The 3D view widens (Hor+) while the 4:3 interface stays
-  centred and undistorted
-- Resizable window, borderless fullscreen at the desktop resolution, or exclusive fullscreen
-- Multisample anti-aliasing (4x by default) with smooth edges on fences and foliage
-- Mipmapped textures with up to 16x anisotropic filtering
-- Gamma that works in a window and under Wayland
-- Vsync with a 60 fps cap, so physics and AI keep the timing they were written for
-
-**Sound and video**
-- Every sound effect, music track, dialogue line and movie, including the retail release's formats
-- The game's environmental reverb (tunnels, sewers, interiors) in software, no sound card features needed
-
-**Input**
-- Keyboard and mouse, including mouse look
-- Gamepads through SDL with console-style default bindings; Start pauses; gamepad rumble (which the Windows
-  release never supported)
-
-**Shaders (ambient occlusion, tone mapping and soft character lighting on by default)**
-- Post-processing passes: ambient occlusion, bloom, colour grading, tone mapping, CRT and more
-- Per-material shaders such as toon shading or new car paint, assigned by material type, file or name
-- Everything reloads while the game runs. Press **M** to compare with and without them
-
-**Mods**
-- Lucas' Mod Launcher packages (`.lmlm`) and extracted mod folders, with Lua scripting, Ogg audio, HD movies,
-  custom text, car shops, new dialogue characters, the 3D phone booth preview, custom cars, mission script
-  extensions, moved or added interiors, raised engine limits and per-road traffic behaviour
-- Custom characters, audio, traffic and the remaining launcher hacks are not supported yet
-
-**Robustness**
-- A missing file is reported by name instead of hanging the game behind a disc-error screen
-- Crashes leave a log with a backtrace resolved to source lines
-
-## What you need
-
-- **A copy of the PC game.** The retail release's data works, as does the data from the source dump. SHAR Native
-  contains no game data and never will.
-- For now, a Linux x86 system with OpenGL 3.3
+A 64-bit (x86-64) Linux with glibc 2.43 or newer (Ubuntu 26.04 or a distribution of the same age) and a desktop. The
+graphics driver and X11 / Wayland libraries come from your system; everything else is included.
 
 ## Quick start
 
 ```bash
-port/play.sh --data "/path/to/The Simpsons - Hit & Run"
+port/play.sh --64 --data "/path/to/The Simpsons - Hit & Run"
 ```
 
 The first run builds the game, creates `run/` with links to your game data and its own `simpsons.ini` and save
@@ -104,74 +32,40 @@ files, then starts the game. Your original install is never written to.
 Useful options:
 
 ```bash
-port/play.sh --data DIR --mod MyMod.lmlm    # load a mod (repeatable; earlier mods win)
-port/play.sh --data DIR --no-build          # skip the build step
-port/play.sh --data DIR skipfe              # straight into Level 1
-port/play.sh --data DIR bonus               # Bonus Game and its tracks open without completed card decks
+port/play.sh --64 --data DIR --mod MyMod.lmlm    # load a mod (repeatable; earlier mods win)
+port/play.sh --64 --data DIR --no-build          # skip the build step
+port/play.sh --64 --data DIR skipfe              # straight into Level 1
+port/play.sh --64 --data DIR bonus               # Bonus Game and its tracks open without completed card decks
 ```
-
-## Settings
-
-Display mode, resolution and the game's usual options are in the in-game menus. Graphics extras go in the
-`#System` section of `run/simpsons.ini`:
-
-| Setting | Values | Default |
-|---|---|---|
-| `antialiasing=` | 0 (off), 2, 4, 8, 16 | 4 |
-| `mipmaps=` | yes, no | yes |
-| `anisotropy=` | 1 (off) to 16 | 16 |
-| `display=` | window, borderless, fullscreen | from the menu |
-
-Shaders live in `run/shaders/`: turn on post-processing in `post.ini` and assign material shaders in
-`materials.ini`. See [`shaders/README.md`](shaders/README.md).
-
-## Status and roadmap
-
-The base game is feature-complete and plays through to Level 7. The full checklist of what is done and what is
-left is in [`TODO.md`](TODO.md). Next, in order:
-
-1. **Full verification**: a complete playthrough of all seven levels, races, the bonus game
-   with several pads, and the other languages
-2. **Robustness**: fixing whatever those runs turn up, plus continued memory checking (valgrind) of new areas
-3. **Mods**: the remaining Mod Launcher hacks, starting with custom characters, audio and traffic
-4. **64-bit build**, then **Windows and macOS**
-5. **Packaging**: a self-contained bundle for each platform
-6. **Steering-wheel force feedback**, once there is a wheel to test with
-
-## Reporting a crash
-
-Every session's output is saved to `run/logs/last-session.log`. After a crash (or an error exit, or Ctrl+C) it is
-kept as `run/crashes/crash-<date>-<time>.log`, ending in a backtrace resolved to source files and lines. Attach
-that file and say what you were doing.
-
 ## Building from source
 
-Requirements (Debian/Ubuntu package names; enable i386 with `sudo dpkg --add-architecture i386`):
+### 64-bit build (Recommended):
+```bash
+sudo apt install cmake ninja-build python3 build-essential \
+    libsdl2-dev libgl-dev libopenal-dev \
+    libavformat-dev libavcodec-dev libswscale-dev libswresample-dev libavutil-dev
+```
+Then:
+```bash
+cmake -B build-linux64 -G Ninja -DSHAR_64BIT=ON && ninja -C build-linux64
+port/play.sh --64 --data DIR                # builds and runs it (configures build-linux64 if needed)
+```
 
+### 32-bit build (enable i386 with `sudo dpkg --add-architecture i386`):
 ```bash
 sudo apt install cmake ninja-build python3 gcc-multilib g++-multilib \
     libsdl2-dev:i386 libgl-dev:i386 libopenal-dev:i386 \
     libavformat-dev:i386 libavcodec-dev:i386 libswscale-dev:i386 libswresample-dev:i386 libavutil-dev:i386
 ```
-
 Then:
-
 ```bash
 cmake -B build-linux -G Ninja                              # release build
 cmake -B build-linux-debug -G Ninja -DSHAR_RAD_DEBUG=ON    # debug build: asserts and Radical's debug output
 ninja -C build-linux
 ```
 
-The 64-bit build needs the same packages without `:i386` (and no multilib):
-
-```bash
-cmake -B build-linux64 -G Ninja -DSHAR_64BIT=ON && ninja -C build-linux64
-port/play.sh --64 --data DIR                # builds and runs it (configures build-linux64 if needed)
-```
-
 Boot movies only play in the release build. `port/package.sh` (`--64` for the 64-bit build) makes a self-contained
-tarball for another Linux machine. `port/dist.sh` refreshes the binary-only `dist` branch (an orphan branch, no source) from the
-64-bit bundle; the 32-bit tarball is handed out separately. The porting details are in [`CLAUDE.md`](CLAUDE.md).
+tarball for another Linux machine. The porting details are in [`CLAUDE.md`](CLAUDE.md).
 
 `CMakeLists.txt` is generated from the original Visual Studio projects: change `port/gen_cmake.py`, never the
 generated file.
@@ -215,17 +109,49 @@ generated file.
 | `port/` | Everything added for the port: build generator, platform layer, mod support, scripts |
 | `shaders/` | Example shaders and their documentation |
 | `mod/tools/` | Modding tools (`.lmlm` extractor) |
-| `TODO.md` | Progress checklist: what is done and what is left |
-| `CLAUDE.md` | Detailed porting notes: platform model and the Windows-to-Linux differences that mattered |
 
-## Credits
+## Mods (work in progress)
 
-- *The Simpsons: Hit & Run* was developed by **Radical Entertainment** and published by **Vivendi Universal Games**.
-  *The Simpsons* is a trademark of its owners. This project is not affiliated with or endorsed by any of them.
-- The mod format and hack definitions come from **Lucas' Mod Launcher** by the Donut Team.
-- Built with SDL2, FFmpeg, Lua 5.4 (MIT) and libpng.
+> **Mod support is a work in progress and is here for testing.** Many mods load and play, but some launcher
+> features are missing or only partly done, and mods may show wrong textures, break missions or crash the game. Don't
+> rely on it for a full playthrough yet, and keep backups of any saves you care about.
 
-## Legal
+Mods made for Lucas' Simpsons Hit & Run Mod Launcher load without the launcher. Give `run.sh` the mod with `--mod`:
+either a `.lmlm` package (read in place, no need to unpack it) or an extracted mod folder (the one holding
+`Meta.ini`):
 
-The source code in this repository is proprietary and is not licensed to anyone. This port exists for private
-preservation and research. Do not publish, share or distribute it, its builds or any part of it.
+```bash
+port/play.sh --64 --data "/path/to/simpsons" --mod "/path/to/SomeMod.lmlm"
+port/play.sh --64 --data "/path/to/simpsons" --mod ~/mods/SomeMod.lmlm --mod ~/mods/AnotherModFolder
+```
+
+- Repeat `--mod` to load several. If two mods replace the same file, the one given first wins.
+- Mods load only for that run. Start without `--mod` to play the unmodded game.
+- A mod's settings take the defaults from its `Meta.ini`. To change them, create `run/ModSettings.ini` with a
+  `[ModInternalName]` section and `SettingName=value` lines.
+- Total-conversion mods (`Main=1` in `Meta.ini`) keep their own saves in `run/ModSaves/<ModInternalName>/`, apart
+  from the normal game's.
+- At startup the log (`run/logs/last-session.log`) lists each mod loaded and any launcher hacks it needs that aren't
+  supported yet. Those parts of the mod are ignored. For more detail, run with `SHAR_MOD_LOG=1 ./run.sh ...`.
+
+What works so far: Lua scripting, Ogg audio, HD movies, custom text, car shops and skin shops, the 3D phone booth
+preview, custom cars, new dialogue characters, mission script extensions, moved or added interiors, raised engine
+limits, custom traffic and per-road traffic behaviour. 
+
+Not done yet: custom characters' animation sets, custom audio,
+custom bonus missions, skin preview animations, shader parameter overrides, custom trigger actions and hover car
+refraction.
+
+Tested so far: the Futurama demo (level 1), Fully Connected Map (level 1) and SHAR Remastered (boots). If a mod
+misbehaves, report the mod's name and version along with `run/logs/last-session.log`.
+
+## Platforms
+
+| Platform | Status |
+|---|---|
+| Linux x86 (32-bit) | **Playable.** Tested through Level 7 |
+| Linux x86-64 | **Boots and plays** (tested: movies, front end, levels, races, interiors, the bonus game, mods); long play sessions in progress |
+| Windows x64 | Planned |
+| macOS (Apple silicon / Intel) | Planned |
+| Android / handhelds | Possible later: the renderer and input layers already allow it |
+
