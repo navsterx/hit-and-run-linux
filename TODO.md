@@ -22,7 +22,7 @@ Every mission of every level is done (see DONE.md). Left:
   front end, Level 1/7 load (100 ms steps across its end) and gameplay, pause, interior, car, race, demo): no hangs or
   crashes left; still to do: the bonus game, missions in progress, cutscenes, the front end's Quit, quitting while saving
 - [x] Debug-build teardown: no crashes; the asserts left come from the original teardown order (see CLAUDE.md)
-- [ ] Missing-data tolerance where it is cheap (`art\wrench.p3d` missing still crashes later)
+- [ ] Missing-data tolerance where it is cheap (a missing `art\wrench.p3d` is handled: its icons draw nothing)
 
 ### Mods
 Order of attack: CustomTrafficSupport first (it also completes ASF's traffic-group commands), then CustomAudioSupport

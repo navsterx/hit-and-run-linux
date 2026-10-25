@@ -56,5 +56,6 @@
 ## Files
 - radcore drive: POSIX, case-insensitive, every drive letter = game dir.
 - Missing file: `OnDriveError` prints `File not found: <path>` and fails the request (original retried forever).
+  AnimatedIcon with neither its drawable nor `triggersphere_000` loaded gets an empty drawable (`EmptyDrawable`).
   `tFileFTT` loads a failed open as empty. Mod-occluded files set `radDrive::SetLastError`.
 - DSG `SwapArray::Add` refuses when full; `WorldScene` prints `DSG: ...` for unplaceable objects (invisible, collidable).
