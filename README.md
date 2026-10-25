@@ -1,7 +1,9 @@
 # The Simpsons Hit & Run: Linux port
 
+<img width="4476" height="1091" alt="Screenshot From 2026-10-23 20-03-31" src="https://github.com/user-attachments/assets/3def41df-9d76-474a-90c8-9d84a62eb772" />
+
 A Linux 64-Bit build of The Simpsons Hit & Run (2003) using SDL2 and OpenGL 3.3. It runs on X11 and Wayland, with
-widescreen, high resolutions, anti-aliasing, anisotropic filtering, controllers and optional post-processing shaders.
+widescreen & ultrawide, high resolutions, anti-aliasing, anisotropic filtering, controllers and optional post-processing shaders.
 
 **Bring your own game.** This release has no game data. You need your own copy of the PC game, installed or copied
 from the disc: the folder holding `art/`, `scripts/` and the `.rcf` files.
