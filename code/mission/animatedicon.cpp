@@ -636,6 +636,18 @@ void AnimatedIcon::Deallocate()
 // Return:      void
 //
 //=============================================================================
+#ifdef RAD_LINUX
+namespace
+{
+class EmptyDrawable : public tDrawable
+{
+public:
+    virtual void Display() {}
+    virtual void ProcessShaders( ShaderCallback& ) {}
+};
+}
+#endif
+
 void AnimatedIcon::SetUpContents( const char* iconName )
 {
     tRefCounted::Assign(mAnimIcon.drawable, p3d::find<tDrawable>( iconName ));
@@ -644,6 +656,14 @@ void AnimatedIcon::SetUpContents( const char* iconName )
         rReleasePrintf( "ERORR!!!!!  Can not init Animicon with missing (%s) drawable!!!!\n", iconName );
         tRefCounted::Assign(mAnimIcon.drawable, p3d::find<tDrawable>( "triggersphere_000" ));
     }
+#ifdef RAD_LINUX
+    // missing-data fix (Linux port): with the icon's p3d missing the fallback isn't loaded either; draw nothing
+    // rather than crash in LoadSetUp
+    if ( mAnimIcon.drawable == NULL )
+    {
+        tRefCounted::Assign(mAnimIcon.drawable, static_cast<tDrawable*>( new EmptyDrawable ));
+    }
+#endif
 
     rAssert( mAnimIcon.drawable != NULL );
 
