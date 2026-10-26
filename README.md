@@ -8,6 +8,9 @@ widescreen & ultrawide, high resolutions, anti-aliasing, anisotropic filtering, 
 **Bring your own game.** This release has no game data. You need your own copy of the PC game, installed or copied
 from the disc: the folder holding `art/`, `scripts/` and the `.rcf` files.
 
+> **AI disclaimer.** Aspects of this port are written with the help of an AI coding
+> assistant (Claude).
+
 | Original (2003) | This project |
 |---|---|
 | Direct3D 8, fixed-function | OpenGL 3.3 core, GLSL shaders matching Direct3D 8's output |
