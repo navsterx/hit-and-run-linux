@@ -296,6 +296,9 @@ private:
     int mModPedsEnabled;
     int mModParkedCarsEnabled;
     bool mModSpawnsDisabled;
+    // UseTrafficGroup (selecting or restarting the mission) and a retry's SetCheckpointTrafficGroup; -1 = unset
+    int mModTrafficGroup;
+    int mModRestartTrafficGroup;
     void ModStreetRacePropLoad();
 #endif
 };

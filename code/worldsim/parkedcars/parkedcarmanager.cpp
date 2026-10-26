@@ -28,6 +28,7 @@
 #include <worldsim/redbrick/vehicle.h>
 #include <worldsim/vehiclecentral.h>
 #include <worldsim/traffic/trafficmanager.h>
+#include <shar_modtraffic.h>
 #include <worldsim/character/character.h>
 #include <worldsim/avatarmanager.h>
 #include <worldsim/avatar.h>
@@ -141,7 +142,13 @@ void ParkedCarManager::HandleEvent( EventEnum id, void* pEventData )
                 //Allocate the max num of parked cars among these locators.
                 unsigned int i;
                 unsigned int allocated = 0;
-                for ( i = 0; i < mNumLocators && i < max && allocated < mNumCarTypes - mNumParkedCars; ++i )
+                // Linux port: CustomTrafficSupport AllocatedCars is also the most parked cars in the level
+                SharModTrafficSettings mod;
+                shar_ModTrafficSettings( GetGameplayManager()->GetCurrentLevelIndex(), &mod );
+                unsigned int most = mod.allocatedCars != SHAR_MODTRAFFIC_UNSET && mod.allocatedCars >= 0.0f
+                                  ? static_cast< unsigned int >( mod.allocatedCars ) : mNumCarTypes;
+                for ( i = 0; i < mNumLocators && i < max && allocated < mNumCarTypes - mNumParkedCars &&
+                             mNumParkedCars < most; ++i )
                 {
                     unsigned int which = rand() % mNumLocators;
                     if ( !(mLocators[ which ]->GetFlag( Locator::ACTIVE )) )

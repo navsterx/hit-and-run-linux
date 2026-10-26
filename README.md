@@ -19,13 +19,13 @@ from the disc: the folder holding `art/`, `scripts/` and the `.rcf` files.
 
 ## Requirements
 
-A 64-bit (x86-64) Linux with glibc 2.43 or newer (Ubuntu 26.04 or a distribution of the same age) and a desktop. The
+A 64-bit (x86-64) Linux as new as Ubuntu 24.04 / Linux Mint 22 (glibc 2.38 or newer) and a desktop. The
 graphics driver and X11 / Wayland libraries come from your system; everything else is included.
 
 ## Quick start
 
 ```bash
-port/play.sh --64 --data "/path/to/The Simpsons - Hit & Run"
+port/play.sh --data "/path/to/The Simpsons - Hit & Run"
 ```
 
 The first run builds the game, creates `run/` with links to your game data and its own `simpsons.ini` and save
@@ -34,14 +34,15 @@ files, then starts the game. Your original install is never written to.
 Useful options:
 
 ```bash
-port/play.sh --64 --data DIR --mod MyMod.lmlm    # load a mod (repeatable; earlier mods win)
-port/play.sh --64 --data DIR --no-build          # skip the build step
-port/play.sh --64 --data DIR skipfe              # straight into Level 1
-port/play.sh --64 --data DIR bonus               # Bonus Game and its tracks open without completed card decks
+port/play.sh --data DIR --mod MyMod.lmlm    # load a mod (repeatable; earlier mods win)
+port/play.sh --data DIR --no-build          # skip the build step
+port/play.sh --data DIR skipfe              # straight into Level 1
+port/play.sh --data DIR bonus               # Bonus Game and its tracks open without completed card decks
+port/play.sh --data DIR --32                # the legacy 32-bit build
 ```
 ## Building from source
 
-### 64-bit build (Recommended):
+### 64-bit build (the default):
 ```bash
 sudo apt install cmake ninja-build python3 build-essential \
     libsdl2-dev libgl-dev libopenal-dev \
@@ -49,11 +50,13 @@ sudo apt install cmake ninja-build python3 build-essential \
 ```
 Then:
 ```bash
-cmake -B build-linux64 -G Ninja -DSHAR_64BIT=ON && ninja -C build-linux64
-port/play.sh --64 --data DIR                # builds and runs it (configures build-linux64 if needed)
+cmake -B build-linux -G Ninja                              # release build
+cmake -B build-linux-debug -G Ninja -DSHAR_RAD_DEBUG=ON    # debug build: asserts and Radical's debug output
+ninja -C build-linux
+port/play.sh --data DIR                                    # builds and runs it (configures build-linux if needed)
 ```
 
-### 32-bit build (enable i386 with `sudo dpkg --add-architecture i386`):
+### 32-bit build (legacy; enable i386 with `sudo dpkg --add-architecture i386`):
 ```bash
 sudo apt install cmake ninja-build python3 gcc-multilib g++-multilib \
     libsdl2-dev:i386 libgl-dev:i386 libopenal-dev:i386 \
@@ -61,13 +64,13 @@ sudo apt install cmake ninja-build python3 gcc-multilib g++-multilib \
 ```
 Then:
 ```bash
-cmake -B build-linux -G Ninja                              # release build
-cmake -B build-linux-debug -G Ninja -DSHAR_RAD_DEBUG=ON    # debug build: asserts and Radical's debug output
-ninja -C build-linux
+cmake -B build-linux32 -G Ninja -DSHAR_64BIT=OFF && ninja -C build-linux32
+port/play.sh --32 --data DIR                # builds and runs it (configures build-linux32 if needed)
 ```
 
-Boot movies only play in the release build. `port/package.sh` (`--64` for the 64-bit build) makes a self-contained
-tarball for another Linux machine. The porting details are in [`CLAUDE.md`](CLAUDE.md).
+Boot movies only play in the release build. `port/package.sh` (`--32` for the 32-bit build) makes a self-contained
+tarball for another Linux machine; add `--noble` to build it in an Ubuntu 24.04 container (needs `podman`) so it runs
+on Ubuntu 24.04 / Linux Mint 22 and newer, not just on systems as new as yours. The porting details are in [`CLAUDE.md`](CLAUDE.md).
 
 `CMakeLists.txt` is generated from the original Visual Studio projects: change `port/gen_cmake.py`, never the
 generated file.
@@ -123,8 +126,8 @@ either a `.lmlm` package (read in place, no need to unpack it) or an extracted m
 `Meta.ini`):
 
 ```bash
-port/play.sh --64 --data "/path/to/simpsons" --mod "/path/to/SomeMod.lmlm"
-port/play.sh --64 --data "/path/to/simpsons" --mod ~/mods/SomeMod.lmlm --mod ~/mods/AnotherModFolder
+port/play.sh --data "/path/to/simpsons" --mod "/path/to/SomeMod.lmlm"
+port/play.sh --data "/path/to/simpsons" --mod ~/mods/SomeMod.lmlm --mod ~/mods/AnotherModFolder
 ```
 
 - Repeat `--mod` to load several. If two mods replace the same file, the one given first wins.
@@ -151,8 +154,8 @@ misbehaves, report the mod's name and version along with `run/logs/last-session.
 
 | Platform | Status |
 |---|---|
-| Linux x86 (32-bit) | **Playable.** Tested through Level 7 |
-| Linux x86-64 | **Boots and plays** (tested: movies, front end, levels, races, interiors, the bonus game, mods); long play sessions in progress |
+| Linux x86-64 (default) | **Boots and plays** (tested: movies, front end, levels, races, interiors, the bonus game, mods); long play sessions in progress |
+| Linux x86 (32-bit, legacy) | **Playable.** Tested through Level 7 |
 | Windows x64 | Planned |
 | macOS (Apple silicon / Intel) | Planned |
 | Android / handhelds | Possible later: the renderer and input layers already allow it |

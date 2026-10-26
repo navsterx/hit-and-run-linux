@@ -97,6 +97,7 @@ WorldPhysicsManager::WorldPhysicsManager()
     mTotalTime = 0.0f;
     updateFrame = 0;
     mLoopTime = 0.0f;
+    mpWorldCollisionSolverAgentManager = NULL;   // uninit fix (Linux port): the destructor's "Init() ran" test
     
     sim::InitializeSimulation(MetersUnits);
 
@@ -120,6 +121,15 @@ WorldPhysicsManager::WorldPhysicsManager()
 //=============================================================================
 WorldPhysicsManager::~WorldPhysicsManager()
 {    
+#ifdef RAD_LINUX
+    // Linux port: the window closed before the bootup context ran Init() (e.g. the game data was missing), so
+    // everything below is uninitialised and freeing it aborted.
+    if( mpWorldCollisionSolverAgentManager == NULL )
+    {
+        sim::ResetSimulation();
+        return;
+    }
+#endif
     mSimEnvironment = 0;
 
     int i, j;

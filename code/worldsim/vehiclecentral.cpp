@@ -1434,6 +1434,24 @@ int VehicleCentral::GetVehicleId( Vehicle* pVehicle, bool checkStrict ) const
     return (int)-1;
 }
 
+#ifdef RAD_LINUX
+//=============================================================================
+// VehicleCentral::IsUnderConstruction (Linux port)
+//=============================================================================
+bool VehicleCentral::IsUnderConstruction( const Vehicle* pVehicle ) const
+{
+    for( unsigned int i = mCurrentVehicleUnderContructionHead; i != mCurrentVehicleUnderConstructionTail;
+         i = ( i + 1 ) % GetMaxActiveVehicles() )
+    {
+        if( mVehicleUnderConstruction[ i ] == pVehicle )
+        {
+            return true;
+        }
+    }
+    return false;
+}
+#endif
+
 //=============================================================================
 // VehicleCentral::PreSubstepUpdate
 //=============================================================================

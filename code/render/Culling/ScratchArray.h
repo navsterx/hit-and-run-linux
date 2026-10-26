@@ -78,7 +78,7 @@ public:
 
    bool CanAbsorbR( SubArray<T>& irAdjArray )
    {
-      if( mpData+mSize == orSplitArray.mpData )
+      if( mpData+mSize == irAdjArray.mpData )   // GCC < 15 fix (Linux port): was an undeclared orSplitArray
          return true;
       else
          return false;

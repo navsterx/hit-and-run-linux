@@ -3,8 +3,8 @@
 # where the memory came from (which allocation / stack frame), most frequent first.
 # usage: port/memcheck.sh [seconds] [game args...]          e.g. port/memcheck.sh 330 skipfe
 # env:   SHAR_RUN    run directory (default run/; use a scratch one with display=window, resolution=640x480)
-#        SHAR_BUILD  build dir (default build-linux: -O0 -g, which keeps memcheck's line numbers exact; build-linux64
-#                    for the x86-64 build)
+#        SHAR_BUILD  build dir (default build-linux, x86-64: -O0 -g, which keeps memcheck's line numbers exact;
+#                    build-linux32 for the legacy 32-bit build)
 #        VG_TOOLS    where valgrind and its helpers are unpacked (default ~/.cache/shar-memcheck)
 #        VG_OPTS     extra valgrind options
 # Output: $RUN/memcheck.log (raw), $RUN/memcheck.txt (summary). Other SHAR_* variables pass through to the game,

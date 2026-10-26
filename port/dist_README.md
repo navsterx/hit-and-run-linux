@@ -8,8 +8,16 @@ from the disc: the folder holding `art/`, `scripts/` and the `.rcf` files.
 
 ## Requirements
 
-A 64-bit (x86-64) Linux with glibc 2.43 or newer (Ubuntu 26.04 or a distribution of the same age) and a desktop. The
+A 64-bit (x86-64) Linux as new as Ubuntu 24.04 / Linux Mint 22 (glibc 2.38 or newer) and a desktop. The
 graphics driver and X11 / Wayland libraries come from your system; everything else is included.
+
+Any desktop install already has them. If `run.sh` says some are missing (on a minimal Debian / Ubuntu install):
+
+```bash
+sudo apt install libgl1 libgl1-mesa-dri libegl1 libx11-6 libxext6 libxcursor1 libxi6 libxrandr2 libxss1 \
+    libxfixes3 libxkbcommon0 libwayland-client0 libwayland-cursor0 libwayland-egl1 libdecor-0-0 libxrender1 \
+    libx11-xcb1 libxcb-render0 libxcb-shm0 libxcb-dri3-0 libgbm1 libdrm2
+```
 
 ## Running
 
@@ -17,12 +25,12 @@ graphics driver and X11 / Wayland libraries come from your system; everything el
 ./run.sh "/path/to/The Simpsons - Hit & Run"
 ```
 
-The first start runs `setup.sh`, which unpacks the movie player's libraries (`ffmpeg-libs.tar.xz`) into `lib/` and
-checks that your system has the graphics and windowing libraries the game needs, listing any that are missing with the
-command to install them. You can also run `./setup.sh` yourself first.
-
 After the first run, `./run.sh` alone is enough. It sets up a `run/` folder next to itself, with links to your game
 data and its own copies of `simpsons.ini` and the saves, so your original install is never written to.
+
+Alternatively, extract the release's contents straight into the game folder (next to `art/` and `scripts/`) and run
+`./run.sh` there with no path. The game then runs in place: no `run/` folder is made, and `simpsons.ini`, the saves
+and `logs/` are written in the game folder (the `run/...` paths below are then in the game folder).
 
 - Settings: `run/simpsons.ini` (`#System` section: display mode, resolution, anti-aliasing, mipmaps, anisotropy)
 - Shaders: `shaders/` (see `shaders/README.md`). Ambient occlusion, tone mapping and soft lighting on characters are
@@ -99,8 +107,8 @@ code left MSVC and Windows.
 
 | Platform | Status |
 |---|---|
-| Linux x86 (32-bit) | **Playable.** Tested through Level 7 |
-| Linux x86-64 | **Boots and plays** (tested: movies, front end, levels, races, interiors, the bonus game, mods); long play sessions in progress |
+| Linux x86-64 (default) | **Boots and plays** (tested: movies, front end, levels, races, interiors, the bonus game, mods); long play sessions in progress |
+| Linux x86 (32-bit, legacy) | **Playable.** Tested through Level 7 |
 | Windows x64 | Planned |
 | macOS (Apple silicon / Intel) | Planned |
 | Android / handhelds | Possible later: the renderer and input layers already allow it |

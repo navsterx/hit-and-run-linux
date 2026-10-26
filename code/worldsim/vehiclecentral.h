@@ -93,6 +93,10 @@ class VehicleCentral : public LoadingManager::ProcessRequestsCallback
         VehicleController* GetVehicleController( int id ) const;
         
         int GetVehicleId( Vehicle* pVehicle, bool checkStrict = true ) const;
+#ifdef RAD_LINUX
+        // Linux port: whether InitVehicle made it and its car script has not run yet (not ready for use)
+        bool IsUnderConstruction( const Vehicle* pVehicle ) const;
+#endif
         
         void SubmitStatics();
         void SubmitDynamics();

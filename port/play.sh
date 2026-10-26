@@ -1,11 +1,12 @@
 #!/bin/bash
 # Build (if needed) and start the game normally: no gdb, no timeout.
-# usage: port/play.sh --data DIR [--mod MOD]... [--debug] [--64] [--no-build] [game args...]
+# usage: port/play.sh --data DIR [--mod MOD]... [--debug] [--32] [--no-build] [game args...]
 #   --data DIR   your copy's PC game data dir (the one holding art/, scripts/, *.rcf); required
 #   --mod MOD    load a Mod Launcher mod: a .lmlm package (read in place) or an extracted mod folder;
 #                repeatable, earlier mods win (port/compat/shar_mods.h)
 #   --debug      use the debug build (build-linux-debug, asserts + debug output; no boot movies)
-#   --64         use the x86-64 build (build-linux64, or build-linux64-debug with --debug)
+#   --32         use the legacy 32-bit x86 build (build-linux32, or build-linux32-debug with --debug)
+#                (the x86-64 build is the default; --64 is accepted and changes nothing)
 #   --no-build   skip the ninja step
 # env: SHAR_RUN   run directory (default run/), set up on first use: symlinks to the data,
 #                 private copies of simpsons.ini and Save1-4 (the game writes them)
@@ -18,7 +19,7 @@ set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 RUN=${SHAR_RUN:-$ROOT/run}
 
-DATA=; DEBUG=0; X64=; BUILD_STEP=1; MODS=()
+DATA=; DEBUG=0; X32=; BUILD_STEP=1; MODS=()
 while [ $# -gt 0 ]; do
     case "$1" in
         --data) [ $# -ge 2 ] || { echo "--data needs a directory" >&2; exit 1; }; DATA=$2; shift 2 ;;
@@ -26,20 +27,21 @@ while [ $# -gt 0 ]; do
         --mod) [ $# -ge 2 ] || { echo "--mod needs a folder or .lmlm" >&2; exit 1; }; MODS+=("$2"); shift 2 ;;
         --mod=*) MODS+=("${1#--mod=}"); shift ;;
         --debug) DEBUG=1; shift ;;
-        --64) X64=64; shift ;;
+        --32) X32=32; shift ;;
+        --64) shift ;;
         --no-build) BUILD_STEP=0; shift ;;
         *) break ;;
     esac
 done
 if [ $DEBUG = 1 ]; then
-    BUILD=${SHAR_BUILD:-$ROOT/build-linux$X64-debug}; CMAKE_ARGS=(-DSHAR_RAD_DEBUG=ON)
+    BUILD=${SHAR_BUILD:-$ROOT/build-linux$X32-debug}; CMAKE_ARGS=(-DSHAR_RAD_DEBUG=ON)
 else
-    BUILD=${SHAR_BUILD:-$ROOT/build-linux$X64}; CMAKE_ARGS=()
+    BUILD=${SHAR_BUILD:-$ROOT/build-linux$X32}; CMAKE_ARGS=()
 fi
-[ -z "$X64" ] || CMAKE_ARGS+=(-DSHAR_64BIT=ON)
+if [ -n "$X32" ]; then CMAKE_ARGS+=(-DSHAR_64BIT=OFF); else CMAKE_ARGS+=(-DSHAR_64BIT=ON); fi
 
 if [ -z "$DATA" ]; then
-    echo "usage: port/play.sh --data DIR [--mod MOD]... [--debug] [--64] [--no-build] [game args...]" >&2
+    echo "usage: port/play.sh --data DIR [--mod MOD]... [--debug] [--32] [--no-build] [game args...]" >&2
     echo "  DIR is your copy's PC game data dir (holding art/, scripts/, *.rcf)" >&2; exit 1
 fi
 [ -d "$DATA" ] || { echo "Game data dir not found: $DATA" >&2; exit 1; }
@@ -74,7 +76,12 @@ done
 
 # Build
 if [ $BUILD_STEP = 1 ]; then
-    [ -f "$BUILD/build.ninja" ] || cmake -S "$ROOT" -B "$BUILD" -G Ninja "${CMAKE_ARGS[@]}"
+    # configured on first use; a build dir made for the other architecture (e.g. a 32-bit build-linux from before
+    # x86-64 became the default) is switched over
+    if [ ! -f "$BUILD/build.ninja" ] || { [ -z "$SHAR_BUILD" ] &&
+            ! grep -q "^SHAR_64BIT:BOOL=$([ -n "$X32" ] && echo OFF || echo ON)\$" "$BUILD/CMakeCache.txt"; }; then
+        cmake -S "$ROOT" -B "$BUILD" -G Ninja "${CMAKE_ARGS[@]}"
+    fi
     echo "Building $BUILD ..."
     ninja -C "$BUILD" -j"$(nproc)" > "$ROOT/port/build.log" 2>&1 || {
         grep -E "error|FAILED" "$ROOT/port/build.log" | head -20; echo "Build failed, see port/build.log" >&2; exit 1; }

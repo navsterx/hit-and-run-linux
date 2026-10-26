@@ -151,6 +151,7 @@ public:
     // Linux port: Mod Launcher CustomCarSupport settings for this car (port/compat/shar_modcars.h); NULL = none
     const struct SharModCar* mModCar;
     bool mModHusk;  // made by the husk pool as a mod's Husk= car
+    unsigned int GetModRefCount() const { return m_refCount; }  // the traffic manager frees only cars nobody else holds
 #endif
     // a husk: huskA (the only one the game had), or a mod's (CustomCarSupport Husk=/IsHusk=)
     bool IsHuskModel() const;

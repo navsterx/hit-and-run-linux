@@ -38,6 +38,7 @@
 #include <worldsim/character/charactermanager.h>
 #include <worldsim/character/charactercontroller.h>
 #include <worldsim/ped/pedestrianmanager.h>
+#include <worldsim/traffic/trafficmanager.h>
 #include <ai/state.h>
 #include <ai/statemanager.h>
 #include <cheats/cheatinputsystem.h>
@@ -60,10 +61,12 @@ ModStage::ModStage() :
     musicEvent( 0 ),
     allowCancel( -1 ),
     collectibleSoundSet( false ),
+    trafficGroup( -1 ),
     numTriggers( 0 ),
     numVehicleCharacters( 0 ),
     checkpoint( false ),
     checkpointPedGroup( -1 ),
+    checkpointTrafficGroup( -1 ),
     saved( false ),
     savedDecay( 0.0f ),
     savedDecayHitAndRun( 0.0f ),
@@ -547,6 +550,11 @@ public:
         ModStage* s = Stage( argv[ 0 ] );
         if( s != NULL ) s->allowCancel = ParseBool( argv[ 1 ] ) ? 1 : 0;
     }
+    static void SetStageTrafficGroup( int argc, char** argv )
+    {
+        ModStage* s = Stage( argv[ 0 ] );
+        if( s != NULL ) s->trafficGroup = atoi( argv[ 1 ] );
+    }
     static void SetCollectibleSoundEffect( int argc, char** argv )
     {
         ModStage* s = Stage( argv[ 0 ] );
@@ -566,6 +574,11 @@ public:
     {
         Mission* m = ScriptedMission( argv[ 0 ] );
         if( m != NULL ) m->mModPedsEnabled = ParseBool( argv[ 1 ] ) ? 1 : 0;
+    }
+    static void UseTrafficGroup( int argc, char** argv )
+    {
+        Mission* m = ScriptedMission( argv[ 0 ] );
+        if( m != NULL ) m->mModTrafficGroup = atoi( argv[ 1 ] );
     }
     static void SetParkedCarsEnabled( int argc, char** argv )
     {
@@ -622,6 +635,11 @@ public:
         int group = atoi( argv[ 1 ] );
         if( s != NULL && group >= 0 && group < PedestrianManager::GetMaxModelGroups() ) s->checkpointPedGroup = group;
     }
+    static void SetCheckpointTrafficGroup( int argc, char** argv )
+    {
+        ModStage* s = Stage( argv[ 0 ] );
+        if( s != NULL ) s->checkpointTrafficGroup = atoi( argv[ 1 ] );
+    }
     // the number (from 0) of the checkpoint the stage being scripted has, -1 for none
     static int ScriptedCheckpoint()
     {
@@ -669,11 +687,6 @@ public:
     {
         GetHitnRunManager()->SetChangeVehicleDelta( static_cast< float >( atof( argv[ 1 ] ) ) );
     }
-    static void UseTrafficGroup( int argc, char** argv )
-    {
-        if( atoi( argv[ 1 ] ) != 0 ) ReportUnsupported( argv[ 0 ] );    // needs CustomTrafficSupport's groups
-    }
-
     // Conditionals (evaluated as the script runs)
     static bool IfStartedInCar( int argc, char** argv )
     {
@@ -832,6 +845,7 @@ public:
         if( mod->carChangeHitAndRun >= 0.0f ) hnr->SetChangeVehicleDelta( mod->carChangeHitAndRun );
         if( mod->hitAndRun >= 0.0f ) hnr->SetHitnRunValue( mod->hitAndRun );
         if( mod->pedGroup >= 0 ) PedestrianManager::GetInstance()->SwitchModelGroup( mod->pedGroup );
+        if( mod->trafficGroup >= 0 ) TrafficManager::GetInstance()->SetModTrafficGroup( mod->trafficGroup );
         if( mod->allowCancel >= 0 ) stage->SetMissionAbortEnabled( mod->allowCancel != 0 );
         if( mod->collectibleSoundSet ) s_CollectibleSound = mod->collectibleSound;
         if( mod->musicEvent != 0 )
@@ -904,6 +918,7 @@ public:
         bool retry = s_Retry;
         s_Retry = false;
         s_Loading = false;
+        mission->mModRestartTrafficGroup = -1;
         if( !retry )
         {
             mission->mModCheckpoint = -1;
@@ -919,6 +934,7 @@ public:
         const char* carLocator = NULL;
         const char* playerLocator = NULL;
         int pedGroup = -1;
+        int trafficGroup = -1;
         for( int i = 0; i < mission->GetNumStages(); i++ )
         {
             ModStage* mod = mission->GetStage( i ) != NULL ? mission->GetStage( i )->GetModStage() : NULL;
@@ -930,6 +946,7 @@ public:
             if( mod->checkpointDynaLoad[ 0 ] != '\0' ) { dynaLoad = mod->checkpointDynaLoad; interior = mod->checkpointInterior; }
             if( mod->checkpointCarLocator[ 0 ] != '\0' ) { carLocator = mod->checkpointCarLocator; playerLocator = mod->checkpointPlayerLocator; }
             if( mod->checkpointPedGroup >= 0 ) pedGroup = mod->checkpointPedGroup;
+            if( mod->checkpointTrafficGroup >= 0 ) trafficGroup = mod->checkpointTrafficGroup;
             if( number == mission->mModCheckpoint )
             {
                 mission->SetResetToStage( i );
@@ -942,11 +959,18 @@ public:
                     mission->SetPlayerRestart( playerLocator[ 0 ] != '\0' ? p3d::find< Locator >( playerLocator ) : NULL );
                 }
                 if( pedGroup >= 0 ) mission->SetInitPedGroup( pedGroup );
+                mission->mModRestartTrafficGroup = trafficGroup;
                 fprintf( stderr, "mods: %s resumes at checkpoint %d (stage %d)\n", mission->GetName(), number, i );
                 return;
             }
         }
         mission->mModCheckpoint = -1;   // the script no longer has it
+    }
+
+    static void MissionReset( Mission* mission )
+    {
+        int group = mission->mModRestartTrafficGroup >= 0 ? mission->mModRestartTrafficGroup : mission->mModTrafficGroup;
+        if( group >= 0 ) TrafficManager::GetInstance()->SetModTrafficGroup( group );
     }
 
     static void Register( Console* console )
@@ -1004,7 +1028,7 @@ public:
             { "SetStageKickForce", Unsupported, 1, 1 },
             { "SetStageSlamForce", Unsupported, 1, 1 },
             { "SetStageEnabledCheats", Unsupported, 1, 15 },
-            { "SetStageTrafficGroup", Unsupported, 1, 1 },
+            { "SetStageTrafficGroup", SetStageTrafficGroup, 1, 1 },
             { "AddStageDynaLoadData", Unsupported, 1, 2 },
             { "SetStageDynaLoadData", Unsupported, 1, 2 },
             { "ResetStageVehicleAbductable", Unsupported, 1, 1 },
@@ -1022,7 +1046,7 @@ public:
             { "SetCheckpointResetPlayerInCar", SetCheckpointResetPlayerInCar, 1, 1 },
             { "SetCheckpointResetPlayerOutCar", SetCheckpointResetPlayerOutCar, 2, 2 },
             { "SetCheckpointPedGroup", SetCheckpointPedGroup, 1, 1 },
-            { "SetCheckpointTrafficGroup", Unsupported, 1, 1 },
+            { "SetCheckpointTrafficGroup", SetCheckpointTrafficGroup, 1, 1 },
             // Level and mission initialisation
             { "SetHitAndRunDecayHitAndRun", SetHitAndRunDecayHitAndRun, 1, 1 },
             { "SetHitAndRunFine", SetHitAndRunFine, 1, 1 },
@@ -1126,6 +1150,11 @@ void ModScript::OnRetry()
 void ModScript::OnMissionInitialize( Mission* mission )
 {
     ModScriptCommands::MissionInitialize( mission );
+}
+
+void ModScript::OnMissionReset( Mission* mission )
+{
+    ModScriptCommands::MissionReset( mission );
 }
 
 void ModScript::RemoveVehicleCharacters()
