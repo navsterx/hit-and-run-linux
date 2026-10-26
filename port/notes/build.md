@@ -51,3 +51,5 @@
 - Packaged `run.sh` puts only bundled libs the system lacks (same soname per `ldconfig -p`, per arch) on the path
   (`run/.lib`): older bundled glib/librsvg over newer system ones aborted libdecor's GTK plugin on Wayland.
 - Don't bundle glibc parts (`libmvec`).
+- `dist.sh`: tarball for GitHub Releases on a separate binaries-only public repo (dist/release/); never commit
+  binaries to a branch of this repo (a release tag here would expose the source).

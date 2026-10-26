@@ -11,15 +11,19 @@ from the disc: the folder holding `art/`, `scripts/` and the `.rcf` files.
 A 64-bit (x86-64) Linux as new as Ubuntu 24.04 / Linux Mint 22 (glibc 2.38 or newer) and a desktop. The
 graphics driver and X11 / Wayland libraries come from your system; everything else is included.
 
+Any desktop install already has them. If `run.sh` says some are missing (on a minimal Debian / Ubuntu install):
+
+```bash
+sudo apt install libgl1 libgl1-mesa-dri libegl1 libx11-6 libxext6 libxcursor1 libxi6 libxrandr2 libxss1 \
+    libxfixes3 libxkbcommon0 libwayland-client0 libwayland-cursor0 libwayland-egl1 libdecor-0-0 libxrender1 \
+    libx11-xcb1 libxcb-render0 libxcb-shm0 libxcb-dri3-0 libgbm1 libdrm2
+```
+
 ## Running
 
 ```bash
 ./run.sh "/path/to/The Simpsons - Hit & Run"
 ```
-
-The first start runs `setup.sh`, which unpacks the movie player's libraries (`ffmpeg-libs.tar.xz`) into `lib/` and
-checks that your system has the graphics and windowing libraries the game needs, listing any that are missing with the
-command to install them. You can also run `./setup.sh` yourself first.
 
 After the first run, `./run.sh` alone is enough. It sets up a `run/` folder next to itself, with links to your game
 data and its own copies of `simpsons.ini` and the saves, so your original install is never written to.

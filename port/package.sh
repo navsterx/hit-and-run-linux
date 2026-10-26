@@ -96,6 +96,12 @@ for f in "$HERE"/lib/*; do
     echo "$SYSLIBS" | grep -qxF "$(basename "$f")" || ln -s "$f" "$LIBS/"
 done
 export LD_LIBRARY_PATH="$LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+MISSING=$(ldd "$HERE/srr2" "$LIBS"/* 2>/dev/null | awk '/not found/ { print $1 }' | sort -u)
+if [ -n "$MISSING" ]; then
+    echo "These system libraries are missing:" $MISSING >&2
+    echo "See the README for the packages to install." >&2
+    exit 1
+fi
 "$HERE/srr2" "$@" 2>&1 | tee "$RUN/logs/last-session.log"
 EOF
 if [ $ARCH = x86_64 ]; then X64=1; else X64=0; fi
