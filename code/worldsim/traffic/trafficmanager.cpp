@@ -35,6 +35,7 @@
 #include <worldsim/avatar.h>
 #include <worldsim/avatarmanager.h>
 #include <worldsim/redbrick/geometryvehicle.h>
+#include <p3d/anim/compositedrawable.hpp>
 #include <worldsim/vehiclecentral.h>
 
 #include <ai/vehicle/trafficai.h>
@@ -60,6 +61,18 @@
 //
 //******************************************************************************
 TrafficManager* TrafficManager::mInstance = NULL;
+
+// Linux port: SHAR_TRAFFIC_LOG=1
+static bool TrafficLog()
+{
+    static int s_trafficLog = -1;
+    if( s_trafficLog == -1 )
+    {
+        const char* env = getenv( "SHAR_TRAFFIC_LOG" );
+        s_trafficLog = env != NULL && env[0] == '1';
+    }
+    return s_trafficLog != 0;
+}
 
 //#define TRAFFIC_TEST
 #ifdef TRAFFIC_TEST
@@ -385,11 +398,11 @@ void TrafficManager::Init()
 
     //////////////////////////////////////////
     // Initialize Traffic cars
-    // Linux port: every slot's car is made here, as the game did (CustomTrafficSupport AllocatedCars of them; for
-    // DynamicTraffic Models / Slots each slot's model is picked by the group's counts / weights). Making cars later
-    // (PreallocatedCars, model swaps) queues a car script load per car: swapping on every spawn filled the loading
-    // manager's request queue ("Too many load requests", a break), so it is not done.
-    for( int i=0 ; i<mNumSlots ; i++ )
+    // Linux port: the slots' cars are made here, as the game did (CustomTrafficSupport: PreallocatedCars of the
+    // AllocatedCars slots; for DynamicTraffic Models each model is picked by the group's counts). The other slots
+    // get their car when a spawn needs it (GetFreeTrafficVehicle).
+    mWantedModel = -1;
+    for( int i=0 ; i<mNumPrealloc ; i++ )
     {
         TrafficVehicle* tv = &mVehicles[i];
         rAssert( tv != NULL );
@@ -495,15 +508,9 @@ BEGIN_PROFILE( "Traffic Man" );
     UpdateQueuedTrafficHorns( milliseconds );
 
     // Linux port: SHAR_TRAFFIC_LOG=1: every 5 s the traffic cars on the road (slots, models)
-    static int s_trafficLog = -1;
-    if( s_trafficLog == -1 )
-    {
-        const char* env = getenv( "SHAR_TRAFFIC_LOG" );
-        s_trafficLog = env != NULL && env[0] == '1';
-    }
     static unsigned int s_trafficLogTime = 0;
     s_trafficLogTime += milliseconds;
-    if( s_trafficLog && s_trafficLogTime >= 5000 )
+    if( TrafficLog() && s_trafficLogTime >= 5000 )
     {
         s_trafficLogTime = 0;
         char list[ 512 ] = "";
@@ -1416,6 +1423,8 @@ TrafficManager::TrafficManager()
     mMaxTraffic = MAX_TRAFFIC;
     mVehicles = new TrafficVehicle[ mSlotCapacity ];
     mNumSlots = MAX_TRAFFIC;
+    mWantedModel = -1;
+    mWantedGroup = -1;
     ApplyModSettings();
 
     mCurrTrafficModelGroup = -1;
@@ -1534,7 +1543,13 @@ void TrafficManager::Cleanup()
 
         rAssert( tv->GetHusk() == NULL );
 
-        if( v != NULL )
+        // Linux port: a car made after level load whose script load was cancelled (quitting the game) is left alone:
+        // VehicleCentral still lists it as under construction
+        if( v != NULL && IsSlotBuilding( tv ) )
+        {
+            tv->SetVehicle( NULL );
+        }
+        else if( v != NULL )
         {
             v->ReleaseVerified();
             tv->SetVehicle( NULL );
@@ -1700,41 +1715,114 @@ TrafficVehicle* TrafficManager::GetFreeTrafficVehicle()
     // when maxtraffic is set to a small number
 
     int randIndex = rand() % mNumSlots;
+
+    // Linux port: CustomTrafficSupport makes cars after level load (slots PreallocatedCars left empty, DynamicTraffic
+    // model swaps), one at a time: each queues its car script's load (behind any zone loads; one per spawn filled the
+    // loading manager's queue), and the car is used once the script has run. Meanwhile no car spawns.
+    bool building = false;
+    for( int i=0; i<mNumSlots; ++i )
+    {
+        building = building || IsSlotBuilding( &mVehicles[i] );
+    }
+
     if( mDynamicType == SHAR_TRAFFIC_DYNAMIC_NONE )
     {
+        TrafficVehicle* empty = NULL;
         for( int i=0; i<mNumSlots; ++i )
         {
             TrafficVehicle* tv = &mVehicles[randIndex];
             randIndex = (randIndex + 1) % mNumSlots;
-            // Linux port: a slot whose car could not be made (the group allows fewer cars than AllocatedCars) is skipped
-            if( !tv->GetIsActive() && tv->GetVehicle() != NULL )
+            if( tv->GetIsActive() || IsSlotBuilding( tv ) )
+            {
+                continue;
+            }
+            if( tv->GetVehicle() != NULL )
             {
                 return tv;
             }
+            empty = empty != NULL ? empty : tv;
+        }
+        // (a slot stays empty when the group allows fewer cars than AllocatedCars)
+        bool room = false;
+        TrafficModelGroup& group = mTrafficModelGroups[mCurrTrafficModelGroup];
+        for( int m=0; m<group.GetNumModels(); ++m )
+        {
+            room = room || group.GetTrafficModel( m )->mNumInstances < group.GetTrafficModel( m )->mMaxInstances;
+        }
+        if( empty != NULL && !building && room )
+        {
+            CreateSlotVehicle( empty, NULL );
         }
         return NULL;
     }
 
     // Linux port: CustomTrafficSupport DynamicTraffic Models / Slots: the model is chosen for each spawn (by the
-    // group's counts / weights) among the free slots' cars; a free slot with another model if none has it
+    // group's counts / weights; the one a car is being made for until it is ready) among the free slots' cars. If
+    // none has it, an empty slot (else a free slot with another model) is given a car of that model.
     int model = PickModelForSpawn();
+    if( mWantedModel >= 0 && mWantedGroup == mCurrTrafficModelGroup )
+    {
+        model = mWantedModel;
+    }
     const char* name = model >= 0 ? mTrafficModelGroups[mCurrTrafficModelGroup].GetTrafficModel( model )->mModelName : NULL;
+    TrafficVehicle* empty = NULL;
     TrafficVehicle* other = NULL;
     for( int i=0; i<mNumSlots; ++i )
     {
         TrafficVehicle* tv = &mVehicles[randIndex];
         randIndex = (randIndex + 1) % mNumSlots;
         Vehicle* v = tv->GetVehicle();
-        if( tv->GetIsActive() || v == NULL )
+        if( tv->GetIsActive() || IsSlotBuilding( tv ) )
         {
             continue;
         }
-        if( name != NULL && strcasecmp( v->GetName(), name ) == 0 )
+        if( v == NULL )
         {
+            empty = empty != NULL ? empty : tv;
+        }
+        else if( name != NULL && strcasecmp( v->GetName(), name ) == 0 )
+        {
+            mWantedModel = -1;
             return tv;
         }
-        other = other != NULL ? other : tv;
+        else
+        {
+            other = other != NULL ? other : tv;
+        }
     }
+    if( name != NULL && building )
+    {
+        return NULL;
+    }
+    if( name != NULL && p3d::find<tCompositeDrawable>( name ) != NULL )
+    {
+        TrafficVehicle* slot = empty;
+        if( slot == NULL && other != NULL && ReleaseSlotVehicle( other ) )
+        {
+            slot = other;
+            other = NULL;
+        }
+        if( slot != NULL && CreateSlotVehicle( slot, name ) )
+        {
+            if( TrafficLog() )
+            {
+                fprintf( stderr, "traffic: making a %s for slot %d\n", name, (int)( slot - mVehicles ) );
+            }
+            mWantedModel = model;
+            mWantedGroup = mCurrTrafficModelGroup;
+            return NULL;
+        }
+    }
+    else if( name != NULL )
+    {
+        static char s_missing[ 32 ] = "";
+        if( strcasecmp( s_missing, name ) != 0 )
+        {
+            fprintf( stderr, "mods: CustomTrafficSupport: traffic car %s is not loaded, another one is used\n", name );
+            snprintf( s_missing, sizeof( s_missing ), "%s", name );
+        }
+    }
+    mWantedModel = -1;
     return other;
 }
 
@@ -1749,6 +1837,9 @@ void TrafficManager::ApplyModSettings()
     mDynamicType = (int)MOD_OR( dynamicType, SHAR_TRAFFIC_DYNAMIC_NONE );
     mNumSlots = (int)MOD_OR( allocatedCars, MAX_TRAFFIC );
     mNumSlots = mNumSlots < 1 ? 1 : mNumSlots > mSlotCapacity ? mSlotCapacity : mNumSlots;
+    // PreallocatedCars defaults to them all; DynamicTraffic Slots ignores it and makes none
+    mNumPrealloc = mDynamicType == SHAR_TRAFFIC_DYNAMIC_SLOTS ? 0 : (int)MOD_OR( preallocatedCars, mNumSlots );
+    mNumPrealloc = mNumPrealloc < 0 ? 0 : mNumPrealloc > mNumSlots ? mNumSlots : mNumPrealloc;
     mMaxTrafficOnFoot = (int)MOD_OR( maxTrafficOnFoot, MAX_TRAFFIC_MODEL_GROUPS );
     mLaneMultiplier = MOD_OR( roadTrafficLimitMultiplier, 1.0f );
     mLaneMax = (int)MOD_OR( roadLaneMaxTrafficLimit, 2 );
@@ -1781,7 +1872,7 @@ bool TrafficManager::CreateSlotVehicle( TrafficVehicle* tv, const char* modelNam
     {
         newV = InitRandomVehicle();
     }
-    else
+    else if( p3d::find<tCompositeDrawable>( modelName ) != NULL )
     {
         newV = ::GetVehicleCentral()->InitVehicle( modelName, false, 0, VT_TRAFFIC );
     }
@@ -1796,6 +1887,51 @@ bool TrafficManager::CreateSlotVehicle( TrafficVehicle* tv, const char* modelNam
     tv->SetVehicle( newV );
     tv->SetHusk( NULL );
     return true;
+}
+
+bool TrafficManager::IsSlotBuilding( TrafficVehicle* tv )
+{
+    return tv->GetVehicle() != NULL && ::GetVehicleCentral()->IsUnderConstruction( tv->GetVehicle() );
+}
+
+bool TrafficManager::ReleaseSlotVehicle( TrafficVehicle* tv )
+{
+    // only a free slot's car that nothing else holds (e.g. the car the player last drove) or uses
+    Vehicle* v = tv->GetVehicle();
+    if( v == NULL || tv->GetIsActive() || tv->GetHusk() != NULL || IsSlotBuilding( tv ) || v->GetModRefCount() != 1 ||
+        ::GetVehicleCentral()->GetVehicleId( v, false ) != -1 || v == GetGameplayManager()->GetCurrentVehicle() )
+    {
+        return false;
+    }
+    if( TrafficLog() )
+    {
+        fprintf( stderr, "traffic: freeing slot %d's %s\n", (int)( tv - mVehicles ), v->GetName() );
+    }
+    for( int i=0; i<mQueuedTrafficHorns.mUseSize; i++ )
+    {
+        if( mQueuedTrafficHorns[i].vehicle == v )
+        {
+            mQueuedTrafficHorns.Remove( i );
+            break;
+        }
+    }
+    v->ReleaseVerified();   // (its destructor removes a driver)
+    tv->SetVehicle( NULL );
+    return true;
+}
+
+void TrafficManager::SetModTrafficGroup( int group )
+{
+    if( group < 0 || group >= MAX_TRAFFIC_MODEL_GROUPS || mTrafficModelGroups[group].GetNumModels() <= 0 )
+    {
+        fprintf( stderr, "mods: traffic group %d does not exist, ignored\n", group );
+        return;
+    }
+    if( TrafficLog() && group != mCurrTrafficModelGroup )
+    {
+        fprintf( stderr, "traffic: group %d\n", group );
+    }
+    mCurrTrafficModelGroup = group;     // DynamicTraffic swaps the free slots' models as they are used
 }
 
 int TrafficManager::PickModelForSpawn( bool countMade )

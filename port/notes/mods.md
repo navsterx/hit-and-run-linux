@@ -39,9 +39,13 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/
 - IncreasedVideoResolutionSupport (see platform.md, movies).
 - CustomTrafficSupport (`shar_modtraffic.cpp`, `TrafficManager::ApplyModSettings`): AllocatedCars, MaxTraffic,
   MaxTrafficOnFoot, road/lane limits, intervals/distances, TrafficAI accel/decel, colours (level car -> car -> level
-  -> root -> game's 25; also parked cars), group multiplier/weights; DynamicTraffic None/Models/Slots. All cars made
-  at level load, spawns pick free slots: per-spawn model swaps overflowed the loading queue, so PreallocatedCars is
-  ignored and "AllocatedCars caps parked cars" not done. `SHAR_TRAFFIC_LOG=1`.
+  -> root -> game's 25; also parked cars), group multiplier/weights; DynamicTraffic None/Models/Slots. PreallocatedCars
+  (Slots: 0) cars made at level load; the rest and model swaps in `GetFreeTrafficVehicle`, ONE car at a time
+  (`InitVehicle` queues its .con load; one per spawn overflowed the loading queue): the slot is unusable while
+  `VehicleCentral::IsUnderConstruction`, and spawns wait for it (`mWantedModel`). Never load .con sync mid-game
+  (`radFile::WaitForCompletion` runs other files' callbacks). Swaps free only cars with refcount 1, not in the
+  active list (`ReleaseSlotVehicle`). AllocatedCars caps parked cars (`ParkedCarManager`, zone load).
+  `SHAR_TRAFFIC_LOG=1` (slots made/freed, group changes, 5 s summary).
 - CustomShopSupport: <CarShop> (`actionbuttonhandler.cpp`); <PhoneBooth>/<SkinShop> (`shar_modshops.cpp`,
   `IGuiScreenRewards::ApplyModShop`: Included/Excluded/FreeItems, HideLocked, Drawable). Release keeps only locator
   name UIDs: `ActionEventLocator::IsNamed` compares UIDs; locators named before `AddToGame`. Clothes menu 16 items.
@@ -63,6 +67,8 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/
   `event` numbers are retail's (+1 from 177; `ModTranslateEvent`). Stage settings `MissionStage::GetModStage()`
   applied end of `Reset`, restored in Finalize. Checkpoints `Mission::mModCheckpoint` (`ModScript::OnRetry`;
   `Mission::Initialize` moves reset stage/locators/dynaload/peds). Passengers `Character::SetModSeat`.
+  Traffic groups -> `TrafficManager::SetModTrafficGroup`: SetStageTrafficGroup at stage start (kept after);
+  UseTrafficGroup / a retry's SetCheckpointTrafficGroup in `Mission::InitDynaLoad` (restart/select, not SD -> main).
   SetHitAndRunDecayInterior corrected only when hack required.
 - CustomStatsTotals (`charactersheet/modstatstotals.cpp`): totals for scrapbook, pause progress, mission select,
   `QueryPercent*`; defaults reproduce original (100.3% on a complete save).

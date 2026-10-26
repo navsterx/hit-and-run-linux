@@ -45,6 +45,7 @@ struct ModStage
     int allowCancel;            // SetStageAllowMissionCancel; -1 = unchanged
     bool collectibleSoundSet;   // SetCollectibleSoundEffect
     char collectibleSound[ 48 ];    // "" = none
+    int trafficGroup;           // SetStageTrafficGroup; -1 = unchanged (kept after the stage)
 
     int numTriggers;            // DisableTrigger
     char triggers[ MAX_TRIGGERS ][ 32 ];
@@ -58,6 +59,7 @@ struct ModStage
     char checkpointCarLocator[ 32 ];
     char checkpointPlayerLocator[ 32 ];
     int checkpointPedGroup;
+    int checkpointTrafficGroup;
 
     // the Hit & Run manager's settings before the stage changed them
     bool saved;
@@ -82,6 +84,8 @@ namespace ModScript
     void OnRetry();
     // Mission::Initialize (the mission's script has just run): apply or forget its checkpoint
     void OnMissionInitialize( Mission* mission );
+    // Mission::InitDynaLoad (selecting or restarting it, not a sunday drive's mission following it): its traffic group
+    void OnMissionReset( Mission* mission );
     // Mission::Finalize / Reset: passengers leave
     void RemoveVehicleCharacters();
 

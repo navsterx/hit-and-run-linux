@@ -192,6 +192,8 @@ public:
     float GetModDeceleration() const { return mModDecel; }
     float GetModAcceleration() const { return mModAccel; }
     float GetModBrakeThreshold() const { return mModBrakeThreshold; }
+    // Linux port: AdditionalScriptFunctionality UseTrafficGroup / SetStageTrafficGroup / SetCheckpointTrafficGroup
+    void SetModTrafficGroup( int group );
 
 //MEMBERS
 private:
@@ -232,6 +234,9 @@ private:
     float mFadeRadius, mAddRadius, mCenterOffset, mInitialAddRadius, mRemoveRadius;
     unsigned int mRemoveInterval, mAddInterval, mPopulateDuration;
     float mModDecel, mModAccel, mModBrakeThreshold;
+    int mNumPrealloc;           // PreallocatedCars: slots given their car at level load; the others get one when needed
+    int mWantedModel;           // DynamicTraffic: the model (of group mWantedGroup) a car is being made for, -1 = none
+    int mWantedGroup;
 
     TrafficModelGroup mTrafficModelGroups[ MAX_TRAFFIC_MODEL_GROUPS ];
     int mCurrTrafficModelGroup;
@@ -260,6 +265,8 @@ private:
     // Linux port: CustomTrafficSupport slot handling
     void ApplyModSettings();
     bool CreateSlotVehicle( TrafficVehicle* tv, const char* modelName );
+    bool IsSlotBuilding( TrafficVehicle* tv );      // its car's script has not run yet
+    bool ReleaseSlotVehicle( TrafficVehicle* tv );  // frees a free slot's car (false: someone else holds it)
     int PickModelForSpawn( bool countMade = false );   // index into the current group, -1; countMade: weigh by the
                                                        // cars made (level load), else by those on the road
 

@@ -5,9 +5,6 @@ Port of the 2003 source to Linux (32-bit default, 64-bit works), SDL2 + OpenGL 3
 data works; Mod Launcher mods partly. Missing: steering-wheel FFB. `README.md` user overview, `TODO.md` checklist, `DONE.md` completed checklist,
 `RUST.md` possible Rust/Bevy rewrite.
 
-Private leaked source: keep everything private (origin github.com/zeropaulsy/simpsons-hit-and-run-recomp, private).
-Commit as `zeropaulsy <13328895+zeropaulsy@users.noreply.github.com>`; the user pushes.
-
 ## Notes: read only the file for the subsystem you touch
 | file | covers |
 |---|---|
@@ -61,7 +58,7 @@ Linux is a PC platform: `RAD_WIN32` stays defined, `RAD_LINUX` marks OS differen
 - Boot movies only in release builds. Debug-build teardown asserts are the original's: ignore.
 
 ## Priorities
-1. Verify base game: the user plays (Claude doesn't script gameplay it can't see). L1-2 done, on L3. Riskiest: bonus
+1. Verify base game: the user plays (Claude doesn't script gameplay it can't see). L1-6 done, on L7. Riskiest: bonus
    game with 2-4 pads, races, later levels, other languages.
 2. Memcheck coverage (Claude, unattended): every mission done; cutscenes, bonus game with player driving.
 3. Robustness: crashes/asserts from those runs, shutdown paths.

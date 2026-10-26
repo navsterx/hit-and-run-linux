@@ -25,8 +25,7 @@ Every mission of every level is done (see DONE.md). Left:
 - [ ] Missing-data tolerance where it is cheap (a missing `art\wrench.p3d` is handled: its icons draw nothing)
 
 ### Mods
-Order of attack: CustomTrafficSupport first (it also completes ASF's traffic-group commands), then CustomAudioSupport
-and the character/animation hacks (what the larger total conversions use); the small cosmetic hacks are quick wins
+Order of attack: CustomAudioSupport, then the character/animation hacks (what the larger total conversions use); the small cosmetic hacks are quick wins
 in between. Hacks a mod requires but the port lacks are listed at startup (`mods:   not supported yet, ignored: ...`).
 
 #### Hacks not implemented (all required by the Futurama demo)
@@ -49,15 +48,11 @@ in between. Hacks a mod requires but the port lacks are listed at startup (`mods
   - [ ] stage vehicle settings, SetStageCharacterModel
   - [ ] forces and gravity
   - [ ] stage dyna load data
-  - [ ] traffic groups (need CustomTrafficSupport)
   - [ ] AddParkedCar
   - [ ] CON commands (SetConditionalParameter, SetWheelieOffsetX)
 - [ ] **CustomLimits [Sound]** PlayingClipPlayerLimit / PlayingStreamPlayerLimit: the docs' defaults (25, 8) match
   nothing in this source (64 clip, 9 stream players); needs the retail behaviour. Values up to 64/9 fit already
 - [ ] **CustomRoadBehaviour UTurnTolerance**: undocumented, logged and ignored
-- [ ] **CustomTrafficSupport** cars made mid-game: PreallocatedCars, model swaps when a mission changes traffic group,
-  parked cars capped by AllocatedCars (needs car loads queued outside the spawn loop, at most a few at a time)
-- [ ] **ASF traffic groups** (SetStageTrafficGroup, SetCheckpointTrafficGroup) now that CustomTrafficSupport exists
 - [ ] **CustomCarSupport [FakeWheel] CopySkidMarks**: read, not drawn (the skid mark generator has four wheels)
 - [ ] **Material shaders** from more than the first mod's `Shaders/` folder
 
@@ -67,6 +62,8 @@ in between. Hacks a mod requires but the port lacks are listed at startup (`mods
 - [ ] **Custom cars**: a destroyed car leaving a custom husk (Husk=), PreviewScale, IsHusk
 - [ ] **Fully Connected Map**: the Level 2/3 areas inside its Level 1, the DMV, Android's Dungeon and Observatory
   interiors (doors listed in CLAUDE.md), traffic on its bridges (Road006/Road0061), its warp missions
+- [ ] **Traffic groups**: UseTrafficGroup on a mission restart / selection, SetCheckpointTrafficGroup on a retry
+  (SetStageTrafficGroup and the slot model swaps were run with a test copy of the Futurama demo)
 - [ ] **Raised CustomLimits** pushed past the game's own values in play (cars, stages, trigger volumes, ...): so far
   only checked that a mod raising them all loads and quits cleanly
 

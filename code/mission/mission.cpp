@@ -166,6 +166,8 @@ Mission::Mission() :
     , mModPedsEnabled( -1 )
     , mModParkedCarsEnabled( -1 )
     , mModSpawnsDisabled( false )
+    , mModTrafficGroup( -1 )
+    , mModRestartTrafficGroup( -1 )
 #endif
 {
     strcpy( mcName, "" );
@@ -1569,6 +1571,9 @@ void Mission::InitDynaLoad()
         PedestrianManager::GetInstance()->SwitchModelGroup( mInitPedGroupId );
         PedestrianManager::SetDefaultModelGroup( mInitPedGroupId );
     }
+#ifdef RAD_LINUX
+    ModScript::OnMissionReset( this );  // Linux port: a mod's traffic group (selecting or restarting the mission)
+#endif
 }
 
 void Mission::SetInitPedGroup( int initGroupId )

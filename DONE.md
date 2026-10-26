@@ -81,7 +81,9 @@ What the port does so far. User-facing overview: [`README.md`](README.md); porti
 - [x] CustomInteriorSupport, CustomRoadBehaviour (DisableTrafficGroundSnapping), DynamicTreeNodeEntityLimits
 - [x] Fully Connected Map 1.0.7: Level 1 plays, interiors entered (Kwik-E-Mart, Moe's)
 - [x] CustomLicenseScreenTime (Time, Skippable), NoMainMenuCameraAnimations, HUDMapIgnorePlayerHeight
-- [x] CustomTrafficSupport: counts, distances, intervals, lane limits, acceleration, colours, groups, DynamicTraffic
+- [x] CustomTrafficSupport: counts, distances, intervals, lane limits, acceleration, colours, groups, DynamicTraffic;
+  PreallocatedCars and cars made or swapped mid-game; AllocatedCars caps parked cars
+- [x] AdditionalScriptFunctionality traffic groups: UseTrafficGroup, SetStageTrafficGroup, SetCheckpointTrafficGroup
 - [x] IncreasedVideoResolutionSupport (movies up to 1920x1080)
 - [x] CustomText (with the Language setting)
 - [x] CustomShopSupport: car shop seller and conversation; phone booth and skin shop item lists and icons
