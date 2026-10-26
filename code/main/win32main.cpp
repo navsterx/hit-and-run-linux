@@ -244,9 +244,63 @@ void ProcessCommandLineArgumentsFromFile()
 //=============================================================================
 extern "C" void shar_CrashInstall( void );    // port/compat/shar_crash.h
 
+#include <dirent.h>
+#include <libgen.h>
+#include <limits.h>
+#include <strings.h>
+#include <unistd.h>
+#include <SDL2/SDL.h>
+
+// True if dir holds the game data (art/ and scripts/, any case).
+static bool HasGameData( const char* dir )
+{
+    DIR* d = opendir( dir );
+    if( d == NULL )
+    {
+        return false;
+    }
+    bool art = false, scripts = false;
+    while( struct dirent* e = readdir( d ) )
+    {
+        art |= strcasecmp( e->d_name, "art" ) == 0;
+        scripts |= strcasecmp( e->d_name, "scripts" ) == 0;
+    }
+    closedir( d );
+    return art && scripts;
+}
+
+// The game root is the working directory. Started from elsewhere (a file manager, a terminal in the build dir)
+// every load failed and the game hung on a black window: use the executable's directory if the data is there,
+// otherwise say what is wrong and stop.
+static void FindGameData( void )
+{
+    if( HasGameData( "." ) )
+    {
+        return;
+    }
+    char exe[ PATH_MAX ];
+    ssize_t len = readlink( "/proc/self/exe", exe, sizeof( exe ) - 1 );
+    if( len > 0 )
+    {
+        exe[ len ] = '\0';
+        const char* dir = dirname( exe );
+        if( HasGameData( dir ) && chdir( dir ) == 0 )
+        {
+            return;
+        }
+    }
+    const char* msg = "The Simpsons: Hit & Run could not find its game data.\n\n"
+                      "Run it from your PC game folder (the one holding art/, scripts/ and the .rcf files), "
+                      "or start it with play.sh --data <that folder>.";
+    fprintf( stderr, "%s\n", msg );
+    SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "The Simpsons: Hit & Run", msg, NULL );
+    exit( 1 );
+}
+
 int main( int argc, char** argv )
 {
     shar_CrashInstall();
+    FindGameData();
     static char cmdLine[ 4096 ];
     cmdLine[ 0 ] = '\0';
     for( int i = 1; i < argc; i++ )

@@ -55,6 +55,8 @@
 
 ## Files
 - radcore drive: POSIX, case-insensitive, every drive letter = game dir.
+- Game dir = cwd. `main` (`win32main.cpp FindGameData`): cwd lacking art/+scripts/ -> exe's dir, else message box
+  and exit (no data used to hang on a black window).
 - Missing file: `OnDriveError` prints `File not found: <path>` and fails the request (original retried forever).
   AnimatedIcon with neither its drawable nor `triggersphere_000` loaded gets an empty drawable (`EmptyDrawable`).
   `tFileFTT` loads a failed open as empty. Mod-occluded files set `radDrive::SetLastError`.
