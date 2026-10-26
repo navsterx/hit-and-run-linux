@@ -28,6 +28,10 @@ sudo apt install libgl1 libgl1-mesa-dri libegl1 libx11-6 libxext6 libxcursor1 li
 After the first run, `./run.sh` alone is enough. It sets up a `run/` folder next to itself, with links to your game
 data and its own copies of `simpsons.ini` and the saves, so your original install is never written to.
 
+Alternatively, extract the release's contents straight into the game folder (next to `art/` and `scripts/`) and run
+`./run.sh` there with no path. The game then runs in place: no `run/` folder is made, and `simpsons.ini`, the saves
+and `logs/` are written in the game folder (the `run/...` paths below are then in the game folder).
+
 - Settings: `run/simpsons.ini` (`#System` section: display mode, resolution, anti-aliasing, mipmaps, anisotropy)
 - Shaders: `shaders/` (see `shaders/README.md`). Ambient occlusion, tone mapping and soft lighting on characters are
   on by default; press M in the game to turn them off and on, or edit `shaders/post.ini` and `shaders/materials.ini`.

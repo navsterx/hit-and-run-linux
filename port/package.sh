@@ -46,10 +46,12 @@ done
 
 cat > "$OUT/run.sh" <<'EOF'
 #!/bin/bash
-# Start the game. usage: ./run.sh /path/to/game-data [--mod MOD]... [game options...]
+# Start the game. usage: ./run.sh [/path/to/game-data] [--mod MOD]... [game options...]
 # game-data is your copy's PC data folder (holding art/, scripts/ and the .rcf files). The first time, a run/ folder
 # is made next to this script with links to the data and copies of simpsons.ini and the saves (the game writes
 # those); the shaders/ folder here is used too. Console output goes to run/logs/last-session.log.
+# Extracted into the game data folder itself (no path given), the game runs there: no run/ folder, and it writes
+# simpsons.ini, the saves and logs/ in that folder.
 # --mod MOD loads a Mod Launcher mod: a .lmlm file or an extracted mod folder. Repeat it for several; when two mods
 # change the same file, the one given first wins.
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -68,24 +70,31 @@ while [ $# -gt 0 ]; do
 done
 set -- "${ARGS[@]}"
 [ -n "$MODS" ] && export SHAR_MODS=$MODS
+# Game data folder: holds art/ and scripts/ (any case)
+has_data() { [ -n "$(find -L "$1" -maxdepth 1 -type d -iname art)" ] && [ -n "$(find -L "$1" -maxdepth 1 -type d -iname scripts)" ]; }
 DATA=
 if [ -n "$1" ] && [ -d "$1" ]; then DATA=$1; shift
+elif has_data "$HERE"; then RUN=$HERE    # extracted into the game data folder: run in place
 elif [ -f "$RUN/.data" ]; then DATA=$(cat "$RUN/.data"); fi
-if [ -z "$DATA" ] || [ ! -d "$DATA" ]; then
-    echo "usage: ./run.sh /path/to/game-data [options]   (the folder holding art/, scripts/ and *.rcf)" >&2
-    exit 1
+if [ "$RUN" != "$HERE" ]; then
+    if [ -z "$DATA" ] || [ ! -d "$DATA" ]; then
+        echo "usage: ./run.sh /path/to/game-data [options]   (the folder holding art/, scripts/ and *.rcf)" >&2
+        echo "       or extract this package into the game data folder and run ./run.sh there" >&2
+        exit 1
+    fi
+    DATA=$(cd "$DATA" && pwd)
+    mkdir -p "$RUN"
+    echo "$DATA" > "$RUN/.data"
+    for f in ambience.rcf carsound.rcf dialog.rcf dialogf.rcf dialogg.rcf dialogs.rcf music00.rcf music01.rcf \
+             music02.rcf music03.rcf nis.rcf scripts.rcf soundfx.rcf opening.bnr art movies scripts sound; do
+        [ -e "$DATA/$f" ] && [ ! -e "$RUN/$f" ] && ln -s "$DATA/$f" "$RUN/$f"
+    done
+    for f in simpsons.ini Save1 Save2 Save3 Save4; do
+        [ -e "$DATA/$f" ] && [ ! -e "$RUN/$f" ] && cp "$DATA/$f" "$RUN/$f"
+    done
+    [ -e "$RUN/shaders" ] || ln -s "$HERE/shaders" "$RUN/shaders"
 fi
-DATA=$(cd "$DATA" && pwd)
 mkdir -p "$RUN/logs"
-echo "$DATA" > "$RUN/.data"
-for f in ambience.rcf carsound.rcf dialog.rcf dialogf.rcf dialogg.rcf dialogs.rcf music00.rcf music01.rcf music02.rcf \
-         music03.rcf nis.rcf scripts.rcf soundfx.rcf opening.bnr art movies scripts sound; do
-    [ -e "$DATA/$f" ] && [ ! -e "$RUN/$f" ] && ln -s "$DATA/$f" "$RUN/$f"
-done
-for f in simpsons.ini Save1 Save2 Save3 Save4; do
-    [ -e "$DATA/$f" ] && [ ! -e "$RUN/$f" ] && cp "$DATA/$f" "$RUN/$f"
-done
-[ -e "$RUN/shaders" ] || ln -s "$HERE/shaders" "$RUN/shaders"
 cd "$RUN"
 # Only the bundled libraries the system lacks go on the path: a system library of the same name is ABI-compatible and
 # at least as new, and the system's own plugins (GL driver, GTK for window decorations) need it, not an older copy.
@@ -140,6 +149,8 @@ The Simpsons Hit & Run - Linux port, $ARCH (test build)
 $NEEDS
 2. Start it:  ./run.sh "/path/to/The Simpsons - Hit & Run"
    (afterwards just ./run.sh; options go after the path or on their own, e.g. ./run.sh skipfe)
+   Or extract this package's contents into the game folder and run ./run.sh there: no run/ folder is made, and
+   settings, saves and logs/ are written in the game folder.
    Mods (Mod Launcher .lmlm files or mod folders):  ./run.sh --mod MyMod.lmlm --mod OtherMod
 
 Settings: run/simpsons.ini (#System: display, resolution, antialiasing, mipmaps, anisotropy).
