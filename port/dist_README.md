@@ -8,7 +8,7 @@ from the disc: the folder holding `art/`, `scripts/` and the `.rcf` files.
 
 ## Requirements
 
-A 64-bit (x86-64) Linux with glibc 2.43 or newer (Ubuntu 26.04 or a distribution of the same age) and a desktop. The
+A 64-bit (x86-64) Linux as new as Ubuntu 24.04 / Linux Mint 22 (glibc 2.38 or newer) and a desktop. The
 graphics driver and X11 / Wayland libraries come from your system; everything else is included.
 
 ## Running

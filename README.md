@@ -19,7 +19,7 @@ from the disc: the folder holding `art/`, `scripts/` and the `.rcf` files.
 
 ## Requirements
 
-A 64-bit (x86-64) Linux with glibc 2.43 or newer (Ubuntu 26.04 or a distribution of the same age) and a desktop. The
+A 64-bit (x86-64) Linux as new as Ubuntu 24.04 / Linux Mint 22 (glibc 2.38 or newer) and a desktop. The
 graphics driver and X11 / Wayland libraries come from your system; everything else is included.
 
 ## Quick start
@@ -67,7 +67,8 @@ ninja -C build-linux
 ```
 
 Boot movies only play in the release build. `port/package.sh` (`--64` for the 64-bit build) makes a self-contained
-tarball for another Linux machine. The porting details are in [`CLAUDE.md`](CLAUDE.md).
+tarball for another Linux machine; add `--noble` to build it in an Ubuntu 24.04 container (needs `podman`) so it runs
+on Ubuntu 24.04 / Linux Mint 22 and newer, not just on systems as new as yours. The porting details are in [`CLAUDE.md`](CLAUDE.md).
 
 `CMakeLists.txt` is generated from the original Visual Studio projects: change `port/gen_cmake.py`, never the
 generated file.

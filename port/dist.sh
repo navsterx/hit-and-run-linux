@@ -1,6 +1,6 @@
 #!/bin/bash
 # Refresh the 'dist-linux-x86_64' branch: a binary-only, bring-your-own-game release of the x86-64 build. It is an
-# orphan branch (no history shared with dev/main, so no source is reachable from it) holding port/package.sh --64's
+# orphan branch (no history shared with dev/main, so no source is reachable from it) holding port/package.sh --64 --noble's
 # bundle with the game stripped. Only SDL2 and its libraries stay loose in lib/; ffmpeg (movies) and the rest go in
 # ffmpeg-libs.tar.xz, which setup.sh unpacks (run.sh calls it on first start). README.md comes from port/dist_README.md.
 # The binary is renamed Simpsons; the unstripped one goes to dist/symbols/x86_64-<build ID>/Simpsons (same basename:
@@ -11,7 +11,7 @@ set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 BRANCH=dist-linux-x86_64
-[ "$1" = --no-build ] || port/package.sh --64 > /dev/null
+[ "$1" = --no-build ] || port/package.sh --64 --noble > /dev/null
 SRC=$(ls -d dist/shar-linux-x86_64-[0-9]* | grep -v '\.tar\.gz$' | sort | tail -1)
 [ -n "$SRC" ] || { echo "no x86_64 bundle in dist/" >&2; exit 1; }
 
