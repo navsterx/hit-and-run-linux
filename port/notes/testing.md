@@ -31,7 +31,7 @@
   `SHAR_MAX_FRAME_MS=33` (else car outruns streaming; `DSG: Move: can't find`); mission transitions may be black ~5 min.
 - Recipes: `memcheck.sh 900 skipfe demo l1`; races `1200 skipfe race2` (Enter taps from 120 s, W held); missions
   `1500 skipfe incar autopass20 nofail lN m1` (Enter every 15 s, W held, MAX_FRAME_MS=50); chains from M2 `autopass15`
-  (75 min/run); bonus `SHAR_BUILD=build-linux64 ... 1500 skipfe l0` (Enter every 10 s from 90 s).
+  (75 min/run); bonus `... 1500 skipfe l0` (Enter every 10 s from 90 s).
 - Runs on X11 (`SHAR_X11=1`, memcheck.sh default): on Wayland libglycin segfaults under valgrind at window creation.
 - A level's last mission ends at the save prompt; Enter taps then loop slot list <-> "Are you sure?" (NO): run idles.
   Check an M7 finished by its objective types in the autopass log (ObjectiveTypeEnum, missionobjective.h).

@@ -14,7 +14,7 @@ for p in [g.REPLACE.get(p["name"], p) for p in vcx.projects()]:
             s = vcx.resolve(lx) or vcx.resolve(os.path.join(d, f.replace("win32", "linux"))) or ""
             if not s or "/win32/" in s: continue
         lang = ["-x", "c", "-std=gnu99"] if s.endswith(".c") else ["-std=gnu++98", "-fpermissive"]
-        jobs.append((g.target_name(p), s, ["g++", "-m32", "-fsyntax-only", "-w", "-fmax-errors=5"] + lang
+        jobs.append((g.target_name(p), s, ["g++", "-m64", "-fsyntax-only", "-w", "-fmax-errors=5"] + lang
                      + ["-include", g.COMPAT_HEADER] + [x for f in g.forced_includes(p) for x in ("-include", f)] + [f"-I{i}" for i in incs] + [f"-idirafter{g.COMPAT_DIR}"]
                      + [f"-D{d}" for d in defs] + [s]))
 def run(j):

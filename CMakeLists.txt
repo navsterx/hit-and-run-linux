@@ -15,14 +15,14 @@ endif()
 if(NOT SHAR_RAD_DEBUG)
   set(SHAR_WARN "${SHAR_WARN} -D_GLIBCXX_NO_ASSERTIONS")
 endif()
-# SHAR_64BIT: x86-64 build (work in progress, branch x64); the default stays the 32-bit game. Libraries are
-# linked by name, so -m64 picks the amd64 packages (libsdl2-dev, libgl-dev, libopenal-dev, FFmpeg's -dev)
-option(SHAR_64BIT "Build for x86-64 instead of 32-bit x86 (work in progress)" OFF)
+# SHAR_64BIT: x86-64 (the default); OFF = the legacy 32-bit x86 build (the game as shipped). Libraries are
+# linked by name, so -m64 / -m32 picks the amd64 / i386 packages (libsdl2-dev, libgl-dev, libopenal-dev, FFmpeg)
+option(SHAR_64BIT "Build for x86-64 (OFF: legacy 32-bit x86)" ON)
 if(SHAR_64BIT)
   set(SHAR_ARCH -m64)
-  message(STATUS "SHAR: 64-bit build (work in progress)")
 else()
   set(SHAR_ARCH -m32)
+  message(STATUS "SHAR: legacy 32-bit build")
 endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SHAR_ARCH} -g -fno-strict-aliasing ${SHAR_WARN}")
 # gnu++98 + permissive: closest to what 2003-era MSVC accepted

@@ -107,8 +107,8 @@ code left MSVC and Windows.
 
 | Platform | Status |
 |---|---|
-| Linux x86 (32-bit) | **Playable.** Tested through Level 7 |
-| Linux x86-64 | **Boots and plays** (tested: movies, front end, levels, races, interiors, the bonus game, mods); long play sessions in progress |
+| Linux x86-64 (default) | **Boots and plays** (tested: movies, front end, levels, races, interiors, the bonus game, mods); long play sessions in progress |
+| Linux x86 (32-bit, legacy) | **Playable.** Tested through Level 7 |
 | Windows x64 | Planned |
 | macOS (Apple silicon / Intel) | Planned |
 | Android / handhelds | Possible later: the renderer and input layers already allow it |

@@ -1,5 +1,5 @@
-"""64-bit survey: g++ -fsyntax-only on every source with its exact flags from build-linux64/compile_commands.json
-(configure it first: cmake -B build-linux64 -G Ninja -DSHAR_64BIT=ON), with the pointer-size diagnostics on.
+"""64-bit survey: g++ -fsyntax-only on every source with its exact flags from build-linux/compile_commands.json
+(configure it first: cmake -B build-linux -G Ninja), with the pointer-size diagnostics on.
 Lists each site once (headers are reported by every source that includes them), grouped by kind and library.
 Also counts plain `long` (32-bit under MSVC, 64-bit on Linux x86-64), which no diagnostic catches.
 usage: python3 port/survey64.py [--sites] -> summary; port/survey64.json has every site"""
@@ -7,7 +7,7 @@ import collections, json, os, re, shlex, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB = os.path.join(ROOT, "build-linux64", "compile_commands.json")
+DB = os.path.join(ROOT, "build-linux", "compile_commands.json")
 
 # kind -> pattern on a diagnostic line
 KINDS = [
@@ -80,7 +80,7 @@ def count_long():
 
 def main():
     if not os.path.exists(DB):
-        sys.exit(f"{DB} missing: cmake -B build-linux64 -G Ninja -DSHAR_64BIT=ON")
+        sys.exit(f"{DB} missing: cmake -B build-linux -G Ninja")
     entries = json.load(open(DB))
     with ThreadPoolExecutor(os.cpu_count() or 4) as ex:
         results = list(ex.map(run, entries))

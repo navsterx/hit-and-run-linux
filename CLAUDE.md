@@ -1,6 +1,6 @@
 # CLAUDE.md: The Simpsons Hit & Run, native Linux port
 
-Port of the 2003 source to Linux (32-bit default, 64-bit works), SDL2 + OpenGL 3.3 core. Original dump:
+Port of the 2003 source to Linux (x86-64 default, 32-bit legacy), SDL2 + OpenGL 3.3 core. Original dump:
 `~/Documents/Decomp/hitnrun_source/game` (never modify). Base game plays end to end as far as tested (L7); retail PC
 data works; Mod Launcher mods partly. Missing: steering-wheel FFB. `README.md` user overview, `TODO.md` checklist, `DONE.md` completed checklist,
 `RUST.md` possible Rust/Bevy rewrite.
@@ -22,7 +22,8 @@ code/, libs/, build/   dump's sources + VS projects (git-tracked)
 port/                  everything added: gen_cmake.py (-> CMakeLists.txt, never edit by hand), check.py, run.sh,
                        play.sh, memcheck.sh, package.sh, compat/ (shims, srr2.map, shar_mod*.cpp), third_party/lua
 shaders/               example post/material shaders (shaders/README.md)
-build-linux/ release   build-linux-debug/ asserts   build-linux64[-asan|-debug]/   build-linux-audit/ all warnings
+build-linux/ release   build-linux-debug/ asserts   build-linux-asan/   build-linux-audit/ all warnings   (x86-64)
+build-linux32[-debug]/ legacy 32-bit (-DSHAR_64BIT=OFF; play.sh/package.sh --32)
 run/                   run dir (ignored, user's ini/saves). Experiments: own run dir in scratchpad via SHAR_RUN
 ```
 
@@ -31,7 +32,7 @@ run/                   run dir (ignored, user's ini/saves). Experiments: own run
 python3 port/gen_cmake.py                 # after changing port rules
 ninja -C build-linux-debug -j6
 SHAR_BUILD=$PWD/build-linux-debug port/run.sh 120 [args]   # gdb, backtrace on crash (absolute path)
-port/play.sh --data DIR [--debug --64 --no-build --mod X]  # logs run/logs, crashes run/crashes
+port/play.sh --data DIR [--debug --32 --no-build --mod X]  # logs run/logs, crashes run/crashes
 SHAR_RUN=<scratch run dir> port/memcheck.sh 330 skipfe
 ```
 Game options: `skipfe [lN mM]`, `race1-4`, `demo lN`, `incar`, `tpN`, `skipsunday`, `nofail`, `autopass[N]`, `coins`,
@@ -63,4 +64,4 @@ Linux is a PC platform: `RAD_WIN32` stays defined, `RAD_LINUX` marks OS differen
 2. Memcheck coverage (Claude, unattended): every mission done; cutscenes, bonus game with player driving.
 3. Robustness: crashes/asserts from those runs, shutdown paths.
 4. Mods: remaining hacks (mods.md), tested with the user. 5. Packaging. 6. Wheel FFB. 7. Renderer follow-ups.
-8. 64-bit long sessions.
+8. 64-bit long sessions (32-bit is legacy: keep it building).

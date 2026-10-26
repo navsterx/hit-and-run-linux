@@ -10,7 +10,8 @@
   win32_misc.* (MessageBox), shar_crash.* (signal -> report on stderr; `SHAR_CRASH_HANDLER=0` off), pddi_heap.cpp,
   valgrind/ headers, srr2.map, shar_mod*.cpp.
 - Audit build: grep -Wuninitialized/-Wmaybe-uninitialized; 2 known false positives (actordsg.cpp, opticlensflare.cpp).
-- 64-bit deps: amd64 -dev SDL2, GL, OpenAL, FFmpeg. 32-bit Bink: `libav{format,codec,util}-dev:i386 libsw{scale,resample}-dev:i386`.
+- Deps: amd64 -dev SDL2, GL, OpenAL, FFmpeg. Legacy 32-bit: gcc-multilib + the `:i386` ones (Bink:
+  `libav{format,codec,util}-dev:i386 libsw{scale,resample}-dev:i386`).
 
 ## Allocator isolation
 - Game replaces global operator new; on ELF that leaks into every shared lib. Fix: `-static-libstdc++ -static-libgcc
@@ -31,21 +32,22 @@
 - Line endings: CRLF sources; Python `newline=''` or bytes (`Path.read_text()` converts to LF).
 - `RAD_RELEASE` needed for boot movies (`SHOW_MOVIES`, bootupcontext.cpp).
 
-## 64-bit (`-DSHAR_64BIT=ON`; tag `32bit-baseline` = last 32-bit-only)
+## 64-bit (default, `SHAR_64BIT` ON; legacy 32-bit: OFF, `build-linux32`; tag `32bit-baseline` = last 32-bit-only)
+- play.sh / package.sh reconfigure a build dir whose cached `SHAR_64BIT` is the other arch (old 32-bit `build-linux`).
 - Changes (identical on 32-bit): GUI params `GuiParam` (uintptr_t), Locator data, radMemoryRound*, `shar_PointerKey()`;
   dlmalloc `long` not redefined on LP64, alignment 16; heaps x2 (`CreateHeap`); animation blocks x2 + 8-byte aligned;
   radscript args sorted into SysV registers (`InvokeVf64`); on-disk 32-bit fields kept: RCF header pointer, DDS
   `lpSurface`, type info strings; 32-bit masks on addresses fixed (`RoundUpAlignment`, movie negative pitch).
 - Saves layout-identical (CharacterSheet 7140, SaveGameInfoData 16).
-- Verified: L1-7, races, interiors, bonus game, mods, ASan clean; `package.sh --64`. Not yet: long sessions.
+- Verified: L1-7, races, interiors, bonus game, mods, ASan clean; `package.sh`. Not yet: long sessions.
 
 ## Shipped-binary strings
 - `-fmacro-prefix-map` makes `__FILE__` relative. Release (`!RAD_DEBUG`) `rReleaseAssert`/`Warning` pass
   `RAD_RELEASE_FILE` (""); release `rTunePrintf` is a macro dropping the format (GCC never inlines variadics, so an
   empty inline keeps the string). Check: `strip -o x srr2; strings x | grep -i -E 'radical|\.cpp'` -> only RTTI names.
 
-## Release packages (`package.sh [--64] --noble`, `dist.sh`)
-- `--noble`: build + package in podman Ubuntu 24.04 (`port/noble.Containerfile`, `build-linux[64]-noble/`): needs glibc
+## Release packages (`package.sh [--32] --noble`, `dist.sh`)
+- `--noble`: build + package in podman Ubuntu 24.04 (`port/noble.Containerfile`, `build-linux[32]-noble/`): needs glibc
   <= 2.39 (Mint 22). A host (26.04) build needs 2.43 (`asinf`/`acosf`/`atan2f`/`sqrtf` versions + every bundled lib).
 - GCC 13 there: rejects what GCC 15 lets through (missing `typename`, undeclared names in uninstantiated templates).
 - Packaged `run.sh` puts only bundled libs the system lacks (same soname per `ldconfig -p`, per arch) on the path

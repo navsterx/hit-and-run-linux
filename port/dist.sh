@@ -1,7 +1,7 @@
 #!/bin/bash
 # Make the x86-64 release tarball for the GitHub Releases page: dist/release/shar-linux-x86_64-<date>.tar.gz
 #
-# It's the `package.sh --64 --noble` bundle with the binary stripped and renamed Simpsons, and README.md from
+# It's the `package.sh --noble` bundle with the binary stripped and renamed Simpsons, and README.md from
 # port/dist_README.md. The unstripped copy goes to dist/symbols/x86_64-<build ID>/ for crash_symbolize.py. The 32-bit
 # tarball is shared separately. Nothing is committed: upload the tarball yourself.
 #
@@ -9,7 +9,7 @@
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
-[ "$1" = --no-build ] || port/package.sh --64 --noble > /dev/null
+[ "$1" = --no-build ] || port/package.sh --noble > /dev/null
 SRC=$(ls -d dist/shar-linux-x86_64-[0-9]* | grep -v '\.tar\.gz$' | sort | tail -1)
 [ -n "$SRC" ] || { echo "no x86_64 bundle in dist/" >&2; exit 1; }
 NAME=$(basename "$SRC")

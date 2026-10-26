@@ -16,7 +16,7 @@ for f in args:
     p = owner.get(f) or owner[next(k for k in owner if os.path.dirname(k) == os.path.dirname(f))]
     incs, defs = g.target_flags(p)
     lang = ["-x", "c", "-std=gnu99"] if f.endswith(".c") else ["-std=gnu++98", "-fpermissive"]
-    cmd = (["g++", "-m32", "-fsyntax-only", "-w", "-fmax-errors=10"] + lang + EXTRA + ["-include", g.COMPAT_HEADER]
+    cmd = (["g++", "-m64", "-fsyntax-only", "-w", "-fmax-errors=10"] + lang + EXTRA + ["-include", g.COMPAT_HEADER]
            + [x for h in g.forced_includes(p) for x in ("-include", h)] + [f"-I{i}" for i in incs]
            + [f"-idirafter{g.COMPAT_DIR}"] + [f"-D{d}" for d in g.PLATFORM_DEFINES + defs] + [f])
     r = subprocess.run(cmd, cwd=vcx.ROOT, capture_output=True, text=True, errors="replace")

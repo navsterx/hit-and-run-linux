@@ -2,31 +2,34 @@
 # Package the release build for another machine: dist/shar-linux-<arch>-<date>/ and a .tar.gz of it, holding the
 # game, the libraries it needs (except the ones that must come from the target system: glibc, the OpenGL / X11 /
 # Wayland stack, which goes with the graphics driver), the example shaders and a launcher (run.sh).
-# usage: port/package.sh [--64] [--noble]   (builds build-linux first; --64: the x86-64 build, build-linux64)
+# usage: port/package.sh [--32] [--noble]   (builds build-linux, x86-64, first; --32: the legacy 32-bit x86 build,
+# build-linux32; --64 is accepted and changes nothing)
 # --noble: build and package inside an Ubuntu 24.04 container (podman, port/noble.Containerfile; build dirs
-# build-linux[64]-noble), so the game and its bundled libraries need only 24.04's glibc and the package runs on
+# build-linux[32]-noble), so the game and its bundled libraries need only 24.04's glibc and the package runs on
 # Ubuntu 24.04 / Linux Mint 22 and newer. Without it the package needs this machine's glibc.
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SUFFIX=; NOBLE=
 for a in "$@"; do
     case "$a" in
-        --64) SUFFIX=64 ;;
+        --32) SUFFIX=32 ;;
+        --64) ;;
         --noble) NOBLE=1 ;;
-        *) echo "usage: port/package.sh [--64] [--noble]" >&2; exit 1 ;;
+        *) echo "usage: port/package.sh [--32] [--noble]" >&2; exit 1 ;;
     esac
 done
 if [ -n "$NOBLE" ] && [ -z "$SHAR_IN_NOBLE" ]; then
     podman build -q -t shar-noble -f "$ROOT/port/noble.Containerfile" "$ROOT/port" > /dev/null
     exec podman run --rm --userns=keep-id -e SHAR_IN_NOBLE=1 -v "$ROOT:$ROOT" -w "$ROOT" shar-noble port/package.sh "$@"
 fi
-if [ -n "$SUFFIX" ]; then ARCH=x86_64; else ARCH=i386; fi
+if [ -n "$SUFFIX" ]; then ARCH=i386; X64=OFF; else ARCH=x86_64; X64=ON; fi
 BUILD=$ROOT/build-linux$SUFFIX${NOBLE:+-noble}
 NAME=shar-linux-$ARCH-$(date +%Y%m%d)
 OUT=$ROOT/dist/$NAME
 
-if [ ! -f "$BUILD/build.ninja" ]; then
-    cmake -B "$BUILD" -S "$ROOT" -G Ninja ${SUFFIX:+-DSHAR_64BIT=ON} > "$ROOT/port/build.log" 2>&1 || { tail -20 "$ROOT/port/build.log"; exit 1; }
+# (a build dir made for the other architecture, e.g. a 32-bit one from before x86-64 became the default, is switched)
+if [ ! -f "$BUILD/build.ninja" ] || ! grep -q "^SHAR_64BIT:BOOL=$X64\$" "$BUILD/CMakeCache.txt"; then
+    cmake -B "$BUILD" -S "$ROOT" -G Ninja -DSHAR_64BIT=$X64 > "$ROOT/port/build.log" 2>&1 || { tail -20 "$ROOT/port/build.log"; exit 1; }
 fi
 ninja -C "$BUILD" -j"$(nproc)" > "$ROOT/port/build.log" 2>&1 || { grep -E "error|FAILED" "$ROOT/port/build.log" | head -20; exit 1; }
 
