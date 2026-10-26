@@ -1,12 +1,12 @@
 #!/bin/bash
-# Refresh the 'dist-linux-x86_64' branch: a binary-only, bring-your-own-game release of the x86-64 build. It is an
-# orphan branch (no history shared with dev/main, so no source is reachable from it) holding port/package.sh --64 --noble's
-# bundle with the game stripped. Only SDL2 and its libraries stay loose in lib/; ffmpeg (movies) and the rest go in
-# ffmpeg-libs.tar.xz, which setup.sh unpacks (run.sh calls it on first start). README.md comes from port/dist_README.md.
-# The binary is renamed Simpsons; the unstripped one goes to dist/symbols/x86_64-<build ID>/Simpsons (same basename:
-# crash reports name the module, and port/crash_symbolize.py matches on it). The 32-bit build is not on the branch: hand
-# out port/package.sh's i386 tarball separately. Makes one commit on that branch; the user pushes.
-# usage: port/dist.sh [--no-build]     (--no-build: use the newest existing x86-64 bundle in dist/)
+# Commit a new x86-64 release to the dist-linux-x86_64 branch
+#
+# The branch is an orphan, so no source is reachable from it. It holds the stripped
+# `package.sh --64 --noble` bundle: SDL2 in lib/, ffmpeg and the rest in ffmpeg-libs.tar.xz
+# (unpacked by setup.sh on first run). The binary is renamed Simpsons; the unstripped copy goes
+# to dist/symbols/x86_64-<build ID>/ for crash_symbolize.py. The 32-bit tarball is shared separately.
+#
+# usage: port/dist.sh [--no-build]    (--no-build: reuse the newest x86-64 bundle in dist/)
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
@@ -32,20 +32,20 @@ ID=$(readelf -n "$SRC/srr2" | awk '/Build ID/ { print $3 }')
 mkdir -p "dist/symbols/x86_64-$ID"
 cp "$SRC/srr2" "dist/symbols/x86_64-$ID/Simpsons"
 
-# lib/: SDL2 and the bundled libraries it needs; everything else (ffmpeg and its codecs) into the tarball
+# SDL2 and its libraries stay in lib/, everything else goes in the tarball
 mkdir -p "$WT/lib"
 KEEP="libSDL2-2.0.so.0 $(LD_LIBRARY_PATH=$SRC/lib ldd "$SRC/lib/libSDL2-2.0.so.0" | awk -v d="$SRC/lib/" 'index($3, d) == 1 { print $1 }')"
 REST=
 for f in $(ls "$SRC/lib"); do
     if echo " $KEEP " | tr '\n' ' ' | grep -q " $f "; then cp "$SRC/lib/$f" "$WT/lib/"; else REST="$REST $f"; fi
 done
-# reproducible (fixed order, times and owners), so an unchanged set of libraries adds nothing to the branch
+# Reproducible, so unchanged libraries don't add a new blob to the branch
 tar -C "$SRC/lib" --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -cf - $REST | xz -9 -T1 > "$WT/ffmpeg-libs.tar.xz"
 
 cat > "$WT/setup.sh" <<'EOF'
 #!/bin/bash
-# Get the release ready to run: unpack ffmpeg-libs.tar.xz (the movie player's libraries) into lib/ and check that the
-# system has the graphics and windowing libraries the game needs. run.sh calls this on first start; safe to rerun.
+# Unpacks the movie libraries and checks for the system's graphics libraries.
+# run.sh calls this on first start; safe to rerun.
 HERE=$(cd "$(dirname "$0")" && pwd)
 if [ ! -e "$HERE/lib/.unpacked" ] || [ "$HERE/ffmpeg-libs.tar.xz" -nt "$HERE/lib/.unpacked" ]; then
     echo "Unpacking libraries..."
@@ -64,14 +64,14 @@ fi
 echo "Ready: ./run.sh \"/path/to/The Simpsons - Hit & Run\""
 EOF
 chmod +x "$WT/setup.sh"
-# run.sh: set up on first start
+# Run setup.sh on first start
 sed -i 's|^RUN=\$HERE/run$|[ -e "$HERE/lib/.unpacked" ] \&\& [ ! "$HERE/ffmpeg-libs.tar.xz" -nt "$HERE/lib/.unpacked" ] \|\| "$HERE/setup.sh" \|\| exit 1\n&|' "$WT/run.sh"
 grep -q setup.sh "$WT/run.sh" || { echo "run.sh: setup hook not inserted" >&2; exit 1; }
 sed -i 's|"\$HERE/srr2"|"$HERE/Simpsons"|' "$WT/run.sh"
 grep -qF '"$HERE/Simpsons"' "$WT/run.sh" && ! grep -q srr2 "$WT/run.sh" || { echo "run.sh: binary not renamed" >&2; exit 1; }
 
 cp port/dist_README.md "$WT/README.md"
-# run/ and the unpacked libraries are the player's; lib/'s own files are tracked regardless (added with -f)
+# Ignore the player's run/ and unpacked libraries (lib/'s own files are added with -f)
 printf '/run/\n/lib/\n' > "$WT/.gitignore"
 
 git -C "$WT" add -A
