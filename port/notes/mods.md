@@ -78,7 +78,11 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/
   BirdSound (`soundfxgameplaylogic.cpp` EVENT_PLAY_BIRD_SOUND, "null" none). MusicSamplingRate (`soundnucleus.cpp`).
   ForcedMusicRMSLevel: level number or path (docs don't say), queued once in `QueueMusicLevelLoad`,
   `UnloadRadmusicScript` keeps it. Debug Text mode not done.
-- Not done: CustomAnimationSetSupport, CustomBonusMissionSupport, CustomSkinPreviewAnimations,
+- CustomAnimationSetSupport: accepted, no effect. Undocumented (docs: "custom animation sets for characters", no
+  config). Custom sets already work where a script names one (`AddCharacter`, `AddNPCCharacterBonusMission`: any
+  `art\chars\<set>.cho` + `<set6>_a.p3d`; Futurama's fry set checked). Other NPCs/drivers/peds are hard-wired to "npd";
+  guess, unconfirmed: the hack makes an NPC use `<model>.cho` when present (Futurama ships leela.cho, Leela only ambient).
+- Not done: CustomBonusMissionSupport, CustomSkinPreviewAnimations,
   OverrideShaderParameters, CustomTriggerActions, HoverCarRefraction. Only the first mod's `Shaders/` is read.
 
 ## Test mods

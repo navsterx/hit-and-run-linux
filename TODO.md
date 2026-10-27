@@ -29,7 +29,6 @@ Order of attack: the character/animation hacks (what the larger total conversion
 in between. Hacks a mod requires but the port lacks are listed at startup (`mods:   not supported yet, ignored: ...`).
 
 #### Hacks not implemented (all required by the Futurama demo)
-- [ ] **CustomAnimationSetSupport**: animation sets for custom characters
 - [ ] **CustomBonusMissionSupport**: bonus missions beyond the game's own
 - [ ] **CustomTriggerActions**: new trigger volume actions
 - [ ] **CustomSkinPreviewAnimations**: animations in the clothes-shop preview

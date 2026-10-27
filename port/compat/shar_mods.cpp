@@ -76,7 +76,8 @@ const char* const SUPPORTED_HACKS[] = { "CustomFiles", "CustomLimits", "OggVorbi
                                         "CustomCarSupport", "IncreasedVideoResolutionSupport",
                                         "AdditionalScriptFunctionality", "CustomInteriorSupport", "DynamicTreeNodeEntityLimits", "CustomRoadBehaviour",
                                         "CustomLicenseScreenTime", "NoMainMenuCameraAnimations", "HUDMapIgnorePlayerHeight",
-                                        "CustomTrafficSupport", "CustomStatsTotals", "CustomAudioSupport" };
+                                        "CustomTrafficSupport", "CustomStatsTotals", "CustomAudioSupport",
+                                        "CustomAnimationSetSupport" };  // no-op: see port/notes/mods.md
 
 void Init( void );
 
