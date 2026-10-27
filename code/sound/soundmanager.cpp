@@ -1517,6 +1517,11 @@ void SoundManager::UnmuteNISPlayers()
     m_pSoundRenderMgr->GetTuner()->UnmuteNIS();
 }
 
+bool SoundManager::ModTriggerMusicEvent( const char* name )
+{
+    return m_musicPlayer != NULL && m_musicPlayer->ModTriggerEventByName( name );
+}
+
 //=============================================================================
 // SoundManager::RestartSupersprintMusic
 //=============================================================================

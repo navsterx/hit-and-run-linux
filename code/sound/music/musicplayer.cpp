@@ -37,11 +37,14 @@
 
 #include <interiors/interiormanager.h>
 
+#include <shar_modaudio.h>
+
 #include <radload/radload.hpp>
 
 //========================================
 // System Includes
 //========================================
+#include <stdlib.h>
 #include <string.h>
 
 #include <radmusic/radmusic.hpp>
@@ -305,6 +308,45 @@ static LocatorEvent::Event startingExteriorAmbiences[NUM_LEVELS] =
     LocatorEvent::AMBIENT_SOUND_PLACEHOLDER10,
     LocatorEvent::AMBIENT_SOUND_HALLOWEEN1
 };
+
+//
+// Linux port: Mod Launcher CustomAudioSupport replaces entries of the tables above
+//
+static AmbientEventList startingAmbience( int levelIndex, int missionIndex )
+{
+    return static_cast<AmbientEventList>(
+        shar_ModAudioMissionAmbience( levelIndex, missionIndex, startingAmbiences[levelIndex][missionIndex] ) );
+}
+
+static AmbientEventList startingExteriorAmbience( int levelIndex )
+{
+    int event = shar_ModAudioLevelAmbience( levelIndex, startingExteriorAmbiences[levelIndex] );
+    return static_cast<AmbientEventList>( AEVENT_TRIGGER_START + ( event - LocatorEvent::AMBIENT_SOUND_CITY ) );
+}
+
+// A mod's <Interior> music event (also for interiors the game doesn't know), else defaultEvent
+static MusicEventList interiorMusicEvent( tUID interiorID, MusicEventList defaultEvent )
+{
+    int count = shar_ModAudioInteriorCount();
+    for( int i = 0; i < count; i++ )
+    {
+        int musicEvent;
+        const char* name = shar_ModAudioInterior( i, &musicEvent );
+        if( tName::MakeUID( name ) == interiorID && musicEvent >= 0 && musicEvent < MEVENT_END_STANDARD_EVENTS )
+        {
+            if( getenv( "SHAR_MOD_LOG" ) != NULL )
+            {
+                fprintf( stderr, "mods: CustomAudioSupport: interior %s music event %d (game's %d)\n", name, musicEvent,
+                         defaultEvent );
+            }
+            return static_cast<MusicEventList>( musicEvent );
+        }
+    }
+    return defaultEvent;
+}
+
+// ForcedMusicRMSLevel: its music script is queued once and never unloaded
+static bool s_forcedMusicQueued = false;
 
 static int s_PostHitAndRunTimer = -99;
 
@@ -661,17 +703,17 @@ void MusicPlayer::HandleEvent( EventEnum id, void* pEventData )
                     levelIndex = calculateLevelIndex();
                     missionIndex = GetGameplayManager()->GetCurrentMissionIndex();
 
-                    if( startingAmbiences[levelIndex][missionIndex] == AEVENT_INTERIOR_HOUSE )
+                    if( startingAmbience( levelIndex, missionIndex ) == AEVENT_INTERIOR_HOUSE )
                     {
-                        m_currentAmbient = AEVENT_TRIGGER_START + ( startingExteriorAmbiences[calculateLevelIndex()] - LocatorEvent::AMBIENT_SOUND_CITY );
+                        m_currentAmbient = startingExteriorAmbience( calculateLevelIndex() );
                     }
                     else
                     {
-                        m_currentAmbient = startingAmbiences[levelIndex][missionIndex];
+                        m_currentAmbient = startingAmbience( levelIndex, missionIndex );
                     }
                     if( !inCar )
                     {
-                        turnAmbienceOn( startingAmbiences[levelIndex][missionIndex] );
+                        turnAmbienceOn( startingAmbience( levelIndex, missionIndex ) );
                     }
                 }
             }
@@ -709,7 +751,7 @@ void MusicPlayer::HandleEvent( EventEnum id, void* pEventData )
                 turnAmbienceOn( AEVENT_INTERIOR_KWIK_E_MART + interiorIndex );
                 if( !musicLockedOnForStage() )
                 {
-                    TriggerMusicEvent( interiorNameTable[interiorIndex].musicEvent );
+                    TriggerMusicEvent( interiorMusicEvent( GetInteriorManager()->GetInterior(), interiorNameTable[interiorIndex].musicEvent ) );
                 }
             }
             else if( !m_isInCar )
@@ -1172,6 +1214,17 @@ void MusicPlayer::QueueMusicLevelLoad( RenderEnums::LevelEnum level )
     char musicScriptName[100];
     int levelNum = level - RenderEnums::L1 + 1;
 
+    const char* forcedMusic = shar_ModAudioForcedMusicFile();
+    if( forcedMusic != NULL )
+    {
+        if( !s_forcedMusicQueued )
+        {
+            s_forcedMusicQueued = true;
+            GetLoadingManager()->AddRequest( FILEHANDLER_SOUND, forcedMusic, GMA_LEVEL_AUDIO );
+        }
+        return;
+    }
+
     //TODO:  Esan are we going to play special music here?
     if ( levelNum > RenderEnums::numLevels )
     {
@@ -1233,6 +1286,12 @@ void MusicPlayer::LoadRadmusicScript( const char* filename, SoundFileHandler* fi
 //=============================================================================
 void MusicPlayer::UnloadRadmusicScript()
 {
+    if( shar_ModAudioForcedMusicFile() != NULL && m_musicComposition != NULL )
+    {
+        // Linux port: Mod Launcher ForcedMusicRMSLevel keeps the one music script
+        return;
+    }
+
     if( NULL != m_musicPerformance  )
     {
         radmusic::performance_stop( m_musicPerformance );
@@ -1319,15 +1378,15 @@ void MusicPlayer::OnGameplayStart( bool playerInCar )
         levelIndex = calculateLevelIndex();
         missionIndex = GetGameplayManager()->GetCurrentMissionIndex();
 
-        if( startingAmbiences[levelIndex][missionIndex] == AEVENT_INTERIOR_HOUSE )
+        if( startingAmbience( levelIndex, missionIndex ) == AEVENT_INTERIOR_HOUSE )
         {
-            m_currentAmbient = AEVENT_TRIGGER_START + ( startingExteriorAmbiences[calculateLevelIndex()] - LocatorEvent::AMBIENT_SOUND_CITY );
+            m_currentAmbient = startingExteriorAmbience( calculateLevelIndex() );
         }
         else
         {
-            m_currentAmbient = startingAmbiences[levelIndex][missionIndex];
+            m_currentAmbient = startingAmbience( levelIndex, missionIndex );
         }
-        turnAmbienceOn( startingAmbiences[levelIndex][missionIndex] );
+        turnAmbienceOn( startingAmbience( levelIndex, missionIndex ) );
     }
 }
 
@@ -1421,7 +1480,8 @@ void MusicPlayer::OnStoreEnd()
         }
         else
         {
-            TriggerMusicEvent( interiorNameTable[calculateInteriorIndex( GetInteriorManager()->GetInterior() )].musicEvent );
+            TriggerMusicEvent( interiorMusicEvent( GetInteriorManager()->GetInterior(),
+                interiorNameTable[calculateInteriorIndex( GetInteriorManager()->GetInterior() )].musicEvent ) );
         }
     }
 }
@@ -2194,6 +2254,27 @@ void MusicPlayer::buildEventTables()
 // Return:      void 
 //
 //=============================================================================
+bool MusicPlayer::ModTriggerEventByName( const char* name )
+{
+    if( m_musicPerformance == NULL || CommandLineOptions::Get( CLO_NO_MUSIC ) )
+    {
+        return false;
+    }
+    unsigned int count = radmusic::performance_num_events( m_musicPerformance );
+    for( unsigned int i = 0; i < count; i++ )
+    {
+        char eventName[ 128 ];
+        eventName[ 0 ] = '\0';
+        radmusic::performance_event_name( m_musicPerformance, i, eventName, sizeof( eventName ) );
+        if( strcasecmp( eventName, name ) == 0 )
+        {
+            radmusic::performance_trigger_event( m_musicPerformance, i );
+            return true;
+        }
+    }
+    return false;
+}
+
 void MusicPlayer::triggerMusicMissionEventByName( radKey32* key )
 {
     unsigned int i;

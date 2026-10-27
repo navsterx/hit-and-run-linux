@@ -36,6 +36,9 @@
 #include <camera/supercamconstants.h>
 
 #include <memory/srrmemory.h>
+#ifdef RAD_LINUX
+#include <meta/modtriggeractions.h>
+#endif
 #else
 #include "supercam.h"
 #include "icamerashaker.h"
@@ -608,10 +611,19 @@ void SuperCam::SetCameraValues( unsigned int milliseconds,
 
     //This will be cool in the halloween level
     float oldTwist = mCamera->GetTwist();
-    if ( !rmt::Epsilon( mSCTwist, oldTwist, 0.001f ) )
+    float* twistTarget = &mSCTwist;
+#if defined( RAD_LINUX ) && !defined( WORLD_BUILDER )
+    // Linux port: Mod Launcher CustomTriggerActions TiltCamera, eased in like the game's own twist
+    float modTwist = mSCTwist + ModTriggerActions::CameraTilt( mPlayerID );
+    if ( modTwist != mSCTwist )
     {
-        AdjustAngles( &mSCTwist, &oldTwist, &mTwistDelta );
-        MotionCubic( &oldTwist, &mTwistDelta, mSCTwist, mTwistLag );
+        twistTarget = &modTwist;
+    }
+#endif
+    if ( !rmt::Epsilon( *twistTarget, oldTwist, 0.001f ) )
+    {
+        AdjustAngles( twistTarget, &oldTwist, &mTwistDelta );
+        MotionCubic( &oldTwist, &mTwistDelta, *twistTarget, mTwistLag );
     }
 
     mCamera->SetTwist( oldTwist );

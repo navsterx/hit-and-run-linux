@@ -39,6 +39,7 @@
 #include <mission/gameplaymanager.h>
 #ifdef RAD_LINUX
 #include <mission/modscript.h>    // Linux port: mods (AdditionalScriptFunctionality)
+#include <shar_modaudio.h>         // Linux port: mods (CustomAudioSupport)
 #endif
 
 //******************************************************************************
@@ -362,15 +363,25 @@ void SoundFXGameplayLogic::HandleEvent( EventEnum id, void* pEventData )
             // Pick the correct bird effect for the level
             //
             level = GetGameplayManager()->GetCurrentLevelIndex();
-            if( ( level == RenderEnums::L2 )
-                || ( level == RenderEnums::L5 ) )
             {
-                playSFXSound( "pigeon_takeoff", false );
-            }
-            else if( ( level == RenderEnums::L3 )
-                     || ( level == RenderEnums::L6 ) )
-            {
-                playSFXSound( "gull_takeoff", false );
+                // Linux port: Mod Launcher CustomAudioSupport BirdSound per level and mission
+                const char* birdSound = NULL;
+                if( ( level == RenderEnums::L2 )
+                    || ( level == RenderEnums::L5 ) )
+                {
+                    birdSound = "pigeon_takeoff";
+                }
+                else if( ( level == RenderEnums::L3 )
+                         || ( level == RenderEnums::L6 ) )
+                {
+                    birdSound = "gull_takeoff";
+                }
+                birdSound = shar_ModAudioBirdSound( level - RenderEnums::L1,
+                    GetGameplayManager()->GetCurrentMissionIndex(), birdSound );
+                if( birdSound != NULL )
+                {
+                    playSFXSound( birdSound, false );
+                }
             }
             break;
 

@@ -9,7 +9,7 @@ widescreen & ultrawide, high resolutions, anti-aliasing, anisotropic filtering, 
 from the disc: the folder holding `art/`, `scripts/` and the `.rcf` files.
 
 > **AI disclaimer.** Aspects of this port are written with the help of an AI coding
-> assistant (Claude).
+> assistant (Claude). Builds are always manually playtested for bugs and crashes.
 
 | Original (2003) | This project |
 |---|---|
@@ -22,7 +22,7 @@ from the disc: the folder holding `art/`, `scripts/` and the `.rcf` files.
 
 ## Requirements
 
-A 64-bit (x86-64) Linux as new as Ubuntu 24.04 / Linux Mint 22 (glibc 2.38 or newer) and a desktop. The
+A 64-bit (x86-64) Linux as new as Ubuntu 24.04 / Linux Mint 22 (glibc 2.38 or newer). The
 graphics driver and X11 / Wayland libraries come from your system; everything else is included.
 
 ## Quick start
@@ -113,7 +113,7 @@ generated file.
 |---|---|
 | `code/` | The game |
 | `libs/` | Radical's libraries: Pure3D renderer, radcore, radsound, radmovie, Scrooby UI and more |
-| `build/` | The original Visual Studio projects, read by the generator |
+| `build/` | The original Visual Studio projects (dev branch only) |
 | `port/` | Everything added for the port: build generator, platform layer, mod support, scripts |
 | `shaders/` | Example shaders and their documentation |
 | `mod/tools/` | Modding tools (`.lmlm` extractor) |
@@ -157,9 +157,16 @@ misbehaves, report the mod's name and version along with `run/logs/last-session.
 
 | Platform | Status |
 |---|---|
-| Linux x86-64 (default) | **Boots and plays** (tested: movies, front end, levels, races, interiors, the bonus game, mods); long play sessions in progress |
+| Linux x86-64 (default) | **Main missions fully playtested** All story missions completed with no crashes. Street races in progress (L1 -> L4 tested so far) |
 | Linux x86 (32-bit, legacy) | **Playable.** Tested through Level 7 |
 | Windows x64 | Planned |
 | macOS (Apple silicon / Intel) | Planned |
 | Android / handhelds | Possible later: the renderer and input layers already allow it |
 
+## Credits
+
+- [Donut Team](https://donutteam.com/), for Lucas' Simpsons Hit & Run Mod Launcher and their years of work on
+  modding tools, documentation and research into the game. The mod support in this port follows the format and
+  hacks their launcher defined.
+- [The Mod Bakery](https://modbakery.donutteam.com/), and the modders who publish there, for hosting and keeping
+  the game's mods available over the years.

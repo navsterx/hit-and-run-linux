@@ -52,7 +52,8 @@ LINUX_EXTRA = {
              "code/mission/modscript.cpp",                          # mods' script commands (AdditionalScriptFunctionality)
              "code/mission/objectives/modobjectives.cpp",
              "code/mission/conditions/modconditions.cpp",
-             "code/mission/charactersheet/modstatstotals.cpp"],     # CustomStatsTotals
+             "code/mission/charactersheet/modstatstotals.cpp",      # CustomStatsTotals
+             "code/meta/modtriggeractions.cpp"],                    # CustomTriggerActions
     "radmovie": ["libs/radmovie/src/linux/binkffmpeg.cpp"],     # the Bink SDK subset radmovie uses, on FFmpeg
     "radsound": ["libs/radsound/src/hal/linux/linuxhal.cpp",
                  "libs/radsound/src/hal/win32/bufferloader.cpp",          # platform-neutral, reused as is
@@ -205,7 +206,7 @@ def main():
     out.append("# Win32 API subset implemented on POSIX (threads/sync/timers); linked after the libraries using it")
     out.append(f"add_library(shar_compat STATIC {COMPAT_DIR}/win32_threads.cpp {COMPAT_DIR}/win32_misc.cpp "
                f"{COMPAT_DIR}/pddi_heap.cpp {COMPAT_DIR}/shar_mods.cpp {COMPAT_DIR}/shar_modlua.cpp "
-               f"{COMPAT_DIR}/shar_modshops.cpp {COMPAT_DIR}/shar_modcars.cpp {COMPAT_DIR}/shar_modinteriors.cpp {COMPAT_DIR}/shar_modroads.cpp {COMPAT_DIR}/shar_modtraffic.cpp "
+               f"{COMPAT_DIR}/shar_modshops.cpp {COMPAT_DIR}/shar_modcars.cpp {COMPAT_DIR}/shar_modinteriors.cpp {COMPAT_DIR}/shar_modroads.cpp {COMPAT_DIR}/shar_modaudio.cpp {COMPAT_DIR}/shar_modtraffic.cpp "
                f"{COMPAT_DIR}/shar_crash.cpp)")
     out.append("# the renderer allocates from its own heap, as pddidx8.dll did on Windows (port/compat/pddi_heap.cpp)")
     # operator new's mangled name carries its size type: unsigned int (j) on 32-bit, unsigned long (m) on 64-bit

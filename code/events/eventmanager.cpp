@@ -24,6 +24,9 @@
 #include <events/eventmanager.h>
 #include <events/eventlistener.h>
 #include <memory/srrmemory.h>
+#ifdef RAD_LINUX
+#include <meta/modtriggeractions.h>
+#endif
 
 //******************************************************************************
 //
@@ -248,6 +251,14 @@ void EventManager::RemoveAll( EventListener* pListener )
 //==============================================================================
 int EventManager::TriggerEvent( EventEnum id, void* pEventData ) const
 {
+#ifdef RAD_LINUX
+    // Linux port: Mod Launcher CustomTriggerActions bound to the event; PreventDefault drops it
+    if( ModTriggerActions::OnEvent( id, pEventData ) )
+    {
+        return 0;
+    }
+#endif
+
     const ListenerVector& listeners = mListenerMap[id];
     
     ListenerVector::const_iterator iter = listeners.begin();

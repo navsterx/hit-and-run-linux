@@ -202,6 +202,10 @@ class MusicPlayer : public EventListener
         //
         float GetVolume();
         void SetVolume( float volume );
+
+        // Linux port: a music event of the current composition by name, case-insensitive (Mod Launcher
+        // CustomTriggerActions TriggerMusicEvent); false when it has none of that name
+        bool ModTriggerEventByName( const char* name );
         float GetAmbienceVolume();
         void SetAmbienceVolume( float volume );
 

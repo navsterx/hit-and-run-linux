@@ -76,7 +76,9 @@ const char* const SUPPORTED_HACKS[] = { "CustomFiles", "CustomLimits", "OggVorbi
                                         "CustomCarSupport", "IncreasedVideoResolutionSupport",
                                         "AdditionalScriptFunctionality", "CustomInteriorSupport", "DynamicTreeNodeEntityLimits", "CustomRoadBehaviour",
                                         "CustomLicenseScreenTime", "NoMainMenuCameraAnimations", "HUDMapIgnorePlayerHeight",
-                                        "CustomTrafficSupport", "CustomStatsTotals" };
+                                        "CustomTrafficSupport", "CustomStatsTotals", "CustomAudioSupport",
+                                        "CustomAnimationSetSupport",  // no-op: see port/notes/mods.md
+                                        "CustomTriggerActions" };
 
 void Init( void );
 
@@ -1699,7 +1701,8 @@ extern "C" int shar_ModLimitBlank( const char* section, const char* key )
     return l != NULL && l->blank;
 }
 
-extern "C" char* shar_ModConfig( const char* name )
+// The first mod's config file name, as shar_ModConfig; *from gets that mod.
+static char* ConfigText( const char* name, const Mod** from )
 {
     pthread_once( &s_Once, Init );
     char key[ PATH_MAX ];
@@ -1713,10 +1716,57 @@ extern "C" char* shar_ModConfig( const char* name )
             {
                 fprintf( stderr, "mods: %s: %s\n", g_Mods[ i ].name, name );
             }
+            *from = &g_Mods[ i ];
             return text;
         }
     }
     return NULL;
+}
+
+extern "C" char* shar_ModConfig( const char* name )
+{
+    const Mod* from;
+    return ConfigText( name, &from );
+}
+
+extern "C" int shar_ModConfigIni( const char* file, SharModIniCallback cb, void* user, const char** modName )
+{
+    const Mod* from = NULL;
+    char* text = ConfigText( file, &from );
+    if ( text == NULL )
+    {
+        return 0;
+    }
+    if ( modName != NULL )
+    {
+        *modName = from->name;
+    }
+    ParseIni( text, cb, user );
+    free( text );
+    return 1;
+}
+
+extern "C" int shar_ModSetting( const char* modName, const char* setting, char* out, size_t size )
+{
+    pthread_once( &s_Once, Init );
+    for ( int i = 0; i < g_NumMods; i++ )
+    {
+        const Mod* mod = &g_Mods[ i ];
+        if ( strcasecmp( mod->name, modName ) != 0 )
+        {
+            continue;
+        }
+        for ( int s = 0; s < mod->numSettings; s++ )
+        {
+            if ( strcasecmp( mod->settings[ s ].name, setting ) == 0 )
+            {
+                snprintf( out, size, "%s", mod->settings[ s ].value ? mod->settings[ s ].value : "" );
+                return 1;
+            }
+        }
+        return 0;
+    }
+    return 0;
 }
 
 namespace

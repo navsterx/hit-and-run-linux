@@ -344,6 +344,13 @@ CHudMap::~CHudMap()
 //
 //===========================================================================
 void
+CHudMap::ModSetMapDrawable( tDrawable* drawable )
+{
+    rAssert( m_p3dMap != NULL );
+    m_p3dMap->SetDrawable( drawable );
+}
+
+void
 CHudMap::SetCameraTarget( ISuperCamTarget* target )
 {
     rAssert( m_hudMapCam );

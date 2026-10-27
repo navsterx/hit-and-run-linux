@@ -118,6 +118,9 @@ public:
     CHudMap( Scrooby::Page* pPage, int playerID, const char* p3dFile = NULL );
     virtual ~CHudMap();
 
+    // Linux port: another drawable for the map (Mod Launcher CustomTriggerActions ChangeHUDMapDrawable)
+    void ModSetMapDrawable( tDrawable* drawable );
+
     // Camera Target must be set before doing anything else!
     //
     void SetCameraTarget( ISuperCamTarget* target );
