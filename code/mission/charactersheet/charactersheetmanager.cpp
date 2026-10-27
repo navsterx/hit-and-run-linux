@@ -336,6 +336,12 @@ MissionRecord* CharacterSheetManager::QueryStreetRaceStatus(RenderEnums::LevelEn
         return (GetStreetRaceRecord(level,name) );
     }
 
+// Linux port: declared but never defined in the original (Mod Launcher CustomTriggerActions uses it)
+MissionRecord* CharacterSheetManager::QueryStreetRaceStatus(RenderEnums::LevelEnum level, int index)
+    {
+        return (GetStreetRaceRecord(level,index) );
+    }
+
     MissionRecord* CharacterSheetManager::QueryBonusMissionStatus( RenderEnums::LevelEnum level, char* name )
     {
         return GetBonusMissionRecord( level, name );        

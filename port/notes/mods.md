@@ -78,12 +78,22 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/
   BirdSound (`soundfxgameplaylogic.cpp` EVENT_PLAY_BIRD_SOUND, "null" none). MusicSamplingRate (`soundnucleus.cpp`).
   ForcedMusicRMSLevel: level number or path (docs don't say), queued once in `QueueMusicLevelLoad`,
   `UnloadRadmusicScript` keeps it. Debug Text mode not done.
+- CustomTriggerActions (`code/meta/modtriggeractions.cpp`, ini walked by `shar_ModConfigIni`, two passes so names
+  resolve forwards): hooks `TriggerVolume::Trigger` (PreventDefault: the locator never hears enter or exit),
+  `EventManager::TriggerEvent` (bitset, PreventDefault drops it), `SuperCam::SetCameraValues` (tilt added to the
+  `mSCTwist` target: eases in like L7's dutch angle; degrees). Actions run once per enter (death volumes re-enter every
+  frame: `s_Inside` per locator+playerID). playerID >= MAX_PLAYERS = AI car (`TriggerVolumeTracker::GetAI`; only
+  EVENT locators by default). Mission condition positional: story `GetCurrentMissionIndex` (+1 outside L1), Mission
+  without SundayDrive = main part; BonusMission N = bonus slot N-1 (21-25 accepted). Unlocked = mission select's rule.
+  Music by name via `MusicPlayer::ModTriggerEventByName` (radmusic event names). HUD map: `CHudMap::ModSetMapDrawable`.
+  `CharacterSheetManager::QueryStreetRaceStatus(level, int)` was declared only: defined. Event conditions have no
+  entity (entity conditions false). Debug Text mode not done.
 - CustomAnimationSetSupport: accepted, no effect. Undocumented (docs: "custom animation sets for characters", no
   config). Custom sets already work where a script names one (`AddCharacter`, `AddNPCCharacterBonusMission`: any
   `art\chars\<set>.cho` + `<set6>_a.p3d`; Futurama's fry set checked). Other NPCs/drivers/peds are hard-wired to "npd";
   guess, unconfirmed: the hack makes an NPC use `<model>.cho` when present (Futurama ships leela.cho, Leela only ambient).
 - Not done: CustomBonusMissionSupport, CustomSkinPreviewAnimations,
-  OverrideShaderParameters, CustomTriggerActions, HoverCarRefraction. Only the first mod's `Shaders/` is read.
+  OverrideShaderParameters, HoverCarRefraction. Only the first mod's `Shaders/` is read.
 
 ## Test mods
 - Futurama demo 0.1.3: L1 missions m0-m4 pass with autopass (not hand-played); shops/booth user-tested; booths FB001-6.

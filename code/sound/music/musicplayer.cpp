@@ -2254,6 +2254,27 @@ void MusicPlayer::buildEventTables()
 // Return:      void 
 //
 //=============================================================================
+bool MusicPlayer::ModTriggerEventByName( const char* name )
+{
+    if( m_musicPerformance == NULL || CommandLineOptions::Get( CLO_NO_MUSIC ) )
+    {
+        return false;
+    }
+    unsigned int count = radmusic::performance_num_events( m_musicPerformance );
+    for( unsigned int i = 0; i < count; i++ )
+    {
+        char eventName[ 128 ];
+        eventName[ 0 ] = '\0';
+        radmusic::performance_event_name( m_musicPerformance, i, eventName, sizeof( eventName ) );
+        if( strcasecmp( eventName, name ) == 0 )
+        {
+            radmusic::performance_trigger_event( m_musicPerformance, i );
+            return true;
+        }
+    }
+    return false;
+}
+
 void MusicPlayer::triggerMusicMissionEventByName( radKey32* key )
 {
     unsigned int i;

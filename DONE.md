@@ -94,5 +94,6 @@ What the port does so far. User-facing overview: [`README.md`](README.md); porti
 - [x] CustomAudioSupport: every setting (mission/level ambience, interior music, BirdSound, MusicSamplingRate,
   ForcedMusicRMSLevel)
 - [x] CustomStatsTotals: every setting (scrapbook, level progress, mission select, completion percentages)
+- [x] CustomTriggerActions: every action, condition and trigger type, game event bindings, PreventDefault
 - [x] CustomAnimationSetSupport: accepted with no effect (undocumented; custom sets already load where scripts name one)
 - [x] Futurama: Hit & Run demo plays Level 1 with its shops and phone booth; missions m0-m4 run through (autopass)

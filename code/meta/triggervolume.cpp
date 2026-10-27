@@ -29,6 +29,9 @@
 #include <meta/triggerlocator.h>
 #include <meta/locator.h>
 #include <meta/triggervolumetracker.h>
+#ifdef RAD_LINUX
+#include <meta/modtriggeractions.h>
+#endif
 #else
 #include "triggervolume.h"
 #include "triggerlocator.h"
@@ -97,6 +100,13 @@ void TriggerVolume::Trigger( unsigned int playerID, bool bActive )
 {
     rAssert( mLocator != NULL );
 
+#if defined( RAD_LINUX ) && !defined( WORLD_BUILDER )
+    // Linux port: Mod Launcher CustomTriggerActions; PreventDefault keeps the locator from seeing it
+    if( ModTriggerActions::OnTrigger( this, mLocator, playerID, bActive ) )
+    {
+        return;
+    }
+#endif
     mLocator->Trigger( playerID, bActive );
 }
 

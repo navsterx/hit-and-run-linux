@@ -185,6 +185,9 @@ class SoundManager : public EventListener,
         //
         void RestartSupersprintMusic();
 
+        // Linux port: a music event of the current composition by name (MusicPlayer::ModTriggerEventByName)
+        bool ModTriggerMusicEvent( const char* name );
+
         // Surround sound control
         void SetSoundMode( SoundMode mode );
         SoundMode GetSoundMode();

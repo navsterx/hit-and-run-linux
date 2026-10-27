@@ -7,7 +7,8 @@
  * CustomFiles.lua), OggVorbisSupport (x.ogg serves x.rsd), CustomLimits (only the limits wired up through
  * shar_ModLimit); read by the game through shar_ModConfig: CustomShopSupport (shar_modshops.h), CustomCarSupport (shar_modcars.h),
  * CustomDialogueCharacterCodes (dialogline.cpp, dialoglist.cpp), CustomText (guitextbible.cpp; Language setting), 3DPhoneBoothPreviewSupport (guiscreenphonebooth.cpp),
- * CustomInteriorSupport (shar_modinteriors.h), CustomRoadBehaviour (shar_modroads.h), CustomAudioSupport (shar_modaudio.h);
+ * CustomInteriorSupport (shar_modinteriors.h), CustomRoadBehaviour (shar_modroads.h), CustomAudioSupport (shar_modaudio.h),
+ * CustomTriggerActions (code/meta/modtriggeractions.h);
  * DynamicTreeNodeEntityLimits (WorldScene).
  * Other hacks a mod's Meta.ini requires are reported at startup and ignored. Mod settings are
  * their Meta.ini defaults unless ModSettings.ini in the game dir sets them ([InternalName] Name=value).
@@ -65,6 +66,16 @@ int shar_ModLimitBlank(const char* section, const char* key);
 /* A config file in a mod's root folder ("CustomShopSupport.xml"), from the first mod that has one, as malloc'd
  * NUL-terminated text the caller frees; NULL when no mod has it. */
 char* shar_ModConfig(const char* name);
+
+/* Walks the config file shar_ModConfig(file) would return, in file order, repeated sections and keys included:
+ * cb(section, NULL, NULL, user) where a section starts, cb(section, key, value, user) for each key=value.
+ * *modName (when not NULL) gets the InternalName of the mod it came from. 0 when no mod has the file. */
+typedef void ( *SharModIniCallback )( const char* section, const char* key, const char* value, void* user );
+int shar_ModConfigIni(const char* file, SharModIniCallback cb, void* user, const char** modName);
+
+/* A mod's setting by InternalName (case-insensitive): its ModSettings.ini value, else the Meta.ini default, copied
+ * to out; 1 if the mod has it. */
+int shar_ModSetting(const char* modName, const char* setting, char* out, size_t size);
 
 /* A value from a config file shar_ModConfig(file) would return ([section] key=value, case-insensitive): copied to out,
  * 1 if found; the int form returns defaultValue when it is missing or blank. */
