@@ -4,6 +4,7 @@
 #include <main/commandlineoptions.h>
 #include <memory/srrmemory.h>
 #include <radmusic/radmusic.hpp>
+#include <shar_modaudio.h>
 #include <memory/srrmemory.h>
 
 namespace Sound
@@ -370,7 +371,8 @@ void SoundNucleusInitialize( radMemoryAllocator alloc )
         sgDesc[ i ].buffered_data_source_size_in_ms = STREAM_BUFFERED_DATA_SOURCE_SIZE_MS;
         sgDesc[ i ].buffered_data_source_space      = STREAM_BUFFERED_DATA_SOURCE_MEMORY_SPACE;     
         sgDesc[ i ].channels                        = MUSIC_NUM_CHANNELS;
-        sgDesc[ i ].sampling_rate                   = MUSIC_SAMPLING_RATE;
+        // Linux port: Mod Launcher CustomAudioSupport MusicSamplingRate
+        sgDesc[ i ].sampling_rate                   = shar_ModAudioMusicSamplingRate( MUSIC_SAMPLING_RATE );
         sgDesc[ i ].stream_buffer_size_in_ms        = STREAM_BUFFER_SIZE_MS;
         sgDesc[ i ].use_buffered_data_source        = CommandLineOptions::Get( CLO_FIREWIRE ) ? false : STREAM_USE_BUFFERED_DATA_SOURCES;
     }

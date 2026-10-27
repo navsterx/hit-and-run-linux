@@ -72,7 +72,13 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/
   SetHitAndRunDecayInterior corrected only when hack required.
 - CustomStatsTotals (`charactersheet/modstatstotals.cpp`): totals for scrapbook, pause progress, mission select,
   `QueryPercent*`; defaults reproduce original (100.3% on a complete save).
-- Not done: CustomAnimationSetSupport, CustomAudioSupport, CustomBonusMissionSupport, CustomSkinPreviewAnimations,
+- CustomAudioSupport (`shar_modaudio.cpp`; `musicplayer.cpp` startingAmbience/startingExteriorAmbience/
+  interiorMusicEvent): Mission StartAmbienceEventIndex = AmbientEventList (76 = AEVENT_INTERIOR_HOUSE -> level's);
+  Level's = LocatorEvent (AMBIENT_SOUND_CITY 7); Interior MusicEventIndex = MusicEventList, also unknown interiors.
+  BirdSound (`soundfxgameplaylogic.cpp` EVENT_PLAY_BIRD_SOUND, "null" none). MusicSamplingRate (`soundnucleus.cpp`).
+  ForcedMusicRMSLevel: level number or path (docs don't say), queued once in `QueueMusicLevelLoad`,
+  `UnloadRadmusicScript` keeps it. Debug Text mode not done.
+- Not done: CustomAnimationSetSupport, CustomBonusMissionSupport, CustomSkinPreviewAnimations,
   OverrideShaderParameters, CustomTriggerActions, HoverCarRefraction. Only the first mod's `Shaders/` is read.
 
 ## Test mods

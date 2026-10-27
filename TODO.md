@@ -25,11 +25,10 @@ Every mission of every level is done (see DONE.md). Left:
 - [ ] Missing-data tolerance where it is cheap (a missing `art\wrench.p3d` is handled: its icons draw nothing)
 
 ### Mods
-Order of attack: CustomAudioSupport, then the character/animation hacks (what the larger total conversions use); the small cosmetic hacks are quick wins
+Order of attack: the character/animation hacks (what the larger total conversions use); the small cosmetic hacks are quick wins
 in between. Hacks a mod requires but the port lacks are listed at startup (`mods:   not supported yet, ignored: ...`).
 
 #### Hacks not implemented (all required by the Futurama demo)
-- [ ] **CustomAudioSupport**: new sounds and music
 - [ ] **CustomAnimationSetSupport**: animation sets for custom characters
 - [ ] **CustomBonusMissionSupport**: bonus missions beyond the game's own
 - [ ] **CustomTriggerActions**: new trigger volume actions
@@ -64,6 +63,8 @@ in between. Hacks a mod requires but the port lacks are listed at startup (`mods
   interiors (doors listed in CLAUDE.md), traffic on its bridges (Road006/Road0061), its warp missions
 - [ ] **Traffic groups**: UseTrafficGroup on a mission restart / selection, SetCheckpointTrafficGroup on a retry
   (SetStageTrafficGroup and the slot model swaps were run with a test copy of the Futurama demo)
+- [ ] **CustomAudioSupport** in play: the Futurama demo's mission ambience and a test mod's ForcedMusicRMSLevel were
+  checked in logs only; BirdSound and <Interior> music not triggered yet
 - [ ] **Raised CustomLimits** pushed past the game's own values in play (cars, stages, trigger volumes, ...): so far
   only checked that a mod raising them all loads and quits cleanly
 

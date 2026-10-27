@@ -91,5 +91,7 @@ What the port does so far. User-facing overview: [`README.md`](README.md); porti
 - [x] 3DPhoneBoothPreviewSupport (all settings)
 - [x] AdditionalScriptFunctionality: what the Futurama demo uses (see To do for the rest)
 - [x] CustomCarSupport: every setting ([FakeWheel] CopySkidMarks read, not drawn)
+- [x] CustomAudioSupport: every setting (mission/level ambience, interior music, BirdSound, MusicSamplingRate,
+  ForcedMusicRMSLevel)
 - [x] CustomStatsTotals: every setting (scrapbook, level progress, mission select, completion percentages)
 - [x] Futurama: Hit & Run demo plays Level 1 with its shops and phone booth; missions m0-m4 run through (autopass)
