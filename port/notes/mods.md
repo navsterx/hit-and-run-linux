@@ -105,7 +105,9 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/
 - OverrideShaderParameters (`shar_modshaders.cpp`, end of `tShaderLoader::LoadObject`): type from the parameter name
   (pddishade.hpp table in the .cpp; unlisted = int). DIFF also sets AMBI unless AMBI is given (as the loader).
   Only shaders loaded from files; 2SID draws nothing different (culling off). Checked: docs' red famil_v*.
-- Not done: HoverCarRefraction (a mod). Only the first mod's `Shaders/` is read.
+- Not done: HoverCarRefraction (a mod).
+- Material shaders: every mod's `Shaders/materials.ini` (`shar_ModConfigFolderNth`), after the user's, in load
+  order; a mod's files are named `<InternalName>:<file>` so same-named files in two mods stay apart.
 
 ## Test mods
 - Futurama demo 0.1.3: L1 missions m0-m4 pass with autopass (not hand-played); shops/booth user-tested; booths FB001-6.

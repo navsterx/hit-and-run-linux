@@ -13,8 +13,9 @@
 #include <strings.h>
 #include <sys/stat.h>
 
-// port/compat/shar_mods.h: the files in the first mod's root subfolder that has any
-extern "C" int shar_ModConfigFolder(const char* folder, char** texts, size_t* sizes, char** names, int max);
+// port/compat/shar_mods.h: the files in the nth mod's root subfolder that has any
+extern "C" int shar_ModConfigFolderNth(const char* folder, int nth, char** texts, size_t* sizes, char** names, int max,
+                                       const char** modName);
 
 const int MAX_RULES = 256;
 const int MAX_FILES = pglMaxCustomPrograms;
@@ -32,7 +33,7 @@ struct Rule
 
 struct ShaderFile
 {
-    char name[300];             // the user's path, or "mod:<file>"
+    char name[300];             // the user's path, or "<mod>:<file>"
     char path[600];             // on disk (user files), "" for a mod's
     time_t mtime;
     int slot;                   // pipeline program slot, -1 when it does not build
@@ -110,8 +111,10 @@ static int AddFile(pglPipeline* pipeline, const char* name, const char* path, co
 
 // materials.ini: "[types]", "[files]" and "[materials]" sections of "pattern = file" lines; '#' or ';' starts a
 // comment.
-// files[] / texts[] are a mod's Shaders/ folder (NULL for the user's folder, whose files are read from disk).
-static void ParseRules(pglPipeline* pipeline, char* text, const char* source, char** names, char** texts, int count)
+// files[] / texts[] are the mod's Shaders/ folder (mod and names NULL for the user's folder, whose files are read
+// from disk).
+static void ParseRules(pglPipeline* pipeline, char* text, const char* source, const char* mod, char** names,
+                       char** texts, int count)
 {
     int kind = RULE_TYPE;
     bool inSection = false;
@@ -173,7 +176,7 @@ static void ParseRules(pglPipeline* pipeline, char* text, const char* source, ch
             else if(*file)
             {
                 char name[300];
-                snprintf(name, sizeof(name), "mod:%s", file);
+                snprintf(name, sizeof(name), "%s:%s", mod, file);
                 const char* shader = NULL;
                 for(int i = 0; i < count; i++)
                 {
@@ -203,24 +206,32 @@ static void Load(pglPipeline* pipeline)
     char* text = ReadFile(s_iniPath);
     if(text)
     {
-        ParseRules(pipeline, text, s_iniPath, NULL, NULL, 0);
+        ParseRules(pipeline, text, s_iniPath, NULL, NULL, NULL, 0);
         free(text);
     }
 
-    // then the mod's Shaders/ folder
-    char* texts[MAX_MOD_FILES];
-    char* names[MAX_MOD_FILES];
-    size_t sizes[MAX_MOD_FILES];
-    int count = shar_ModConfigFolder("Shaders", texts, sizes, names, MAX_MOD_FILES);
-    for(int i = 0; i < count; i++)
+    // then each mod's Shaders/ folder, in load order: an earlier mod's rules win
+    for(int nth = 0; ; nth++)
     {
-        if(strcasecmp(names[i], "materials.ini") == 0)
-            ParseRules(pipeline, texts[i], "mod Shaders/materials.ini", names, texts, count);
-    }
-    for(int i = 0; i < count; i++)
-    {
-        free(texts[i]);
-        free(names[i]);
+        char* texts[MAX_MOD_FILES];
+        char* names[MAX_MOD_FILES];
+        size_t sizes[MAX_MOD_FILES];
+        const char* mod = NULL;
+        int count = shar_ModConfigFolderNth("Shaders", nth, texts, sizes, names, MAX_MOD_FILES, &mod);
+        if(count == 0)
+            break;
+        char source[300];
+        snprintf(source, sizeof(source), "%s Shaders/materials.ini", mod);
+        for(int i = 0; i < count; i++)
+        {
+            if(strcasecmp(names[i], "materials.ini") == 0)
+                ParseRules(pipeline, texts[i], source, mod, names, texts, count);
+        }
+        for(int i = 0; i < count; i++)
+        {
+            free(texts[i]);
+            free(names[i]);
+        }
     }
 
     if(s_ruleCount)

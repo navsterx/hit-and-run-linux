@@ -48,7 +48,7 @@ GL pddi was never finished against D3D8 (shipped game used pddidx8): when someth
   depth-weighted. 0.27 ms at 1080p (RTX 5060). Tonemap: LDR widen x/(1-0.6x) + ACES/Hable/Reinhard; LUTs ReShade 1024x32.
 - Materials (`glcustom.cpp`, `shaders/materials.ini`): [types] (pddi shader name, `pglMat::SetTypeName`), [files]
   (chunk file name, '/'-separated, case as opened), [materials] (tShader name via RAD_LINUX hook in p3d/shader.cpp ->
-  `pglSetMaterialName`); fnmatch -> GLSL defining `vec4 ShadeMaterial()`. User rules, then first mod's `Shaders/`.
+  `pglSetMaterialName`); fnmatch -> GLSL defining `vec4 ShadeMaterial()`. User rules, then each mod's `Shaders/`.
   Up to 32 program slots (`BuildCustomProgram`); prelude: StandardColour, BaseTexture, LightVector, FinishFragment.
   Up to 4 passes per rule (`GetPasses`; DrawPrimBuffer loops as D3D8). `MaterialVertex` -> vertex stage.
   `#pragma shar_cull none`. outline.glsl keeps shells by normal (winding unreliable). World mostly unlit, no normals.

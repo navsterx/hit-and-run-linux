@@ -48,7 +48,6 @@ in between. Hacks a mod requires but the port lacks are listed at startup (`mods
   nothing in this source (64 clip, 9 stream players); needs the retail behaviour. Values up to 64/9 fit already
 - [ ] **CustomRoadBehaviour UTurnTolerance**: undocumented, logged and ignored
 - [ ] **CustomCarSupport [FakeWheel] CopySkidMarks**: read, not drawn (the skid mark generator has four wheels)
-- [ ] **Material shaders** from more than the first mod's `Shaders/` folder
 
 #### Checks in play (so far only automated runs and screenshots)
 - [ ] **Futurama** Level 1 missions by hand: m1-m4 and bm1 (kicking the pawn in m2, the wasps in m3, the speed

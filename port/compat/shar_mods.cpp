@@ -1819,6 +1819,12 @@ static const Mod* s_FolderMod = NULL;   // the mod the last shar_ModConfigFolder
 
 extern "C" int shar_ModConfigFolder( const char* folder, char** texts, size_t* sizes, char** names, int max )
 {
+    return shar_ModConfigFolderNth( folder, 0, texts, sizes, names, max, NULL );
+}
+
+extern "C" int shar_ModConfigFolderNth( const char* folder, int nth, char** texts, size_t* sizes, char** names, int max,
+                                        const char** modName )
+{
     pthread_once( &s_Once, Init );
     char key[ PATH_MAX ];
     ModNormalise( folder, key, sizeof( key ) );
@@ -1875,9 +1881,22 @@ extern "C" int shar_ModConfigFolder( const char* folder, char** texts, size_t* s
                 }
             }
         }
+        if ( count > 0 && nth-- > 0 )
+        {
+            for ( int f = 0; f < count; f++ )
+            {
+                free( texts[ f ] );
+                free( names[ f ] );
+            }
+            count = 0;
+        }
         if ( count > 0 )
         {
             s_FolderMod = mod;
+            if ( modName != NULL )
+            {
+                *modName = mod->name;
+            }
             return count;
         }
     }

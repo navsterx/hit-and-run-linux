@@ -87,6 +87,9 @@ int shar_ModConfigInt(const char* file, const char* section, const char* key, in
  * (malloc'd, NUL-terminated after sizes[i] bytes, which may include zeros, e.g. UTF-16) and file names (malloc'd),
  * all for the caller to free. Returns the count. */
 int shar_ModConfigFolder(const char* folder, char** texts, size_t* sizes, char** names, int max);
+/* The same from the nth mod (0: first, in load order) that has any; modName (may be NULL) gets that mod's name. */
+int shar_ModConfigFolderNth(const char* folder, int nth, char** texts, size_t* sizes, char** names, int max,
+                            const char** modName);
 
 /* The Language setting (ModSettings.ini [InternalName] Language=..., the Mod Launcher's choice among a mod's
  * CustomText files by their Title) of the mod shar_ModConfigFolder(folder) reads from; NULL when not set. */
