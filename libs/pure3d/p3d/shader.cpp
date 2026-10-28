@@ -12,7 +12,66 @@
 #include <string.h>
 
 #ifdef RAD_LINUX
+#include <shar_modshaders.h>
 void pglSetMaterialName(pddiShader* shader, const char* name, const char* file);     // pddi/gl/glmat.cpp
+
+// Linux port: mods' OverrideShaderParameters.xml (port/compat/shar_modshaders.h), as the shader loads
+static void ApplyModShaderOverrides(tShader* shader, const char* name, tEntityStore* store)
+{
+    SharModShaderParam params[32];
+    int count = shar_ModShaderOverrides(name, params, 32);
+    bool ambient = false;
+    const pddiColour* diffuse = NULL;
+    pddiColour diffuseColour;
+    for(int i = 0; i < count; i++)
+    {
+        const SharModShaderParam& p = params[i];
+        if(p.param == PDDI_SP_AMBIENT)
+            ambient = true;
+        if(!p.hasValue)
+            continue;
+        switch(p.type)
+        {
+            case SHAR_SHADERPARAM_INT:
+                shader->SetInt(p.param, p.intValue);
+                break;
+            case SHAR_SHADERPARAM_FLOAT:
+                shader->SetFloat(p.param, p.floatValue);
+                break;
+            case SHAR_SHADERPARAM_COLOUR:
+                shader->SetColour(p.param, pddiColour(p.colour));
+                if(p.param == PDDI_SP_DIFFUSE)
+                {
+                    diffuseColour = pddiColour(p.colour);
+                    diffuse = &diffuseColour;
+                }
+                break;
+            case SHAR_SHADERPARAM_VECTOR:
+                {
+                    pddiVector v;
+                    v.x = p.vector[0];
+                    v.y = p.vector[1];
+                    v.z = p.vector[2];
+                    shader->SetVector(p.param, v);
+                }
+                break;
+            case SHAR_SHADERPARAM_TEXTURE:
+                {
+                    tTexture* tex = p3d::find<tTexture>(store, p.texture);
+                    if(!tex)
+                        tex = p3d::find<tTexture>(p.texture);
+                    if(tex)
+                        shader->SetTexture(p.param, tex);
+                    else
+                        rReleasePrintf("mods: shader %s: no texture %s\n", name, p.texture);
+                }
+                break;
+        }
+    }
+    // the loader sets ambient with diffuse
+    if(diffuse != NULL && !ambient)
+        shader->SetColour(PDDI_SP_AMBIENT, *diffuse);
+}
 #endif
 
 tShader::tShader()
@@ -280,6 +339,7 @@ tEntity* tShaderLoader::LoadObject(tChunkFile* f, tEntityStore* store)
     shader->SetName(name);
 #ifdef RAD_LINUX
     pglSetMaterialName(shader->GetShader(), name, f->GetFullFilename());    // for user material shaders (pddi/gl/glcustom.cpp)
+    ApplyModShaderOverrides(shader, name, store);
 #endif
     return shader;
 }
