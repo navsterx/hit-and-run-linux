@@ -92,7 +92,15 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/
   config). Custom sets already work where a script names one (`AddCharacter`, `AddNPCCharacterBonusMission`: any
   `art\chars\<set>.cho` + `<set6>_a.p3d`; Futurama's fry set checked). Other NPCs/drivers/peds are hard-wired to "npd";
   guess, unconfirmed: the hack makes an NPC use `<model>.cho` when present (Futurama ships leela.cho, Leela only ambient).
-- Not done: CustomBonusMissionSupport, CustomSkinPreviewAnimations,
+- CustomBonusMissionSupport (`shar_modbonus.cpp`): race intro dialogue mission by host model (`dialoglist.cpp`, the
+  "intro" conversation in Sunday Drive; unbound hosts -> [Miscellaneous] index, clamped to the list). [L<n><mission>]
+  ResetPlayer replaces `IsRaceMission()` in MissionManager's load-time `ResetPlayer` calls; ForcePlayerInCar the one
+  in `Mission::ResetPlayer` (needs a vehicle restart locator). Base race scripts place the car and
+  PutMFPlayerInCar themselves, so ResetPlayer=0 changes nothing visible there. StartBitmaps: host NPC name ("b_"
+  prefix) compared by UID (release tNames have no text), `ReplaceMissionBriefingBitmap`. EndBitmaps: mission name
+  stored when the Patty & Selma screen is requested (`CGuiScreenMissionSuccess::SetModMissionName`; the current
+  mission moves on before InitIntro). Test: `SHAR_RACE_TALK=1 skipfe tp11 race1` goes through the host's dialogue.
+- Not done: CustomSkinPreviewAnimations,
   OverrideShaderParameters, HoverCarRefraction. Only the first mod's `Shaders/` is read.
 
 ## Test mods

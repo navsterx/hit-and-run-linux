@@ -29,7 +29,6 @@ Order of attack: the character/animation hacks (what the larger total conversion
 in between. Hacks a mod requires but the port lacks are listed at startup (`mods:   not supported yet, ignored: ...`).
 
 #### Hacks not implemented (all required by the Futurama demo)
-- [ ] **CustomBonusMissionSupport**: bonus missions beyond the game's own
 - [ ] **CustomSkinPreviewAnimations**: animations in the clothes-shop preview
 - [ ] **OverrideShaderParameters**: per-material shader parameters
 - [ ] **HoverCarRefraction**: a mod (not a hack) the Futurama demo lists as required
@@ -64,6 +63,8 @@ in between. Hacks a mod requires but the port lacks are listed at startup (`mods
 - [ ] **CustomTriggerActions** in play: a test mod's door trigger checked (H&R meter, TiltCamera ease, nested and
   Setting conditions, PreventDefault, an event binding); Futurama's M1Char texture swaps run on spawn. Not triggered
   yet: ChangeHUDMapDrawable, DestroyCar, ChangeTrafficGroup, a music event that exists, AI cars, Mission conditions
+- [ ] **CustomBonusMissionSupport** in play: a test mod's start bitmap and ResetPlayer=0 checked on L1 SR1;
+  Futurama's race hosts' intro dialogue (tinny, alien, flexo) and the end bitmaps not heard/seen yet
 - [ ] **CustomAudioSupport** in play: the Futurama demo's mission ambience and a test mod's ForcedMusicRMSLevel were
   checked in logs only; BirdSound and <Interior> music not triggered yet
 - [ ] **Raised CustomLimits** pushed past the game's own values in play (cars, stages, trigger volumes, ...): so far

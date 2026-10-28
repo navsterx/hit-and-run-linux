@@ -78,7 +78,7 @@ const char* const SUPPORTED_HACKS[] = { "CustomFiles", "CustomLimits", "OggVorbi
                                         "CustomLicenseScreenTime", "NoMainMenuCameraAnimations", "HUDMapIgnorePlayerHeight",
                                         "CustomTrafficSupport", "CustomStatsTotals", "CustomAudioSupport",
                                         "CustomAnimationSetSupport",  // no-op: see port/notes/mods.md
-                                        "CustomTriggerActions" };
+                                        "CustomTriggerActions", "CustomBonusMissionSupport" };
 
 void Init( void );
 

@@ -523,7 +523,15 @@ void GameplayManager::Update( int elapsedTime )
                     fprintf( stderr, "race: starting bonus mission %d\n", race );
                     mDesiredBonusMission = race + MAX_MISSIONS;
                     GetBonusMissionInfo( race )->ResetCharacterPositions();
-                    mJumpToBonusMission = true;
+                    // SHAR_RACE_TALK=1: through the host's dialogue, as talking to them does
+                    if ( getenv( "SHAR_RACE_TALK" ) != NULL && !GetMission( mDesiredBonusMission )->IsWagerMission() )
+                    {
+                        mFireBonusMissionDialogue = true;
+                    }
+                    else
+                    {
+                        mJumpToBonusMission = true;
+                    }
                 }
                 else
                 {

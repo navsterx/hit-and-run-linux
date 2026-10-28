@@ -112,6 +112,10 @@ public:
     void InitDynaLoad();
 #ifdef RAD_LINUX
     bool HasDynaLoad() const { return mDynaloadLoc != NULL; }
+    // Linux port: mods' CustomBonusMissionSupport [L<n><mission>]: whether loading the mission resets the player
+    // (ResetPlayer) and whether ResetPlayer puts them in the car (ForcePlayerInCar); both street races by default
+    bool ModResetPlayerOnLoad();
+    bool ModForcePlayerInCar();
 #endif
 
     bool DialogueCharactersTeleported();

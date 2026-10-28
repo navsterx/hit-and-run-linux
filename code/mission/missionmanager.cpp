@@ -326,7 +326,11 @@ void MissionManager::Update( int elapsedTime )
             DisableBonusMissions();
         }
 
+#ifdef RAD_LINUX
+        if ( mResetting || currentMission->IsForcedCar() || currentMission->ModResetPlayerOnLoad() )
+#else
         if ( mResetting || currentMission->IsForcedCar() || currentMission->IsRaceMission() )
+#endif
         {
             if ( mResetting || mMissionState != MISSION_RUNNING )
             {
@@ -768,7 +772,11 @@ MEMTRACK_PUSH_GROUP( "MissionManager - Loading" );
                 }
 
 
+#ifdef RAD_LINUX
+                if ( mResetting || mission->IsForcedCar() || mission->ModResetPlayerOnLoad() )
+#else
                 if ( mResetting || mission->IsForcedCar() || mission->IsRaceMission() )
+#endif
                 {
                     GetCurrentMission()->ResetPlayer();
 //					GetCharacterManager()->Update(0.033f);

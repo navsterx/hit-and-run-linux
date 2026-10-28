@@ -31,6 +31,9 @@
 #include <presentation/gui/guimanager.h>
 #include <presentation/gui/ingame/guimanageringame.h>
 #include <presentation/gui/ingame/guiscreenhud.h>
+#ifdef RAD_LINUX
+#include <presentation/gui/ingame/guiscreenmissionsuccess.h>
+#endif
 
 #include <worldsim/character/charactermanager.h>
 #include <worldsim/character/character.h>
@@ -78,6 +81,7 @@
 #ifdef RAD_LINUX
 #include <mission/modscript.h>
 #include <shar_mods.h>
+#include <shar_modbonus.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -1051,6 +1055,9 @@ BEGIN_PROFILE( "Mission Update" );
 
                     if ( mbTriggerPattyAndSelmaScreen == true)
                     {
+#ifdef RAD_LINUX
+                        CGuiScreenMissionSuccess::SetModMissionName( mcName );
+#endif
                         GetGuiSystem()->HandleMessage( GUI_MSG_GOTO_SCREEN,
                                             CGuiWindow::GUI_SCREEN_ID_MISSION_SUCCESS,
                                             CLEAR_WINDOW_HISTORY );
@@ -1525,7 +1532,11 @@ void Mission::ResetPlayer()
     }
 
     //if ( mPlayerRestart == NULL || IsForcedCar() || IsRaceMission() )
+#ifdef RAD_LINUX
+    if ( mPlayerRestart == NULL || ModForcePlayerInCar() )
+#else
     if ( mPlayerRestart == NULL || IsRaceMission() )
+#endif
     {
         rmt::Vector pos;
         mVehicleRestart->GetLocation( &pos );
@@ -1734,6 +1745,20 @@ bool Mission::IsRaceMission()
     }
     return false;
 }
+
+#ifdef RAD_LINUX
+bool Mission::ModResetPlayerOnLoad()
+{
+    return shar_ModBonusResetPlayer( GetGameplayManager()->GetCurrentLevelIndex(), mcName, IsRaceMission() ) != 0;
+}
+
+bool Mission::ModForcePlayerInCar()
+{
+    // the car's restart locator is where the player goes
+    return mVehicleRestart != NULL &&
+           shar_ModBonusForcePlayerInCar( GetGameplayManager()->GetCurrentLevelIndex(), mcName, IsRaceMission() ) != 0;
+}
+#endif
 
 //=============================================================================
 // Mission::IsWagerMission
