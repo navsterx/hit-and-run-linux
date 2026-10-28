@@ -100,7 +100,9 @@ Docs: docs.donutteam.com/docs/LucasSimpsonsHitAndRunModLauncher/
   prefix) compared by UID (release tNames have no text), `ReplaceMissionBriefingBitmap`. EndBitmaps: mission name
   stored when the Patty & Selma screen is requested (`CGuiScreenMissionSuccess::SetModMissionName`; the current
   mission moves on before InitIntro). Test: `SHAR_RACE_TALK=1 skipfe tp11 race1` goes through the host's dialogue.
-- Not done: CustomSkinPreviewAnimations,
+- CustomSkinPreviewAnimations (`guiscreenpurchaserewards.cpp`): [Miscellaneous] <level index>=animation; one not
+  loaded falls back to the game's (the original dereferences NULL). Checked with L1 hom_loco_walk.
+- Not done:
   OverrideShaderParameters, HoverCarRefraction. Only the first mod's `Shaders/` is read.
 
 ## Test mods

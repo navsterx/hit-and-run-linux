@@ -19,6 +19,8 @@
 #ifdef RAD_LINUX
 #include <shar_modshops.h>
 #include <shar_modcars.h>
+#include <shar_mods.h>
+#include <stdio.h>
 #endif
 #include <presentation/gui/ingame/guimanageringame.h>
 #include <presentation/gui/ingame/guiscreenhud.h>
@@ -701,6 +703,29 @@ CGuiScreenPurchaseRewards::On3DModelLoaded( const PreviewObject* previewObject )
 			}
 			strcat(anim_name, "_loco_idle_rest");
             tAnimation* anim = p3d::find<tAnimation>( anim_name );
+#ifdef RAD_LINUX
+            // Linux port: mods' CustomSkinPreviewAnimations.ini [Miscellaneous] <level index>=animation (one in the
+            // level character's animations); the game's when it names none that is loaded
+            if( shar_ModHackRequired( "CustomSkinPreviewAnimations" ) )
+            {
+                char key[ 8 ];
+                char modAnimName[ 64 ];
+                snprintf( key, sizeof( key ), "%d", static_cast< int >( GetGameplayManager()->GetCurrentLevelIndex() ) );
+                if( shar_ModConfigValue( "CustomSkinPreviewAnimations.ini", "Miscellaneous", key, modAnimName,
+                                         sizeof( modAnimName ) ) && modAnimName[ 0 ] != '\0' )
+                {
+                    tAnimation* modAnim = p3d::find<tAnimation>( modAnimName );
+                    if( modAnim != NULL )
+                    {
+                        anim = modAnim;
+                    }
+                    else
+                    {
+                        fprintf( stderr, "mods: skin preview animation %s not loaded, using %s\n", modAnimName, anim_name );
+                    }
+                }
+            }
+#endif
             rAssert( anim != NULL );
             anim->SetCyclic( true );
 

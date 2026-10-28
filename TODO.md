@@ -29,7 +29,6 @@ Order of attack: the character/animation hacks (what the larger total conversion
 in between. Hacks a mod requires but the port lacks are listed at startup (`mods:   not supported yet, ignored: ...`).
 
 #### Hacks not implemented (all required by the Futurama demo)
-- [ ] **CustomSkinPreviewAnimations**: animations in the clothes-shop preview
 - [ ] **OverrideShaderParameters**: per-material shader parameters
 - [ ] **HoverCarRefraction**: a mod (not a hack) the Futurama demo lists as required
 - [ ] The Mod Launcher's other hacks, none of the three test mods uses: survey its hack list for popular mods
